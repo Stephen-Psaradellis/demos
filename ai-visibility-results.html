@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Search Visibility - results screen, cleaned up</title>
+<style>
+/* Everything is scoped under .avr so it can be dropped onto an existing page
+   (or a WordPress template) without touching any other CSS, JS or API call. */
+.avr{--bg:#f6f7f9;--card:#fff;--ink:#14171f;--muted:#5b6475;--line:#e3e6ec;
+  --good:#127a46;--warn:#a15c00;--bad:#b42318;--accent:#2952e3;
+  font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);
+  background:var(--bg);min-height:100vh;margin:0}
+@media (prefers-color-scheme:dark){.avr{--bg:#0f1115;--card:#171a21;--ink:#e8ebf1;
+  --muted:#9aa3b5;--line:#2a2f3a;--good:#4cc38a;--warn:#f0a845;--bad:#f97066;--accent:#7c9cff}}
+body{margin:0}
+.avr *{box-sizing:border-box}
+.avr .wrap{max-width:960px;margin:0 auto;padding:16px 16px 96px}
+.avr header{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.avr .domain{font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.avr .when{color:var(--muted);font-size:13px;white-space:nowrap}
+.avr .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+/* 1. One number first: the answer to "how visible am I?" */
+.avr .hero{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center}
+.avr .ring{--p:58;width:92px;height:92px;border-radius:50%;display:grid;place-items:center;
+  background:conic-gradient(var(--warn) calc(var(--p)*1%),var(--line) 0)}
+.avr .ring b{display:grid;place-items:center;width:72px;height:72px;border-radius:50%;
+  background:var(--card);font-size:26px}
+.avr .hero h1{font-size:19px;line-height:1.3;margin:0 0 4px}
+.avr .hero p{margin:0;color:var(--muted);font-size:14px}
+/* 2. Per-engine status: a scannable row each, no tables on mobile */
+.avr h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:20px 4px 8px}
+.avr .engines{display:grid;gap:8px}
+.avr .eng{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 16px;margin:0}
+.avr .eng .name{flex:1;font-weight:600}
+.avr .eng .name small{display:block;font-weight:400;color:var(--muted);font-size:13px}
+.avr .pill{font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.avr .ok{color:var(--good);background:color-mix(in srgb,var(--good) 12%,transparent)}
+.avr .mid{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent)}
+.avr .no{color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent)}
+/* 3. Fixes ranked by impact; details collapsed so the page stays short */
+.avr details{border-top:1px solid var(--line)}
+.avr details:first-of-type{border-top:0}
+.avr summary{list-style:none;cursor:pointer;display:flex;gap:12px;align-items:flex-start;
+  padding:14px 0;min-height:48px}
+.avr summary::-webkit-details-marker{display:none}
+.avr .rank{flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;
+  background:var(--accent);color:#fff;font-weight:700;font-size:14px}
+.avr .fix{flex:1}
+.avr .fix b{display:block}
+.avr .fix span{color:var(--muted);font-size:14px}
+.avr .chev{flex:none;transition:transform .2s;color:var(--muted)}
+.avr details[open] .chev{transform:rotate(90deg)}
+.avr .body{padding:0 0 14px 40px;color:var(--muted);font-size:15px}
+.avr .body code{background:var(--bg);padding:1px 6px;border-radius:6px;font-size:13px}
+/* 4. One primary action, always reachable with a thumb */
+.avr .cta{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+  background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+.avr .cta div{max-width:960px;margin:0 auto;display:flex;gap:8px}
+.avr .btn{flex:1;min-height:48px;border-radius:12px;border:0;font:inherit;font-weight:600;cursor:pointer}
+.avr .primary{background:var(--accent);color:#fff}
+.avr .ghost{flex:0 0 auto;padding:0 16px;background:transparent;color:var(--ink);border:1px solid var(--line)}
+/* Desktop: two columns, the summary stays in view while fixes scroll */
+@media (min-width:820px){
+  .avr .grid{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
+  .avr .side{position:sticky;top:16px}
+  .avr .cta{position:static;background:none;border:0;padding:0;backdrop-filter:none}
+  .avr .cta div{max-width:none}
+  .avr .wrap{padding-bottom:32px}
+}
+.avr .note{font-size:13px;color:var(--muted);margin:24px 4px 0}
+</style>
+</head>
+<body>
+<div class="avr">
+ <div class="wrap">
+  <header>
+   <div class="domain">acmeplumbing.ca</div>
+   <div class="when">Checked 2 min ago</div>
+  </header>
+  <div class="grid">
+   <div class="side">
+    <section class="card hero" aria-label="Overall visibility">
+     <div class="ring" style="--p:58"><b>58</b></div>
+     <div>
+      <h1>Visible in 2 of 4 AI engines</h1>
+      <p>Three fixes below would cover the two you are missing.</p>
+     </div>
+    </section>
+    <h2>By engine</h2>
+    <div class="engines">
+     <div class="card eng"><div class="name">ChatGPT<small>Cited in 4 of 10 prompts</small></div><span class="pill ok">Visible</span></div>
+     <div class="card eng"><div class="name">Perplexity<small>Cited in 3 of 10 prompts</small></div><span class="pill ok">Visible</span></div>
+     <div class="card eng"><div class="name">Google AI Overviews<small>Mentioned, not linked</small></div><span class="pill mid">Partial</span></div>
+     <div class="card eng"><div class="name">Gemini<small>Not found in 10 prompts</small></div><span class="pill no">Missing</span></div>
+    </div>
+    <div class="cta"><div>
+     <button class="btn primary" type="button">Get the full report</button>
+     <button class="btn ghost" type="button" aria-label="Run the check again">Re-run</button>
+    </div></div>
+   </div>
+   <div>
+    <h2>Fix these first</h2>
+    <section class="card" aria-label="Ranked fixes">
+     <details open>
+      <summary><span class="rank">1</span><span class="fix"><b>Add LocalBusiness schema</b><span>Biggest gain - Gemini and AI Overviews</span></span><span class="chev">&#9656;</span></summary>
+      <div class="body">No structured data was found on the home page. Add a <code>LocalBusiness</code> block with name, service area, hours and phone so engines can quote you directly.</div>
+     </details>
+     <details>
+      <summary><span class="rank">2</span><span class="fix"><b>Answer the top 5 customer questions on one page</b><span>Engines quote pages that answer plainly</span></span><span class="chev">&#9656;</span></summary>
+      <div class="body">Prompts like "emergency plumber near me open now" returned competitors with a FAQ page. One page, one question per heading, a two-sentence answer each.</div>
+     </details>
+     <details>
+      <summary><span class="rank">3</span><span class="fix"><b>Get listed on 2 directories engines already cite</b><span>Where your competitors are being found</span></span><span class="chev">&#9656;</span></summary>
+      <div class="body">The cited sources for your category were HomeStars and Yelp. Your business is on neither with a matching name and address.</div>
+     </details>
+    </section>
+    <p class="note">Sample data. This is a front-end layout pass: no change to the search logic, the API calls or the deployment, only the markup and CSS on the results screen.</p>
+   </div>
+  </div>
+ </div>
+</div>
+</body>
+</html>
