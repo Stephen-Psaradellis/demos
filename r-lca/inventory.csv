@@ -1,0 +1,11 @@
+process,flow,amount,unit,gsd
+aluminium_frame,aluminium_primary,2.40,kg,1.10
+aluminium_frame,electricity_grid,18.0,kWh,1.20
+steel_parts,steel_low_alloy,1.10,kg,1.10
+steel_parts,electricity_grid,2.6,kWh,1.20
+assembly,electricity_grid,4.5,kWh,1.30
+assembly,natural_gas_heat,6.0,MJ,1.25
+transport,truck_freight,0.85,tkm,1.50
+transport,sea_freight,9.4,tkm,1.40
+packaging,corrugated_board,0.65,kg,1.15
+end_of_life,landfill_mixed,0.90,kg,1.60

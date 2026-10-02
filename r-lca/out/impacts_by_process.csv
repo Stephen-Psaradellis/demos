@@ -1,0 +1,13 @@
+"process","category","impact"
+"aluminium_frame","Acidification",0.1626
+"assembly","Acidification",0.01011
+"end_of_life","Acidification",0.00027
+"packaging","Acidification",0.003055
+"steel_parts","Acidification",0.01624
+"transport","Acidification",0.0032445
+"aluminium_frame","GWP100",35.7
+"assembly","GWP100",2.421
+"end_of_life","GWP100",0.522
+"packaging","GWP100",0.6175
+"steel_parts","GWP100",3.48
+"transport","GWP100",0.1969

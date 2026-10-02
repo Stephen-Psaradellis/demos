@@ -1,0 +1,19 @@
+flow,category,factor,unit
+aluminium_primary,GWP100,11.5,kg CO2-eq/kg
+steel_low_alloy,GWP100,2.1,kg CO2-eq/kg
+electricity_grid,GWP100,0.45,kg CO2-eq/kWh
+electricity_renewable,GWP100,0.03,kg CO2-eq/kWh
+natural_gas_heat,GWP100,0.066,kg CO2-eq/MJ
+truck_freight,GWP100,0.11,kg CO2-eq/tkm
+sea_freight,GWP100,0.011,kg CO2-eq/tkm
+corrugated_board,GWP100,0.95,kg CO2-eq/kg
+landfill_mixed,GWP100,0.58,kg CO2-eq/kg
+aluminium_primary,Acidification,0.052,mol H+-eq/kg
+steel_low_alloy,Acidification,0.0098,mol H+-eq/kg
+electricity_grid,Acidification,0.0021,mol H+-eq/kWh
+electricity_renewable,Acidification,0.0002,mol H+-eq/kWh
+natural_gas_heat,Acidification,0.00011,mol H+-eq/MJ
+truck_freight,Acidification,0.00061,mol H+-eq/tkm
+sea_freight,Acidification,0.00029,mol H+-eq/tkm
+corrugated_board,Acidification,0.0047,mol H+-eq/kg
+landfill_mixed,Acidification,0.0003,mol H+-eq/kg
