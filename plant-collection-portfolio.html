@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Collection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f4ee; --ink:#1f2a22; --muted:#5d6b60; --card:#ffffff; --line:#e3e0d6;
+  --leaf:#2f6b45; --leaf-soft:#e3efe5; --accent:#b8743a;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#121714; --ink:#e8efe9; --muted:#9aa89e; --card:#1a211c; --line:#2a332d;
+         --leaf:#7cc495; --leaf-soft:#20302530; --accent:#e0a56d; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif}
+header{padding:72px 16px 40px;max-width:1120px;margin:0 auto}
+.eyebrow{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--leaf);font-weight:600}
+h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(40px,7vw,76px);line-height:1.02;margin:10px 0 16px}
+.lede{max-width:620px;color:var(--muted);font-size:18px;margin:0}
+.stats{display:flex;gap:32px;flex-wrap:wrap;margin-top:28px}
+.stats b{display:block;font-family:Fraunces,serif;font-size:30px;font-weight:600}
+.stats span{color:var(--muted);font-size:14px}
+.bar{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar-in{max-width:1120px;margin:0 auto;padding:12px 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 14px;font:500 14px Inter,sans-serif;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--leaf);border-color:var(--leaf);color:#fff}
+input[type=search]{margin-left:auto;min-width:200px;flex:1 1 200px;max-width:280px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 14px;font:14px Inter,sans-serif}
+main{max-width:1120px;margin:0 auto;padding:28px 16px 80px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;cursor:pointer;transition:transform .2s,box-shadow .2s;text-align:left;padding:0;color:inherit;font:inherit}
+.card:hover,.card:focus-visible{transform:translateY(-3px);box-shadow:0 12px 30px #0000001a;outline:none}
+.photo{aspect-ratio:4/5;display:grid;place-items:center;position:relative}
+.photo svg{width:62%;height:auto}
+.photo .tag{position:absolute;top:12px;left:12px;background:#ffffffd9;color:#1f2a22;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px}
+.meta{padding:14px 16px 18px}
+.meta h3{font-family:Fraunces,serif;font-weight:600;font-size:21px;margin:0}
+.meta i{color:var(--muted);font-size:14px}
+.care{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.care span{font-size:12px;background:var(--leaf-soft);color:var(--leaf);padding:3px 9px;border-radius:999px;font-weight:500}
+.empty{color:var(--muted);text-align:center;padding:60px 0}
+dialog{border:none;border-radius:22px;padding:0;max-width:880px;width:calc(100% - 32px);background:var(--card);color:var(--ink)}
+dialog::backdrop{background:#0b100d99}
+.dlg{display:grid;grid-template-columns:1fr 1fr}
+.dlg .photo{aspect-ratio:auto;min-height:100%}
+.dlg-body{padding:30px}
+.dlg-body h2{font-family:Fraunces,serif;font-size:34px;margin:0;font-weight:600}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}
+.facts div{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.facts small{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+.log{border-left:2px solid var(--leaf);padding-left:14px;margin:0;list-style:none}
+.log li{margin-bottom:8px;font-size:14px}.log b{color:var(--leaf)}
+.close{position:absolute;top:12px;right:12px;border:none;background:#ffffffe0;color:#1f2a22;width:36px;height:36px;border-radius:50%;font-size:20px;cursor:pointer}
+footer{text-align:center;color:var(--muted);font-size:13px;padding:0 16px 40px}
+@media (max-width:700px){.dlg{grid-template-columns:1fr}.dlg .photo{aspect-ratio:16/10}.dlg-body{padding:22px}input[type=search]{margin-left:0;max-width:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">A personal plant collection</div>
+  <h1>The Collection</h1>
+  <p class="lede">Every plant here has a story: where it came from, what it likes, and how it has grown. Click any plant to open its profile.</p>
+  <div class="stats" id="stats"></div>
+</header>
+<div class="bar"><div class="bar-in" id="filters">
+  <input type="search" id="q" placeholder="Search by name..." aria-label="Search plants">
+</div></div>
+<main>
+  <div class="grid" id="grid"></div>
+  <p class="empty" id="empty" hidden>No plants match that filter.</p>
+</main>
+<dialog id="dlg" aria-label="Plant profile"></dialog>
+<footer>Demo layout - placeholder illustrations stand in for your own photography. Plant data lives in one list, so adding a plant is one entry.</footer>
+<script>
+// One list drives the whole page: add a plant = add one object.
+const PLANTS=[
+ {name:"Monstera Thai Constellation",latin:"Monstera deliciosa",group:"Aroids",light:"Bright indirect",water:"Weekly",since:"2023-04",origin:"Tissue-culture starter, 3 leaves",color:["#cfe3cf","#8fb79a"],shape:"monstera",story:"The cream speckling is stable, so every new leaf is a surprise in pattern, never in colour.",log:[["2023-04","Arrived with 3 leaves"],["2024-06","First fenestrated leaf"],["2025-09","Moss pole extended to 1.4 m"]]},
+ {name:"Philodendron Gloriosum",latin:"Philodendron gloriosum",group:"Aroids",light:"Medium",water:"When top 2 cm dry",since:"2022-11",origin:"Cutting from a local grower",color:["#d9e4cc","#6f9468"],shape:"heart",story:"A crawler: it walks across the pot rather than climbing, so it lives in a long trough.",log:[["2022-11","Rooted cutting"],["2024-03","Moved to a 60 cm trough"],["2025-07","Leaf no. 14, the largest yet"]]},
+ {name:"Anthurium Warocqueanum",latin:"Anthurium warocqueanum",group:"Aroids",light:"Bright indirect",water:"Keep evenly moist",since:"2024-02",origin:"Imported, 2 leaves",color:["#d4dfd0","#4f7a5a"],shape:"long",story:"The 'Queen Anthurium'. Lives in a cabinet at 75% humidity; its leaves now pass 60 cm.",log:[["2024-02","Arrived, 2 leaves"],["2024-10","Moved into the grow cabinet"],["2025-08","First leaf over 60 cm"]]},
+ {name:"Hoya Kerrii",latin:"Hoya kerrii",group:"Hoyas",light:"Bright",water:"Every 2 weeks",since:"2021-02",origin:"Single-leaf gift",color:["#e6ecd2","#9bb36e"],shape:"heart",story:"Started as a single heart-shaped leaf on Valentine's Day; it took two years to vine.",log:[["2021-02","Single leaf"],["2023-01","First vine"],["2025-05","First flower umbel"]]},
+ {name:"Hoya Carnosa Krimson Queen",latin:"Hoya carnosa",group:"Hoyas",light:"Bright",water:"Every 2 weeks",since:"2020-08",origin:"Garden centre basket",color:["#f0dfe2","#b77c8b"],shape:"round",story:"The oldest plant in the collection, and the one that flowers on schedule every June.",log:[["2020-08","Hanging basket"],["2022-06","First flowers"],["2025-06","Eleven umbels at once"]]},
+ {name:"Calathea Orbifolia",latin:"Goeppertia orbifolia",group:"Prayer plants",light:"Low to medium",water:"Distilled, weekly",since:"2023-09",origin:"Rescue from a sale shelf",color:["#dde8dc","#7da38a"],shape:"round",story:"Nearly lost twice to tap water; now on distilled water and finally unfurling clean leaves.",log:[["2023-09","Rescued, 4 leaves"],["2024-05","Switched to distilled water"],["2025-10","22 leaves, no brown edges"]]},
+ {name:"Echeveria Lola",latin:"Echeveria 'Lola'",group:"Succulents",light:"Full sun",water:"Soak and dry",since:"2022-05",origin:"Leaf propagation",color:["#ece4ec","#a995b0"],shape:"rosette",story:"Grown from a single fallen leaf. It now has three pups of its own.",log:[["2022-05","Leaf propagation"],["2023-08","Rosette 6 cm"],["2025-04","Third pup separated"]]},
+ {name:"Haworthia Cooperi",latin:"Haworthia cooperi",group:"Succulents",light:"Bright",water:"Every 3 weeks",since:"2024-07",origin:"Specialist nursery",color:["#e1ecdf","#8cb59b"],shape:"rosette",story:"The translucent leaf windows let light into the leaf - best photographed backlit.",log:[["2024-07","Arrived"],["2025-03","Clump doubled"]]},
+ {name:"Nepenthes Ventrata",latin:"Nepenthes x ventrata",group:"Carnivorous",light:"Bright",water:"Rainwater, moist",since:"2023-06",origin:"Big-box store",color:["#e9e0cf","#b07a4a"],shape:"pitcher",story:"Pitchers only form above 60% humidity, so it hangs in the bathroom window.",log:[["2023-06","No pitchers"],["2023-11","Moved to the bathroom"],["2024-02","First pitcher in 8 months"]]}
+];
+const ICON={
+ monstera:'<path d="M60 108V60" stroke="#2f5d3c" stroke-width="3"/><path d="M60 60C20 58 14 20 44 10c10-3 22 0 26 6 10-8 30-6 36 6 10 22-10 40-46 38z" fill="#3f7f52"/><path d="M60 22v34M42 30l14 14M80 28L64 44M36 46h20M86 44H66" stroke="#cfe3cf" stroke-width="5" stroke-linecap="round"/>',
+ heart:'<path d="M60 112V70" stroke="#2f5d3c" stroke-width="3"/><path d="M60 72C26 54 16 26 34 14c12-8 22 0 26 10 4-10 14-18 26-10 18 12 8 40-26 58z" fill="#3f7f52"/><path d="M60 24v46" stroke="#d9e4cc" stroke-width="2"/>',
+ long:'<path d="M60 112V40" stroke="#2f5d3c" stroke-width="3"/><path d="M60 8C34 30 34 80 60 104 86 80 86 30 60 8z" fill="#2f5d3c"/><path d="M60 14v86M60 40l-14-8M60 40l14-8M60 60l-16-8M60 60l16-8M60 80l-14-8M60 80l14-8" stroke="#d4dfd0" stroke-width="2"/>',
+ round:'<path d="M60 112V72" stroke="#2f5d3c" stroke-width="3"/><circle cx="60" cy="48" r="38" fill="#3f7f52"/><path d="M60 12v72M34 26l22 22M86 26L64 48M26 54h28M94 54H66" stroke="#dde8dc" stroke-width="3"/>',
+ rosette:'<g fill="#6f9468"><ellipse cx="60" cy="78" rx="12" ry="34" transform="rotate(-50 60 78)"/><ellipse cx="60" cy="78" rx="12" ry="34" transform="rotate(50 60 78)"/><ellipse cx="60" cy="78" rx="12" ry="34" transform="rotate(-20 60 78)"/><ellipse cx="60" cy="78" rx="12" ry="34" transform="rotate(20 60 78)"/></g><ellipse cx="60" cy="74" rx="10" ry="26" fill="#8fb79a"/>',
+ pitcher:'<path d="M30 20c20 10 30 20 30 40" stroke="#2f5d3c" stroke-width="3" fill="none"/><path d="M46 60c0-6 28-6 28 0v38c0 10-28 10-28 0z" fill="#a2552e"/><ellipse cx="60" cy="60" rx="14" ry="5" fill="#5e2b14"/><path d="M58 52c4-10 16-10 18-2" fill="#c56a3c"/>'
+};
+const photo=(p,big)=>`<div class="photo" style="background:linear-gradient(160deg,${p.color[0]},${p.color[1]})">${big?'':`<span class="tag">${p.group}</span>`}<svg viewBox="0 0 120 120" aria-hidden="true">${ICON[p.shape]}</svg></div>`;
+const fmt=d=>new Date(d+"-01").toLocaleDateString("en-US",{month:"short",year:"numeric"});
+const groups=["All",...new Set(PLANTS.map(p=>p.group))];
+let active="All";
+const $=s=>document.querySelector(s);
+$("#stats").innerHTML=`<div><b>${PLANTS.length}</b><span>plants</span></div><div><b>${groups.length-1}</b><span>families</span></div><div><b>${Math.min(...PLANTS.map(p=>+p.since.slice(0,4)))}</b><span>oldest arrival</span></div>`;
+$("#filters").insertAdjacentHTML("afterbegin",groups.map(g=>`<button class="chip" data-g="${g}" aria-pressed="${g===active}">${g}</button>`).join(""));
+$("#filters").addEventListener("click",e=>{const g=e.target.dataset?.g;if(!g)return;active=g;document.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",c.dataset.g===g));render();});
+$("#q").addEventListener("input",render);
+function render(){
+  const q=$("#q").value.trim().toLowerCase();
+  const list=PLANTS.filter(p=>(active==="All"||p.group===active)&&(p.name+" "+p.latin).toLowerCase().includes(q));
+  $("#grid").innerHTML=list.map(p=>`<button class="card" data-i="${PLANTS.indexOf(p)}">${photo(p)}<div class="meta"><h3>${p.name}</h3><i>${p.latin}</i><div class="care"><span>${p.light}</span><span>${p.water}</span></div></div></button>`).join("");
+  $("#empty").hidden=list.length>0;
+}
+$("#grid").addEventListener("click",e=>{const c=e.target.closest(".card");if(c)open(PLANTS[c.dataset.i]);});
+function open(p){
+  const d=$("#dlg");
+  d.innerHTML=`<div class="dlg">${photo(p,true)}<div class="dlg-body"><div class="eyebrow">${p.group}</div><h2>${p.name}</h2><i>${p.latin}</i><p>${p.story}</p><div class="facts"><div><small>Light</small>${p.light}</div><div><small>Water</small>${p.water}</div><div><small>In the collection since</small>${fmt(p.since)}</div><div><small>Came from</small>${p.origin}</div></div><ul class="log">${p.log.map(([t,x])=>`<li><b>${fmt(t)}</b> - ${x}</li>`).join("")}</ul></div></div><button class="close" aria-label="Close">&times;</button>`;
+  d.querySelector(".close").onclick=()=>d.close();
+  d.showModal();
+}
+$("#dlg").addEventListener("click",e=>{if(e.target.id==="dlg")e.target.close();});
+render();
+</script>
+</body>
+</html>
