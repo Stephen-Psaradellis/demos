@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAA-C03 study guide - sample section: choosing storage</title>
+<style>
+  body { margin:0; font:17px/1.65 Georgia,"Times New Roman",serif; color:#1c2430; background:#fbfaf7; }
+  main { max-width:720px; margin:0 auto; padding:28px 18px 60px; }
+  .note { font:13px/1.5 system-ui,sans-serif; background:#fff7d6; border:1px solid #ecd98a; border-radius:8px; padding:10px 12px; }
+  h1 { font-size:30px; line-height:1.2; margin:26px 0 6px; }
+  h2 { font-size:22px; margin:34px 0 8px; }
+  h3 { font:600 16px/1.4 system-ui,sans-serif; margin:26px 0 6px; }
+  .lede { color:#55606e; margin-top:0; }
+  table { border-collapse:collapse; width:100%; font:14px/1.45 system-ui,sans-serif; margin:14px 0; }
+  th, td { border:1px solid #d9dde3; padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:#eef1f5; }
+  .wrapx { overflow-x:auto; }
+  .tip { border-left:4px solid #c9772b; background:#fff; padding:10px 14px; margin:18px 0; font-size:16px; }
+  ol.opts { list-style:upper-alpha; padding-left:26px; }
+  details { background:#fff; border:1px solid #d9dde3; border-radius:8px; padding:10px 14px; margin:8px 0 22px; font-size:16px; }
+  summary { cursor:pointer; font:600 14px system-ui,sans-serif; color:#0b5cab; }
+  code { font-size:14px; }
+</style>
+</head>
+<body>
+<main>
+<p class="note">Sample written for an Upwork proposal: one section of an SAA-C03 study guide and six original practice questions. Every question was written from scratch for this sample; none is taken or adapted from an exam, a book, a course or a question bank.</p>
+
+<h1>Choosing storage: Amazon S3, EBS and EFS</h1>
+<p class="lede">Domain focus: design high-performing and cost-optimized architectures.</p>
+
+<p>Most storage questions on the exam are not asking what a service is. They describe a workload and ask which storage fits it. Three questions settle nearly all of them: <em>how is the data accessed</em>, <em>how many machines need it at once</em>, and <em>where does it have to survive a failure</em>.</p>
+
+<h2>Three different kinds of storage</h2>
+
+<p><strong>Amazon S3 is object storage.</strong> You store and fetch whole objects over an HTTPS API, each under a key in a bucket. Nothing is mounted and there is no file locking or in-place editing: changing one byte means writing the object again. In return, S3 scales without any capacity planning, the standard storage class keeps data across at least three Availability Zones, and it is designed for 99.999999999% (eleven nines) durability. It suits backups, logs, media, data lakes and static website assets.</p>
+
+<p><strong>Amazon EBS is block storage.</strong> A volume behaves like a disk attached to an EC2 instance, so the operating system can put any file system on it. That makes it the default for boot volumes and for databases that need low-latency random reads and writes. The key limit is location: a volume lives in one Availability Zone and attaches only to instances in that same zone. To move it, you take a snapshot (stored regionally, and incremental after the first) and create a new volume from the snapshot in another zone.</p>
+
+<p><strong>Amazon EFS is a shared file system.</strong> It speaks NFS, so many Linux instances, containers and Lambda functions can mount the same directory tree at the same time, across Availability Zones. It grows and shrinks on its own and you pay for what is stored. It suits shared content directories, home directories and any application that expects ordinary POSIX files on more than one server.</p>
+
+<div class="wrapx">
+<table>
+<tr><th></th><th>S3</th><th>EBS</th><th>EFS</th></tr>
+<tr><th>Type</th><td>Object</td><td>Block</td><td>File (NFS)</td></tr>
+<tr><th>Accessed by</th><td>API calls over HTTPS</td><td>One EC2 instance, as a disk</td><td>Many Linux clients, as a mounted directory</td></tr>
+<tr><th>Scope</th><td>Region</td><td>One Availability Zone</td><td>Region (or One Zone, by choice)</td></tr>
+<tr><th>Capacity</th><td>Unlimited, nothing to provision</td><td>You choose a size</td><td>Elastic</td></tr>
+<tr><th>Typical use</th><td>Backups, media, logs, static sites</td><td>Boot volumes, databases</td><td>Shared files across servers</td></tr>
+</table>
+</div>
+
+<h2>When and why to choose each</h2>
+
+<p>Start with the access pattern. If the application calls an API or simply needs somewhere durable and cheap to keep files it reads whole, choose S3. If one server needs a fast disk, choose EBS. If several servers need the same files through normal file operations, choose EFS.</p>
+
+<p>Then check the failure requirement. A design that must survive the loss of an Availability Zone cannot keep its only copy of the data on an EBS volume, because the volume is lost to the application for as long as its zone is unavailable. S3 and regional EFS already span zones.</p>
+
+<p>Then check cost. For the same amount of data S3 is the cheapest of the three, EBS sits in the middle, and EFS standard storage costs the most per gigabyte. Each has cheaper tiers for data that is rarely touched: S3 storage classes down to S3 Glacier Deep Archive, and EFS Infrequent Access, with lifecycle rules to move data automatically.</p>
+
+<div class="tip"><strong>Exam cue.</strong> "Shared", "concurrent" or "multiple instances across Availability Zones" with Linux points to EFS. "Windows", "SMB" or "Active Directory" points away from EFS to Amazon FSx for Windows File Server. "Lowest cost" with "rarely accessed" points to an S3 archive class. "Temporary", "scratch" or "can be recreated" with very high I/O points to instance store, which is erased when the instance stops or terminates.</div>
+
+<p>One trap is worth knowing. EBS Multi-Attach lets certain Provisioned IOPS volumes attach to several instances, but only inside a single Availability Zone and only with software that coordinates the writes. It is not a general shared file system, and it is rarely the right answer when the question says "across Availability Zones".</p>
+
+<h2>Practice questions</h2>
+
+<h3>Question 1</h3>
+<p>A company runs a content management application on Linux EC2 instances in an Auto Scaling group that spans three Availability Zones. Editors upload images, and every instance must see each upload immediately as a normal file path. The application code cannot be changed. Which storage solution meets these requirements?</p>
+<ol class="opts">
+<li>An Amazon EBS Provisioned IOPS volume with Multi-Attach enabled</li>
+<li>An Amazon EFS file system mounted on every instance</li>
+<li>An Amazon S3 bucket that each instance syncs to local disk every five minutes</li>
+<li>Instance store volumes replicated with a scheduled copy job</li>
+</ol>
+<details><summary>Answer and explanation</summary>
+<p><strong>B.</strong> EFS gives many Linux instances in different Availability Zones the same POSIX directory at the same time, with no code change.</p>
+<p>A is wrong because Multi-Attach works only within one Availability Zone and needs cluster-aware software. C is wrong because a five-minute sync is not immediate and copies drift apart. D is wrong because instance store is local to one instance and is lost when it stops or terminates.</p>
+</details>
+
+<h3>Question 2</h3>
+<p>An EC2 instance in one Availability Zone runs a reporting database on an Amazon EBS volume. The team wants a copy of the database running on a new instance in a second Availability Zone of the same Region. What should a solutions architect do?</p>
+<ol class="opts">
+<li>Detach the volume and attach it to the new instance in the second Availability Zone</li>
+<li>Enable Multi-Attach on the volume and attach it to both instances</li>
+<li>Create a snapshot of the volume, then create a new volume from the snapshot in the second Availability Zone</li>
+<li>Change the volume type so that it becomes a regional volume</li>
+</ol>
+<details><summary>Answer and explanation</summary>
+<p><strong>C.</strong> An EBS volume belongs to one Availability Zone. Snapshots are stored at the Region level, so a new volume can be created from one in any zone of that Region.</p>
+<p>A is wrong because a volume can attach only to instances in its own zone. B is wrong for the same reason: Multi-Attach does not cross zones. D is wrong because no EBS volume type is regional.</p>
+</details>
+
+<h3>Question 3</h3>
+<p>A financial firm must keep transaction records for seven years to meet a regulation. The records are almost never read; when an auditor asks, receiving them within 12 hours is acceptable. Which storage option has the lowest cost?</p>
+<ol class="opts">
+<li>S3 Standard-Infrequent Access</li>
+<li>S3 Glacier Instant Retrieval</li>
+<li>S3 Glacier Deep Archive</li>
+<li>Amazon EFS with the Infrequent Access storage class</li>
+</ol>
+<details><summary>Answer and explanation</summary>
+<p><strong>C.</strong> S3 Glacier Deep Archive is the lowest-cost S3 storage class and its standard retrieval completes within 12 hours, which the requirement allows.</p>
+<p>A and B are wrong because they cost more per gigabyte to provide retrieval speed this workload does not need. D is wrong because EFS is a file system priced well above S3 archive classes and nothing here needs file access.</p>
+</details>
+
+<h3>Question 4</h3>
+<p>A company will serve a static marketing website to visitors worldwide. The security team requires that the files cannot be fetched directly from storage, only through the content delivery layer. Which combination of actions meets these requirements? (Select TWO.)</p>
+<ol class="opts">
+<li>Store the files in an Amazon S3 bucket with Block Public Access turned on</li>
+<li>Store the files on an Amazon EBS volume attached to a web server</li>
+<li>Add a bucket policy that allows public read access to all objects</li>
+<li>Create an Amazon CloudFront distribution that uses origin access control to read from the bucket</li>
+<li>Store the files in Amazon EFS and mount it from each edge location</li>
+</ol>
+<details><summary>Answer and explanation</summary>
+<p><strong>A and D.</strong> A private S3 bucket holds the files, and CloudFront with origin access control is the only identity the bucket policy allows to read them, so visitors must come through CloudFront.</p>
+<p>B is wrong because it adds a server to manage and a single-zone disk for content that needs neither. C is wrong because it permits exactly the direct access the security team forbids. E is wrong because EFS cannot be mounted from edge locations.</p>
+</details>
+
+<h3>Question 5</h3>
+<p>A genomics team runs a batch job on a single EC2 instance. The job writes many gigabytes of intermediate files, needs the highest disk I/O it can get, and deletes the files when it finishes. If the instance fails, the job is simply restarted from the source data in Amazon S3. Which storage should hold the intermediate files at the lowest cost?</p>
+<ol class="opts">
+<li>An instance store volume on an instance type that provides one</li>
+<li>An Amazon EFS file system</li>
+<li>A second Amazon S3 bucket</li>
+<li>An Amazon EBS Provisioned IOPS volume with daily snapshots</li>
+</ol>
+<details><summary>Answer and explanation</summary>
+<p><strong>A.</strong> Instance store is physically attached to the host, gives very high I/O, and is included in the instance price. Its weakness, losing data when the instance stops or fails, does not matter because the files can be recreated.</p>
+<p>B is wrong because nothing is shared and network file storage is slower and costs more. C is wrong because object storage is a poor fit for heavy random scratch I/O. D is wrong because it pays for durability and backups the workload does not need.</p>
+</details>
+
+<h3>Question 6</h3>
+<p>A company is moving a Windows application to EC2 instances in two Availability Zones. The instances need a shared drive reached over SMB, with access controlled through the company's Microsoft Active Directory. Which service should a solutions architect recommend?</p>
+<ol class="opts">
+<li>Amazon EFS</li>
+<li>Amazon FSx for Windows File Server</li>
+<li>Amazon S3 with a bucket policy per department</li>
+<li>An Amazon EBS volume shared between the instances</li>
+</ol>
+<details><summary>Answer and explanation</summary>
+<p><strong>B.</strong> FSx for Windows File Server is a managed Windows file system that supports SMB and integrates with Active Directory, and it can be deployed across two Availability Zones.</p>
+<p>A is wrong because EFS uses NFS and is not supported on Windows instances. C is wrong because S3 is not an SMB share. D is wrong because an EBS volume stays in one Availability Zone and is not a shared drive.</p>
+</details>
+
+<p class="note">In the full manuscript each fact is checked against the current AWS documentation and the list of pages checked is delivered with the text.</p>
+</main>
+</body>
+</html>
