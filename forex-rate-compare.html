@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Best exchange rate finder - working sample</title>
+<meta name="description" content="Compare money-transfer providers and see who gives you the most for your currency today.">
+<style>
+  :root { --ink:#10231c; --muted:#5b6b64; --line:#dfe7e3; --bg:#f5f8f6; --card:#fff; --brand:#0b7a53; --brand-ink:#fff; --best:#e8f6ef; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink); background:var(--bg); }
+  .wrap { max-width:920px; margin:0 auto; padding:0 16px; }
+  .note { background:#fff7d6; border-bottom:1px solid #ecd98a; font-size:13px; padding:8px 0; }
+  header.hero { padding:36px 0 20px; }
+  h1 { font-size:clamp(26px,5vw,40px); line-height:1.15; margin:0 0 8px; letter-spacing:-.02em; }
+  .sub { color:var(--muted); margin:0; max-width:56ch; }
+  form.pick { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; display:grid; gap:12px; grid-template-columns:1fr; margin:20px 0 8px; }
+  @media (min-width:680px){ form.pick { grid-template-columns:1.2fr 1fr 1fr; align-items:end; } }
+  label { display:block; font-size:13px; font-weight:600; color:var(--muted); margin-bottom:4px; }
+  input, select { width:100%; font:inherit; padding:12px; border:1px solid #c5d1cb; border-radius:10px; background:#fff; color:var(--ink); min-height:48px; }
+  input:focus, select:focus, a.go:focus, button:focus { outline:3px solid #9fd8c0; outline-offset:1px; }
+  .summary { font-size:15px; margin:14px 0; min-height:24px; }
+  .summary strong { color:var(--brand); }
+  ol.list { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+  li.row { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; display:grid; gap:10px; grid-template-columns:1fr auto; align-items:center; }
+  li.row.best { background:var(--best); border-color:var(--brand); }
+  .name { font-weight:700; font-size:17px; }
+  .tag { display:inline-block; font-size:12px; font-weight:700; background:var(--brand); color:var(--brand-ink); border-radius:999px; padding:2px 10px; margin-left:6px; vertical-align:2px; }
+  .meta { color:var(--muted); font-size:13px; }
+  .get { text-align:right; }
+  .get b { font-size:20px; font-variant-numeric:tabular-nums; display:block; }
+  .get span { font-size:12px; color:var(--muted); }
+  a.go { grid-column:1/-1; text-align:center; text-decoration:none; font-weight:700; padding:12px; border-radius:10px; border:1px solid var(--brand); color:var(--brand); min-height:48px; }
+  li.best a.go { background:var(--brand); color:var(--brand-ink); }
+  @media (min-width:680px){ li.row { grid-template-columns:1fr 170px 170px; } a.go { grid-column:auto; } }
+  .sort { display:flex; gap:8px; align-items:center; font-size:14px; color:var(--muted); margin:6px 0 12px; }
+  .sort button { font:inherit; font-size:14px; padding:6px 12px; border-radius:999px; border:1px solid #c5d1cb; background:#fff; cursor:pointer; min-height:36px; }
+  .sort button[aria-pressed="true"] { background:var(--ink); color:#fff; border-color:var(--ink); }
+  section.how { margin:36px 0; display:grid; gap:14px; grid-template-columns:1fr; }
+  @media (min-width:680px){ section.how { grid-template-columns:repeat(3,1fr); } }
+  .how div { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .how h3 { margin:0 0 4px; font-size:16px; }
+  .how p { margin:0; color:var(--muted); font-size:14px; }
+  footer { color:var(--muted); font-size:13px; padding:8px 0 40px; }
+</style>
+</head>
+<body>
+<div class="note"><div class="wrap">Working sample. Provider names and rates are made-up placeholders; the live site would load real rates from your data or a rates feed.</div></div>
+
+<div class="wrap">
+  <header class="hero">
+    <h1>Find the best rate for your currency today</h1>
+    <p class="sub">Pick what you are sending. We rank every provider by what actually arrives after their rate and fee, so the top row is the best deal.</p>
+  </header>
+
+  <form class="pick" onsubmit="return false">
+    <div>
+      <label for="amt">You send (AUD)</label>
+      <input id="amt" type="number" inputmode="decimal" min="1" step="1" value="1000">
+    </div>
+    <div>
+      <label for="cur">They receive</label>
+      <select id="cur"></select>
+    </div>
+    <div>
+      <label for="how">Delivery</label>
+      <select id="how">
+        <option value="any">Any speed</option>
+        <option value="fast">Same day only</option>
+      </select>
+    </div>
+  </form>
+
+  <p class="summary" id="summary" aria-live="polite"></p>
+  <div class="sort">Sort by
+    <button type="button" id="s-get" aria-pressed="true">Most received</button>
+    <button type="button" id="s-rate" aria-pressed="false">Best rate</button>
+    <button type="button" id="s-fee" aria-pressed="false">Lowest fee</button>
+  </div>
+  <ol class="list" id="list"></ol>
+
+  <section class="how">
+    <div><h3>1. Choose a currency</h3><p>Twelve currencies in this sample; adding one is a line of data, not a rebuild.</p></div>
+    <div><h3>2. Compare what arrives</h3><p>A great rate with a big fee can lose. We show the amount received, not just the headline rate.</p></div>
+    <div><h3>3. Go to the provider</h3><p>One button per provider. Each click can carry your tracking or referral link.</p></div>
+  </section>
+
+  <footer>Rates shown are illustrative only and are not financial advice. Sample built for an Upwork proposal.</footer>
+</div>
+
+<script>
+// Mid-market reference per 1 AUD (placeholder figures).
+var MID = { USD:0.6600, EUR:0.6050, GBP:0.5150, NZD:1.0900, JPY:98.50, SGD:0.8850, INR:55.20, PHP:37.60, CNY:4.780, CAD:0.9050, HKD:5.150, THB:23.90 };
+var NAMES = { USD:"US dollar", EUR:"Euro", GBP:"British pound", NZD:"New Zealand dollar", JPY:"Japanese yen", SGD:"Singapore dollar", INR:"Indian rupee", PHP:"Philippine peso", CNY:"Chinese yuan", CAD:"Canadian dollar", HKD:"Hong Kong dollar", THB:"Thai baht" };
+// margin = how far below mid-market the provider's rate sits; fee in AUD.
+var PROVIDERS = [
+  { name:"HarbourFX",      margin:0.0045, fee:4.00, fast:true,  url:"#harbourfx" },
+  { name:"Southern Remit", margin:0.0030, fee:9.00, fast:false, url:"#southern-remit" },
+  { name:"KoalaPay",       margin:0.0110, fee:0.00, fast:true,  url:"#koalapay" },
+  { name:"Meridian Money", margin:0.0065, fee:2.50, fast:true,  url:"#meridian" },
+  { name:"OzExchange",     margin:0.0180, fee:0.00, fast:false, url:"#ozexchange" },
+  { name:"Big Four Bank",  margin:0.0420, fee:12.00, fast:false, url:"#bank" },
+  // a provider can skip a currency: it then simply does not appear for it
+  { name:"Pacific Send",   margin:0.0058, fee:3.00, fast:true,  url:"#pacific", only:["NZD","PHP","INR","THB","SGD"] }
+];
+
+var cur = document.getElementById("cur"), amt = document.getElementById("amt"), how = document.getElementById("how");
+var list = document.getElementById("list"), summary = document.getElementById("summary");
+var sortKey = "get";
+
+Object.keys(MID).forEach(function (c) {
+  var o = document.createElement("option"); o.value = c; o.textContent = c + " - " + NAMES[c]; cur.appendChild(o);
+});
+
+function fmt(n, c) {
+  var d = (c === "JPY") ? 0 : 2;
+  return n.toLocaleString("en-AU", { minimumFractionDigits:d, maximumFractionDigits:d });
+}
+
+function render() {
+  var c = cur.value, a = parseFloat(amt.value);
+  list.innerHTML = "";
+  if (!(a > 0)) { summary.textContent = "Enter an amount above zero to compare."; return; }
+  var rows = PROVIDERS.filter(function (p) {
+    return (!p.only || p.only.indexOf(c) >= 0) && (how.value === "any" || p.fast);
+  }).map(function (p) {
+    var rate = MID[c] * (1 - p.margin);
+    return { p:p, rate:rate, get:Math.max(0, (a - p.fee)) * rate };
+  });
+  if (!rows.length) { summary.textContent = "No provider matches that choice."; return; }
+  var byGet = rows.slice().sort(function (x, y) { return y.get - x.get; });
+  var best = byGet[0], worst = byGet[byGet.length - 1];
+  rows.sort(function (x, y) {
+    if (sortKey === "rate") return y.rate - x.rate;
+    if (sortKey === "fee") return x.p.fee - y.p.fee || y.get - x.get;
+    return y.get - x.get;
+  });
+  summary.innerHTML = "Best today for " + fmt(a, "AUD") + " AUD to " + c + ": <strong>" + best.p.name + "</strong>, " +
+    fmt(best.get - worst.get, c) + " " + c + " more than the lowest offer.";
+  rows.forEach(function (r) {
+    var li = document.createElement("li");
+    li.className = "row" + (r === best ? " best" : "");
+    li.innerHTML =
+      '<div><span class="name"></span>' + (r === best ? '<span class="tag">Best deal</span>' : "") +
+      '<div class="meta">1 AUD = ' + r.rate.toFixed(c === "JPY" || c === "INR" || c === "PHP" || c === "THB" ? 2 : 4) + " " + c +
+      " &middot; fee " + (r.p.fee ? "$" + r.p.fee.toFixed(2) : "none") + " &middot; " + (r.p.fast ? "same day" : "1-2 days") + "</div></div>" +
+      '<div class="get"><b>' + fmt(r.get, c) + " " + c + "</b><span>they receive</span></div>" +
+      '<a class="go" rel="nofollow sponsored">Go to provider</a>';
+    li.querySelector(".name").textContent = r.p.name;
+    var go = li.querySelector(".go"); go.href = r.p.url; go.setAttribute("aria-label", "Go to " + r.p.name);
+    list.appendChild(li);
+  });
+}
+
+["get", "rate", "fee"].forEach(function (k) {
+  document.getElementById("s-" + k).addEventListener("click", function () {
+    sortKey = k;
+    ["get", "rate", "fee"].forEach(function (j) { document.getElementById("s-" + j).setAttribute("aria-pressed", String(j === k)); });
+    render();
+  });
+});
+[cur, amt, how].forEach(function (el) { el.addEventListener("input", render); });
+render();
+</script>
+</body>
+</html>
