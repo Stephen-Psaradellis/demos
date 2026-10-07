@@ -108,7 +108,7 @@
     if (body.className === 'broken') {
       if (!/^\d{10}$/.test(phone)) {
         err.style.display = 'block';
-        log.innerHTML = '<span class="bad">Nothing sent: the phone field rejected "' + esc(phone) + '".</span>\n<span class="dim">On a phone this error is below the keyboard; most visitors never see it and leave.</span>';
+        log.innerHTML = '<span class="bad">Nothing sent: the phone field rejected "' + esc(phone) + '".</span>\n<span class="dim">On a phone this error is below the keyboard; most visitors never see it and leave.</span>\n\n<span class="dim">Change the phone to 5552017788 and press Send again to see failure number 2.</span>';
         send.disabled = false; return;
       }
       log.innerHTML = '<span class="dim">POST /contact  ->  PHP mail()</span>';
