@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact form: broken, then fixed</title>
+<style>
+  :root { --brand:#1f5f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; }
+  .lede { color: var(--muted); margin: 0 0 18px; max-width: 680px; }
+  .switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+  .switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+  .switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+  .grid { display:grid; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); gap:18px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; }
+  .panel h2 { font-size:16px; margin:0 0 12px; }
+  label { display:block; font-weight:600; font-size:14px; margin:12px 0 4px; }
+  input, textarea { width:100%; padding:10px 12px; border:1px solid #c9ced6; border-radius:8px; font:inherit; font-size:16px; }
+  textarea { min-height: 96px; resize: vertical; }
+  .hint { font-size:13px; color:var(--muted); margin-top:4px; }
+  .err { font-size:13px; color:var(--bad); margin-top:4px; display:none; }
+  .send { margin-top:16px; background:var(--brand); color:#fff; border:0; border-radius:8px; padding:12px 22px; font:inherit; font-weight:700; cursor:pointer; }
+  .send[disabled] { opacity:.6; cursor:progress; }
+  .msg { margin-top:14px; padding:12px; border-radius:8px; display:none; font-size:15px; }
+  .msg.ok { display:block; background:#e8f5ec; color:var(--good); }
+  .log { font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; background:#0f1720; color:#d7e0ea; border-radius:8px; padding:12px; min-height:150px; white-space:pre-wrap; word-break:break-word; }
+  .log .bad { color:#ff8a80; } .log .good { color:#8ee6a6; } .log .dim { color:#8796a8; }
+  ol.causes { margin:0; padding-left:20px; font-size:15px; }
+  ol.causes li { margin:6px 0; }
+  .tag { display:inline-block; font-size:12px; font-weight:700; padding:2px 8px; border-radius:999px; margin-left:6px; vertical-align:1px; }
+  body.broken .tag { background:#fde8e6; color:var(--bad); } body.fixed .tag { background:#e8f5ec; color:var(--good); }
+  body.broken .fixed-only, body.fixed .broken-only { display:none; }
+  footer { margin-top:22px; font-size:13px; color:var(--muted); }
+</style>
+</head>
+<body class="broken">
+<div class="wrap">
+  <h1>"People say they filled in our contact form, but we never get the message"</h1>
+  <p class="lede">The most common small-business website bug. This page rebuilds it, with a switch between the broken form and the fixed one. Fill it in and press Send in both modes; the dark panel shows what the mail server does with it.</p>
+
+  <div class="switch" role="group" aria-label="Mode">
+    <button type="button" id="bBroken" aria-pressed="true">Broken</button>
+    <button type="button" id="bFixed" aria-pressed="false">Fixed</button>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Contact us <span class="tag" id="tag">broken</span></h2>
+      <form id="f" novalidate>
+        <label for="name">Name</label>
+        <input id="name" value="Dana Lee" autocomplete="name">
+        <label for="email">Email</label>
+        <input id="email" type="email" value="dana.lee@gmail.com" autocomplete="email">
+        <label for="phone">Phone</label>
+        <input id="phone" value="(555) 201-7788" autocomplete="tel" inputmode="tel">
+        <div class="hint fixed-only">Any format is fine.</div>
+        <div class="err" id="phoneErr">Please enter a phone number like 5552017788.</div>
+        <label for="note">Message</label>
+        <textarea id="note">Do you have an opening this Friday for an estimate?</textarea>
+        <button class="send" id="send" type="submit">Send</button>
+        <div class="msg" id="ok">Thanks, Dana - your message reached us. We reply within one business day, usually sooner.</div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>What the mail server sees</h2>
+      <div class="log" id="log"><span class="dim">Press Send to watch the message travel.</span></div>
+      <h2 style="margin-top:16px">What was wrong <span class="broken-only">(and still is)</span><span class="fixed-only">(and what changed)</span></h2>
+      <ol class="causes">
+        <li><b>Sent "from" the visitor's address.</b> The form mails <i>From: dana.lee@gmail.com</i> through your web host. Gmail's published policy says only Google may send as gmail.com, so your inbox provider rejects or spams it. <span class="fixed-only"><b>Fix:</b> send From your own domain (forms@yourbusiness.com, authorised in SPF/DKIM) with <i>Reply-To</i> set to the visitor, so Reply still reaches them.</span></li>
+        <li><b>A phone rule that rejects normal numbers.</b> "(555) 201-7788" fails a digits-only pattern, and the error sits below the fold on a phone. <span class="fixed-only"><b>Fix:</b> accept any format and strip it to digits on the server.</span></li>
+        <li><b>No confirmation.</b> The page just reloads, so visitors cannot tell whether it worked, and either give up or send three times. <span class="fixed-only"><b>Fix:</b> a clear thank-you that says when you will reply.</span></li>
+        <li><b>No copy kept.</b> When mail fails, the message is gone. <span class="fixed-only"><b>Fix:</b> every submission is also saved on the site (WordPress: the form plugin's entries list), so nothing is lost even if email has a bad day.</span></li>
+      </ol>
+    </div>
+  </div>
+
+  <footer>Demo built for a fixed-price fix: forms on WordPress (Contact Form 7, WPForms, Elementor), Wix and Squarespace fail in these same four ways. Nothing here sends real mail.</footer>
+</div>
+
+<script>
+  const body = document.body, log = document.getElementById('log');
+  const ok = document.getElementById('ok'), err = document.getElementById('phoneErr'), send = document.getElementById('send');
+  function mode(m) {
+    body.className = m;
+    document.getElementById('bBroken').setAttribute('aria-pressed', m === 'broken');
+    document.getElementById('bFixed').setAttribute('aria-pressed', m === 'fixed');
+    document.getElementById('tag').textContent = m;
+    ok.className = 'msg'; err.style.display = 'none';
+    log.innerHTML = '<span class="dim">Press Send to watch the message travel.</span>';
+  }
+  document.getElementById('bBroken').onclick = () => mode('broken');
+  document.getElementById('bFixed').onclick = () => mode('fixed');
+  const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  function line(cls, text, delay) { return new Promise(r => setTimeout(() => { log.innerHTML += '\n<span class="' + cls + '">' + esc(text) + '</span>'; r(); }, delay)); }
+  document.getElementById('f').onsubmit = async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim() || 'visitor@gmail.com';
+    const phone = document.getElementById('phone').value.trim();
+    const domain = (email.split('@')[1] || 'gmail.com').toLowerCase();
+    ok.className = 'msg'; err.style.display = 'none'; log.innerHTML = '';
+    send.disabled = true;
+    if (body.className === 'broken') {
+      if (!/^\d{10}$/.test(phone)) {
+        err.style.display = 'block';
+        log.innerHTML = '<span class="bad">Nothing sent: the phone field rejected "' + esc(phone) + '".</span>\n<span class="dim">On a phone this error is below the keyboard; most visitors never see it and leave.</span>';
+        send.disabled = false; return;
+      }
+      log.innerHTML = '<span class="dim">POST /contact  ->  PHP mail()</span>';
+      await line('', 'From: ' + email + '   (the visitor\'s address)', 500);
+      await line('', 'To: owner@yourbusiness.com   via shared web host', 400);
+      await line('dim', 'Inbox checks ' + domain + ' policy: only ' + domain + '\'s own servers may send as ' + domain, 600);
+      await line('bad', 'DMARC fail (p=reject)  ->  message REJECTED. Owner receives nothing.', 600);
+      await line('dim', 'Visitor sees the page reload with no message. No copy saved.', 400);
+    } else {
+      const digits = phone.replace(/\D/g, '');
+      log.innerHTML = '<span class="dim">POST /contact  ->  authenticated SMTP</span>';
+      await line('', 'Saved entry #1042 (phone stored as ' + (digits || 'none') + ')', 400);
+      await line('', 'From: forms@yourbusiness.com   Reply-To: ' + email, 400);
+      await line('dim', 'SPF pass, DKIM pass (yourbusiness.com)', 500);
+      await line('good', 'Delivered to owner@yourbusiness.com. Reply goes straight to the visitor.', 500);
+      ok.className = 'msg ok';
+    }
+    send.disabled = false;
+  };
+</script>
+</body>
+</html>
