@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shopify add to cart: broken, then fixed</title>
+<style>
+  :root { --brand:#008060; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; }
+  .lede { color: var(--muted); margin: 0 0 18px; max-width: 700px; }
+  .switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+  .switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+  .switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+  .grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; }
+  .panel h2 { font-size:16px; margin:0 0 12px; }
+  .store { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .store .bar { background:#f6f6f7; border-bottom:1px solid var(--line); font-size:13px; padding:8px 12px; color:var(--muted); }
+  .store .body { padding:16px; }
+  .store h3 { margin:0 0 4px; font-size:18px; }
+  .price { font-weight:700; margin-bottom:10px; }
+  .liquid-err { display:none; font: 12px ui-monospace, Consolas, monospace; color:var(--bad); background:#fff4f3; border:1px dashed var(--bad); padding:6px 8px; border-radius:6px; margin-bottom:10px; }
+  body.broken .liquid-err { display:block; }
+  .opts { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+  .opt { border:1px solid #c9ced6; background:#fff; border-radius:8px; padding:8px 12px; font:inherit; font-size:14px; cursor:pointer; }
+  .opt.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .atc { background:var(--brand); color:#fff; border:0; border-radius:8px; padding:11px 20px; font:inherit; font-weight:700; cursor:pointer; width:100%; }
+  .msg { margin-top:12px; padding:10px 12px; border-radius:8px; font-size:14px; display:none; }
+  .msg.ok { display:block; background:#e8f5ec; color:var(--good); }
+  .msg.dead { display:block; background:#fde8e6; color:var(--bad); }
+  .log { font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; background:#0f1720; color:#d7e0ea; border-radius:8px; padding:12px; min-height:170px; white-space:pre-wrap; word-break:break-word; }
+  .log .bad { color:#ff8a80; } .log .good { color:#8ee6a6; } .log .dim { color:#8796a8; }
+  ol.steps { margin:0; padding-left:20px; font-size:15px; }
+  ol.steps li { margin:6px 0; }
+  code { font: 13px ui-monospace, SFMono-Regular, Consolas, monospace; background:#f0f2f5; padding:1px 4px; border-radius:4px; }
+  .tag { display:inline-block; font-size:12px; font-weight:700; padding:2px 8px; border-radius:999px; margin-left:6px; vertical-align:1px; }
+  body.broken .tag { background:#fde8e6; color:var(--bad); } body.fixed .tag { background:#e8f5ec; color:var(--good); }
+  body.broken .fixed-only, body.fixed .broken-only { display:none; }
+  footer { margin-top:22px; font-size:13px; color:var(--muted); }
+</style>
+</head>
+<body class="broken">
+<div class="wrap">
+  <h1>"Since we removed a reviews app, Add to cart does nothing on some products"</h1>
+  <p class="lede">The most common Shopify theme bug after an app is uninstalled. Shopify removes the app, but the code it pasted into your theme stays behind. That leftover breaks the product page's script, so picking a size and pressing Add to cart silently fails. Switch between the broken store and the fixed one and try it.</p>
+
+  <div class="switch" role="group" aria-label="Mode">
+    <button type="button" id="bBroken" aria-pressed="true">Broken</button>
+    <button type="button" id="bFixed" aria-pressed="false">Fixed</button>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>The product page <span class="tag" id="tag">broken</span></h2>
+      <div class="store">
+        <div class="bar">yourstore.com/products/linen-shirt</div>
+        <div class="body">
+          <h3>Linen shirt</h3>
+          <div class="price">$48.00</div>
+          <div class="liquid-err">Liquid error (sections/main-product line 212): Could not find asset snippets/reviews-widget.liquid</div>
+          <div class="opts" id="opts">
+            <button type="button" class="opt">S</button>
+            <button type="button" class="opt on">M</button>
+            <button type="button" class="opt">L</button>
+          </div>
+          <button type="button" class="atc" id="atc">Add to cart</button>
+          <div class="msg" id="msg"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>What the browser and the theme code say</h2>
+      <div class="log" id="log"><span class="dim">Pick a size and press "Add to cart".</span></div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:18px">
+    <h2>How it gets fixed without risking the live store</h2>
+    <ol class="steps">
+      <li><b>Duplicate the live theme</b> (Online Store &gt; Themes &gt; Duplicate) and work only on the copy. The store keeps selling the whole time, and switching back is one click.</li>
+      <li><b>Find what the app left behind.</b> The page itself shows <code>Liquid error ... Could not find asset snippets/reviews-widget.liquid</code>, and the console shows <code>Uncaught ReferenceError: ReviewsWidget is not defined</code> in the product script. A search of the theme code finds the leftover <code>{% render 'reviews-widget' %}</code> tag and the app's script include.</li>
+      <li><b>Remove only the leftovers</b> <span class="broken-only">- nothing else in the theme changes.</span><span class="fixed-only">- done here: the render tag and the dead script include are gone from <code>sections/main-product.liquid</code> and <code>layout/theme.liquid</code>; the variant script now runs, so the size picked is the size added.</span></li>
+      <li><b>Test on the copy with Preview</b>: every product template, variant picker, quick-add, cart drawer and checkout button, on desktop and a phone.</li>
+      <li><b>You publish the copy</b> when it looks right, and keep the old theme as a one-click backup. You get a note listing each file and line that changed.</li>
+    </ol>
+  </div>
+
+  <footer>Demo built for fixed-price Shopify fixes. Access is through Shopify's own collaborator or staff invite, never a shared password. Nothing on this page talks to a real store.</footer>
+</div>
+
+<script>
+  const body = document.body, log = document.getElementById('log'), msg = document.getElementById('msg');
+  let size = 'M';
+  function mode(m) {
+    body.className = m;
+    document.getElementById('bBroken').setAttribute('aria-pressed', m === 'broken');
+    document.getElementById('bFixed').setAttribute('aria-pressed', m === 'fixed');
+    document.getElementById('tag').textContent = m;
+    msg.className = 'msg'; msg.textContent = '';
+    log.innerHTML = '<span class="dim">Pick a size and press "Add to cart".</span>';
+  }
+  document.getElementById('bBroken').onclick = () => mode('broken');
+  document.getElementById('bFixed').onclick = () => mode('fixed');
+  document.querySelectorAll('.opt').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.opt').forEach(x => x.classList.remove('on'));
+    b.classList.add('on'); size = b.textContent;
+  });
+  const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  function line(cls, text, delay) { return new Promise(r => setTimeout(() => { log.innerHTML += '\n<span class="' + cls + '">' + esc(text) + '</span>'; r(); }, delay)); }
+  document.getElementById('atc').onclick = async () => {
+    msg.className = 'msg'; msg.textContent = '';
+    log.innerHTML = '<span class="dim">GET /products/linen-shirt</span>';
+    if (body.className === 'broken') {
+      await line('bad', 'sections/main-product.liquid:212  {% render \'reviews-widget\' %}  -> asset not found (app uninstalled)', 400);
+      await line('bad', 'layout/theme.liquid  <script src=".../reviews-app.js">  -> 404', 350);
+      await line('bad', 'Uncaught ReferenceError: ReviewsWidget is not defined   product-form.js:41', 400);
+      await line('dim', '        ...the error stops product-form.js before it wires the size buttons', 350);
+      await line('', 'click   "Add to cart"   (size ' + size + ')', 400);
+      await line('bad', 'form submits the default variant id, or nothing: cart unchanged', 400);
+      msg.className = 'msg dead';
+      msg.textContent = '(nothing happens - the shopper leaves)';
+    } else {
+      await line('good', 'sections/main-product.liquid  leftover render tag removed', 350);
+      await line('good', 'layout/theme.liquid  dead app script removed', 300);
+      await line('good', 'product-form.js loaded, variant picker ready', 350);
+      await line('', 'click   "Add to cart"   (size ' + size + ')', 400);
+      await line('good', 'POST /cart/add.js  { id: linen-shirt-' + size.toLowerCase() + ', quantity: 1 }  200 OK', 400);
+      msg.className = 'msg ok';
+      msg.textContent = 'Added: Linen shirt, size ' + size + '. Cart (1).';
+    }
+  };
+</script>
+</body>
+</html>
