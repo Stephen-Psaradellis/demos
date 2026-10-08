@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tap-to-call: before and after</title>
+<style>
+  :root { --brand:#1f5f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; }
+  .lede { color: var(--muted); margin: 0 0 18px; max-width: 680px; }
+  .grid { display:grid; grid-template-columns: 1fr 1fr; gap:18px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; }
+  .panel h2 { font-size:16px; margin:0 0 4px; }
+  .tag { font-size:13px; font-weight:700; }
+  .tag.bad { color:var(--bad); } .tag.good { color:var(--good); }
+  .phone { margin:14px auto 0; width:260px; max-width:100%; border:10px solid #1b1b1b; border-radius:30px; background:#fff; overflow:hidden; }
+  .phone .bar { background:#2d3b45; color:#fff; padding:12px 14px; font-weight:700; font-size:15px; }
+  .phone .body { padding:16px 14px 22px; font-size:15px; line-height:1.45; min-height:210px; }
+  .num { font-size:18px; font-weight:700; }
+  .num.plain { user-select:text; cursor:text; }
+  a.call { display:inline-block; margin-top:6px; background:var(--good); color:#fff; text-decoration:none; padding:10px 16px; border-radius:999px; font-weight:700; }
+  .what { margin-top:12px; padding:10px 12px; border-radius:8px; font-size:14px; min-height:44px; }
+  .what.bad { background:#fdecea; color:var(--bad); } .what.good { background:#e8f5ec; color:var(--good); }
+  pre { font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; background:#0f1720; color:#d7e0ea; border-radius:8px; padding:12px; white-space:pre-wrap; word-break:break-word; margin:8px 0 0; }
+  h3 { font-size:16px; margin:22px 0 6px; }
+  ol, ul { padding-left:20px; }
+  .note { color:var(--muted); font-size:14px; margin-top:26px; }
+  footer { margin-top:16px; font-size:14px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Customers on phones can't tap your number</h1>
+  <p class="lede">Most people find a local business on a phone. If your number is printed as plain text, tapping it does nothing. The visitor has to select it, copy it, open the dialer and paste. Many skip all that and call the next business on the list. Try both below.</p>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Before</h2><div class="tag bad">Number is plain text</div>
+      <div class="phone"><div class="bar">Rivera Plumbing</div><div class="body">
+        Same-day repairs across the north suburbs.<br><br>Call us:<br>
+        <span class="num plain" id="plain">(847) 555-0142</span>
+      </div></div>
+      <div class="what bad" id="plainMsg">Tap the number above.</div>
+    </div>
+    <div class="panel">
+      <h2>After</h2><div class="tag good">Number is a tap-to-call link</div>
+      <div class="phone"><div class="bar">Rivera Plumbing</div><div class="body">
+        Same-day repairs across the north suburbs.<br><br>Call us:<br>
+        <a class="call" id="tel" href="tel:+18475550142">(847) 555-0142</a>
+      </div></div>
+      <div class="what good" id="telMsg">Tap the number above.</div>
+    </div>
+  </div>
+
+  <h3>The fix (one line per place the number appears)</h3>
+  <pre>&lt;!-- before --&gt;
+(847) 555-0142
+
+&lt;!-- after --&gt;
+&lt;a href="tel:+18475550142"&gt;(847) 555-0142&lt;/a&gt;</pre>
+  <ul>
+    <li><b>WordPress / Elementor:</b> select the number, add a link, type <code>tel:+18475550142</code>. Do the header, footer and contact page.</li>
+    <li><b>Wix / Squarespace:</b> select the number, choose Link, then Phone, and enter the number.</li>
+    <li>Check it by tapping the number on your own phone. The dialer should open with the number filled in.</li>
+  </ul>
+
+  <h3>How I work</h3>
+  <ol>
+    <li>You reply with a go-ahead. I list every place the number appears and any other problem I found, with a fixed price, before touching anything.</li>
+    <li>You add me as a helper on your site, or I send the exact changes to whoever runs it. You never share a password.</li>
+    <li>I make the changes and check them on a phone. You pay only after it works on your side.</li>
+  </ol>
+
+  <p class="note">I am Stephen Psaradellis, Arlington Heights, Illinois. An AI system I run checks sites and does most of the investigation and the fix; I am responsible for the work and for the result. Write to <a href="mailto:s.n.psaradellis@gmail.com">s.n.psaradellis@gmail.com</a>, or reply to the email that brought you here.</p>
+  <footer>Other samples: <a href="index.html">all fixes, with prices</a>.</footer>
+</div>
+<script>
+  document.getElementById('plain').addEventListener('click', function () {
+    document.getElementById('plainMsg').textContent = 'Nothing happens. The visitor now has to copy the number into the dialer by hand, or call someone else.';
+  });
+  document.getElementById('tel').addEventListener('click', function (e) {
+    e.preventDefault();
+    document.getElementById('telMsg').textContent = 'The phone dialer opens with (847) 555-0142 filled in. One more tap and they are calling you. (Paused here so this demo does not dial a real number.)';
+  });
+</script>
+</body>
+</html>
