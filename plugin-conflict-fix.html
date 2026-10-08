@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plugin conflict: broken, then fixed</title>
+<style>
+  :root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; }
+  .lede { color: var(--muted); margin: 0 0 18px; max-width: 700px; }
+  .switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+  .switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+  .switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+  .grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; }
+  .panel h2 { font-size:16px; margin:0 0 12px; }
+  .site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; }
+  .site .body { padding:16px; }
+  .site h3 { margin:0 0 6px; font-size:18px; }
+  .site p { margin:0 0 12px; color:var(--muted); font-size:14px; }
+  .slots { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .slot { border:1px solid #c9ced6; background:#fff; border-radius:8px; padding:8px 12px; font:inherit; font-size:14px; cursor:pointer; }
+  .slot.on { background:var(--brand); color:#fff; border-color:var(--brand); }
+  .book { background:var(--brand); color:#fff; border:0; border-radius:8px; padding:11px 20px; font:inherit; font-weight:700; cursor:pointer; }
+  .msg { margin-top:12px; padding:10px 12px; border-radius:8px; font-size:14px; display:none; }
+  .msg.ok { display:block; background:#e8f5ec; color:var(--good); }
+  .msg.dead { display:block; background:#fde8e6; color:var(--bad); }
+  .log { font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; background:#0f1720; color:#d7e0ea; border-radius:8px; padding:12px; min-height:170px; white-space:pre-wrap; word-break:break-word; }
+  .log .bad { color:#ff8a80; } .log .good { color:#8ee6a6; } .log .dim { color:#8796a8; }
+  ol.steps { margin:0; padding-left:20px; font-size:15px; }
+  ol.steps li { margin:6px 0; }
+  code { font: 13px ui-monospace, SFMono-Regular, Consolas, monospace; background:#f0f2f5; padding:1px 4px; border-radius:4px; }
+  .tag { display:inline-block; font-size:12px; font-weight:700; padding:2px 8px; border-radius:999px; margin-left:6px; vertical-align:1px; }
+  body.broken .tag { background:#fde8e6; color:var(--bad); } body.fixed .tag { background:#e8f5ec; color:var(--good); }
+  body.broken .fixed-only, body.fixed .broken-only { display:none; }
+  footer { margin-top:22px; font-size:13px; color:var(--muted); }
+</style>
+</head>
+<body class="broken">
+<div class="wrap">
+  <h1>"Our booking button stopped working after a plugin update"</h1>
+  <p class="lede">A WordPress plugin conflict, rebuilt so you can see it. One plugin update loads its own old copy of jQuery over WordPress's, and every script that ran after it breaks: no error on the page, the button just does nothing. Switch between the broken site and the fixed one and press the button in both.</p>
+
+  <div class="switch" role="group" aria-label="Mode">
+    <button type="button" id="bBroken" aria-pressed="true">Broken</button>
+    <button type="button" id="bFixed" aria-pressed="false">Fixed</button>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>The site <span class="tag" id="tag">broken</span></h2>
+      <div class="site">
+        <div class="bar">yourbusiness.com / book</div>
+        <div class="body">
+          <h3>Book a consultation</h3>
+          <p>Pick a time, then press Book.</p>
+          <div class="slots" id="slots">
+            <button type="button" class="slot">Fri 9:00</button>
+            <button type="button" class="slot">Fri 11:30</button>
+            <button type="button" class="slot">Fri 2:00</button>
+          </div>
+          <button type="button" class="book" id="book">Book this time</button>
+          <div class="msg" id="msg"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>What the browser console and debug log say</h2>
+      <div class="log" id="log"><span class="dim">Press "Book this time" to watch the page's scripts run.</span></div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:18px">
+    <h2>How it gets found and fixed, without taking the live site down</h2>
+    <ol class="steps">
+      <li><b>Full backup first</b> (files and database), so any step can be undone.</li>
+      <li><b>Read the error instead of guessing.</b> Turn on <code>WP_DEBUG_LOG</code> and open the browser console on the broken page. Here the console names it: <code>Uncaught TypeError: $(...).datepicker is not a function</code>, and the network tab shows <code>jquery-1.12.4.min.js</code> loaded by the updated "Popup Pro" plugin after WordPress's own jQuery 3.7.</li>
+      <li><b>Confirm on a staging copy</b>, not live: switch only that plugin off, the button works; back on, it breaks. One plugin, proven.</li>
+      <li><b>The least invasive fix.</b> <span class="broken-only">Then one of: stop the plugin loading its own jQuery (a two-line snippet), change its "load jQuery" setting, or roll back that single plugin to the last good version until its author ships a fix.</span><span class="fixed-only">Applied here: a small snippet in the child theme stops the plugin's extra jQuery from loading, so every script uses WordPress's copy:<br><code>add_action('wp_enqueue_scripts', function(){ wp_dequeue_script('popup-pro-jquery'); wp_deregister_script('popup-pro-jquery'); }, 100);</code><br>The popup still works, nothing else changed, and the note to the client says exactly which file holds the snippet.</span></li>
+      <li><b>Check everything that uses scripts</b>: the booking form, menus on a phone, sliders, checkout, then hand back a list of what changed.</li>
+    </ol>
+  </div>
+
+  <footer>Demo built for fixed-price WordPress fixes. The same steps find the other common post-update breakages: a PHP fatal error (white screen), two plugins loading the same library, or a theme template the update made outdated. Nothing on this page talks to a real site.</footer>
+</div>
+
+<script>
+  const body = document.body, log = document.getElementById('log'), msg = document.getElementById('msg');
+  let picked = null;
+  function mode(m) {
+    body.className = m;
+    document.getElementById('bBroken').setAttribute('aria-pressed', m === 'broken');
+    document.getElementById('bFixed').setAttribute('aria-pressed', m === 'fixed');
+    document.getElementById('tag').textContent = m;
+    msg.className = 'msg'; msg.textContent = '';
+    log.innerHTML = '<span class="dim">Press "Book this time" to watch the page\'s scripts run.</span>';
+  }
+  document.getElementById('bBroken').onclick = () => mode('broken');
+  document.getElementById('bFixed').onclick = () => mode('fixed');
+  document.querySelectorAll('.slot').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.slot').forEach(x => x.classList.remove('on'));
+    b.classList.add('on'); picked = b.textContent;
+  });
+  const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  function line(cls, text, delay) { return new Promise(r => setTimeout(() => { log.innerHTML += '\n<span class="' + cls + '">' + esc(text) + '</span>'; r(); }, delay)); }
+  document.getElementById('book').onclick = async () => {
+    msg.className = 'msg'; msg.textContent = '';
+    log.innerHTML = '<span class="dim">GET /book  (page load)</span>';
+    await line('', 'loaded  /wp-includes/js/jquery/jquery.min.js   (jQuery 3.7.1, WordPress core)', 350);
+    await line('', 'loaded  /wp-content/plugins/booking-calendar/js/booking.js', 300);
+    if (body.className === 'broken') {
+      await line('bad', 'loaded  /wp-content/plugins/popup-pro/js/jquery-1.12.4.min.js   (added by the plugin update)', 450);
+      await line('dim', '        ...replaces window.jQuery; booking.js\'s plugins are gone with the old copy', 350);
+      await line('', 'click   "Book this time"', 400);
+      await line('bad', 'Uncaught TypeError: $(...).datepicker is not a function   booking.js:88', 400);
+      await line('dim', 'The visitor sees nothing happen. No booking reaches you. No error on the page.', 400);
+      msg.className = 'msg dead';
+      msg.textContent = '(nothing happens - this is what your visitors get)';
+    } else {
+      await line('good', 'skipped popup-pro-jquery   (dequeued by the child-theme snippet)', 450);
+      await line('', 'click   "Book this time"', 400);
+      await line('good', 'POST /wp-admin/admin-ajax.php?action=book   200 OK', 400);
+      await line('good', 'Booking saved and emailed to owner@yourbusiness.com', 350);
+      msg.className = 'msg ok';
+      msg.textContent = 'Booked: ' + (picked || 'Fri 9:00') + '. A confirmation is on its way to your inbox.';
+    }
+  };
+</script>
+</body>
+</html>
