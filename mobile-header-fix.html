@@ -73,6 +73,7 @@
     .frames figcaption { font-weight:600; margin: 0 0 8px; font-size:15px; }
     .frames iframe { width:375px; height:560px; border:10px solid #1b1b1b; border-radius:28px; background:#fff; display:block; }
   }
+  .clip { max-width:375px; margin:24px auto 8px; padding:0 20px; box-sizing:content-box; } .clip video { display:block; width:100%; max-width:375px; height:auto; border:1px solid #dfe3e8; border-radius:12px; background:#fff; } .clip figcaption { font-size:13px; color:#666; margin-top:6px; }
 </style>
 </head>
 <body class="fixed">
@@ -99,6 +100,8 @@
   <p>Placeholder landing page. The header above is the part that was breaking on phones; everything below it is just there to show the page scrolls normally.</p>
   <a class="btn" href="#">See opening hours</a>
 </section>
+
+<figure class="clip" id="clip"><video src="clips/mobile-header.mp4" autoplay muted loop playsinline preload="auto" aria-label="Replay at phone width: the broken header slides sideways; the fixed one fits and opens a menu."></video><figcaption>Replay at phone width: the broken header slides sideways; the fixed one fits and opens a menu.</figcaption></figure>
 
 <section class="cards">
   <div class="card"><h3>Check-ups</h3><p>30-minute appointments, evenings included.</p></div>
@@ -137,7 +140,7 @@
     }
     apply(mode);
     if (embed) {
-      ['frames', 'note', 'switch'].forEach(function (id) { document.getElementById(id).style.display = 'none'; });
+      ['frames', 'note', 'switch', 'clip'].forEach(function (id) { document.getElementById(id).style.display = 'none'; });
     }
     document.querySelectorAll('#switch button').forEach(function (b) {
       b.addEventListener('click', function () { apply(b.dataset.mode); window.scrollTo(0, 0); });

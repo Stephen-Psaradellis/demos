@@ -36,12 +36,15 @@
   body.broken .tag { background:#fde8e6; color:var(--bad); } body.fixed .tag { background:#e8f5ec; color:var(--good); }
   body.broken .fixed-only, body.fixed .broken-only { display:none; }
   footer { margin-top:22px; font-size:13px; color:var(--muted); }
+  .clip { margin:0 0 18px; } .clip video { display:block; width:100%; max-width:980px; height:auto; border:1px solid #dfe3e8; border-radius:12px; background:#fff; } .clip figcaption { font-size:13px; color:#666; margin-top:6px; }
 </style>
 </head>
 <body class="broken">
 <div class="wrap">
   <h1>"People say they filled in our contact form, but we never get the message"</h1>
   <p class="lede">The most common small-business website bug. This page rebuilds it, with a switch between the broken form and the fixed one. Fill it in and press Send in both modes; the dark panel shows what the mail server does with it.</p>
+
+  <figure class="clip" id="clip"><video src="clips/contact-form.mp4" autoplay muted loop playsinline preload="auto" aria-label="Replay: Send on the broken form, then the same message after the fix."></video><figcaption>Replay: Send on the broken form, then the same message after the fix.</figcaption></figure>
 
   <div class="switch" role="group" aria-label="Mode">
     <button type="button" id="bBroken" aria-pressed="true">Broken</button>

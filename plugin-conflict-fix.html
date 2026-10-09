@@ -40,12 +40,15 @@
   body.broken .tag { background:#fde8e6; color:var(--bad); } body.fixed .tag { background:#e8f5ec; color:var(--good); }
   body.broken .fixed-only, body.fixed .broken-only { display:none; }
   footer { margin-top:22px; font-size:13px; color:var(--muted); }
+  .clip { margin:0 0 18px; } .clip video { display:block; width:100%; max-width:980px; height:auto; border:1px solid #dfe3e8; border-radius:12px; background:#fff; } .clip figcaption { font-size:13px; color:#666; margin-top:6px; }
 </style>
 </head>
 <body class="broken">
 <div class="wrap">
   <h1>"Our booking button stopped working after a plugin update"</h1>
   <p class="lede">A WordPress plugin conflict, rebuilt so you can see it. One plugin update loads its own old copy of jQuery over WordPress's, and every script that ran after it breaks: no error on the page, the button just does nothing. Switch between the broken site and the fixed one and press the button in both.</p>
+
+  <figure class="clip" id="clip"><video src="clips/plugin-conflict.mp4" autoplay muted loop playsinline preload="auto" aria-label="Replay: Book on the broken page, then the same click after the fix."></video><figcaption>Replay: Book on the broken page, then the same click after the fix.</figcaption></figure>
 
   <div class="switch" role="group" aria-label="Mode">
     <button type="button" id="bBroken" aria-pressed="true">Broken</button>
