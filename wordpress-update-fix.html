@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress years behind: updated without breaking it</title>
+<style>
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:#1b1b1b; background:#f6f4ef; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: clamp(22px, 4vw, 32px); margin: 0 0 8px; }
+  p, li { line-height: 1.5; }
+  .bad { color: #a33; } .good { color: #1f6f5f; }
+  .table-wrap { overflow-x: auto; margin: 20px 0; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e6e2d8; border-radius: 12px; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee9de; vertical-align: top; }
+  th { background: #efebe2; }
+  tr:last-child td { border-bottom: 0; }
+  ol li { margin-bottom: 10px; }
+  pre { background: #1b1b1b; color: #f2f2f2; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 14px; }
+  .muted { color: #6b6b6b; font-size: 14px; }
+  a { color: #1f6f5f; }
+</style>
+</head>
+<body>
+<main>
+  <h1>WordPress years behind: updated without breaking it</h1>
+  <p>A small business site still on a 2021 WordPress release. Nothing looked
+  broken, which is why nobody touched it: the owner's worry was that pressing
+  "Update" would take the site down. Meanwhile every security fix since 2021
+  was missing, and out-of-date WordPress and plugins are the usual way small
+  sites get hacked. Here is the same site before and after, and exactly how it
+  was updated so that nothing a customer uses stopped working.</p>
+
+  <div class="table-wrap">
+  <table>
+    <tr><th></th><th class="bad">Before</th><th class="good">After</th></tr>
+    <tr><td>WordPress</td><td>5.7.2 (May 2021)</td><td>the current release, minor security updates set to install on their own</td></tr>
+    <tr><td>PHP on the server</td><td>7.2 (security support ended November 2020)</td><td>8.x, switched in the hosting panel</td></tr>
+    <tr><td>Plugins</td><td>14 installed, 9 out of date, 1 closed on WordPress.org</td><td>13, all current; the closed one replaced by a maintained plugin doing the same job</td></tr>
+    <tr><td>Theme</td><td>edits made directly in the theme, so updating it would have wiped them</td><td>edits moved to a child theme, then the theme updated</td></tr>
+    <tr><td>Admin users</td><td>4, two of them former staff</td><td>2 (the owner's call; nothing deleted without asking)</td></tr>
+    <tr><td>What customers use</td><td colspan="2">contact form, phone link, menu on a phone, booking page: checked working before the update and after it</td></tr>
+  </table>
+  </div>
+
+  <h2>How it was done</h2>
+  <ol>
+    <li><b>Full backup first</b>, files and database, downloaded off the server,
+    so the site can be put back exactly as it was if anything goes wrong.</li>
+    <li><b>Read what is installed</b>: the WordPress, PHP and theme versions,
+    and every plugin with its last update date. A plugin nobody has updated in
+    years, or one WordPress.org has closed, gets a maintained replacement
+    instead of an update.</li>
+    <li><b>Record what works today</b>: send a test message through the
+    contact form, tap the phone number, open the menu on a phone, walk through
+    the booking or checkout page. This is the list checked again at the end.</li>
+    <li><b>Update a copy, not the live site.</b> Most hosts have a one-click
+    staging copy; if not, a private copy on a subdomain that search engines
+    are told to ignore.</li>
+    <li><b>One piece at a time</b> on the copy: PHP, then WordPress itself,
+    then each plugin, then the theme, loading the site after every step. When
+    something breaks, it points at the one update that caused it, and that one
+    gets fixed rather than the whole update being abandoned.</li>
+    <li><b>Same order on the live site</b>, at a quiet hour, then the step 3
+    list again on a desktop and on a phone. The backup is kept for 30 days.</li>
+  </ol>
+
+  <p>For the record, this is how to see the version a site runs (WordPress
+  prints it in the page source unless a plugin hides it):</p>
+  <pre>&lt;meta name="generator" content="WordPress 5.7.2" /&gt;</pre>
+  <p>and WordPress.org publishes which versions are still considered safe at
+  <code>api.wordpress.org/core/stable-check/1.0/</code>.</p>
+
+  <h2>What it costs</h2>
+  <p>A fixed price, quoted before anything is touched; usually $150 for a site
+  several years behind, including the backup, the plugin replacements and the
+  checks above. You pay only after it works on your side. No password needed:
+  WordPress lets you add me as a user, and you remove me afterwards. You get a
+  short list of every change.</p>
+
+  <p class="muted">The site in the table is a composite built for this demo,
+  not a real business; the steps are the ones followed on a real one.
+  More before/after examples, and who I am: <a href="./">all demos</a>.</p>
+</main>
+</body>
+</html>
