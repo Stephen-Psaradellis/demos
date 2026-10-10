@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Links on your site that lead to "Page not found": the fix</title>
+<style>
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:#1b1b1b; background:#f6f4ef; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: clamp(22px, 4vw, 32px); margin: 0 0 8px; }
+  p, li { line-height: 1.5; }
+  .bad { color: #a33; } .good { color: #1f6f5f; }
+  .table-wrap { overflow-x: auto; margin: 20px 0; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e6e2d8; border-radius: 12px; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee9de; vertical-align: top; }
+  th { background: #efebe2; }
+  tr:last-child td { border-bottom: 0; }
+  ol li { margin-bottom: 10px; }
+  pre { background: #1b1b1b; color: #f2f2f2; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 14px; }
+  .check { background:#fff; border:1px solid #e6e2d8; border-left: 4px solid #1f6f5f; border-radius: 8px; padding: 12px 14px; }
+  .muted { color: #6b6b6b; font-size: 14px; }
+  a { color: #1f6f5f; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Links on your site that lead to "Page not found": the fix</h1>
+  <p>A local auto shop rebuilt its website. The new pages looked great, but the
+  menu, the footer and a couple of buttons still pointed at the old page
+  addresses. A customer who tapped <b>Financing</b> or <b>Coupons</b> got a bare
+  "Page not found" and, most of the time, left. The owner never saw it: they
+  always came in through the home page, and the pages they checked by hand were
+  the new ones. Here is what each link did before and after, and the fix.</p>
+
+  <div class="check"><b>Check yours in ten seconds:</b> open your site on your
+  phone, open the menu, and tap every item, then scroll to the footer and tap
+  those too. Any "not found", "404" or blank page is one of these.</div>
+
+  <div class="table-wrap">
+  <table>
+    <tr><th>Link, and where it sat</th><th class="bad">Before</th><th class="good">After</th></tr>
+    <tr><td>Financing (main menu)</td><td>/auto-loans/ - "Page not found"; the page had been renamed /financing/</td><td>menu points at /financing/; the old address forwards there too</td></tr>
+    <tr><td>Coupons (footer, every page)</td><td>/specials.html - "404"; the coupons page was never rebuilt</td><td>coupons rebuilt as a short page; the old address forwards to it</td></tr>
+    <tr><td>Book a service (home page button)</td><td>an old booking widget address that no longer exists</td><td>the shop's current booking page</td></tr>
+    <tr><td>Google and old ads</td><td colspan="2">Before, the Google listing and a year of old posts still sent people to the old addresses, so even a fixed menu would not have caught them. After, every old address forwards to the page that replaced it, and anything with no replacement lands on a helpful "not found" page with the phone number and the menu.</td></tr>
+  </table>
+  </div>
+
+  <h2>What was wrong</h2>
+  <p>A redesign gives pages new addresses. The pages were moved, but the links
+  pointing at them, and the outside world's links to the old addresses, were
+  not. Nothing was "down", so no alarm went off: each visitor just met a dead
+  end on their own.</p>
+  <pre>Before:
+  /auto-loans/      404   (page now lives at /financing/)
+  /specials.html    404   (never rebuilt)
+
+After:
+  /auto-loans/      301 -> /financing/
+  /specials.html    301 -> /coupons/
+  anything else     404 page with phone, hours and the menu</pre>
+
+  <h2>How it was fixed</h2>
+  <ol>
+    <li><b>List every dead link.</b> A crawl of the whole site finds each link
+    that answers "not found", and the page it was linked from, so nothing is
+    missed and nothing is guessed.</li>
+    <li><b>Decide each one.</b> Point the link at the page that replaced it,
+    bring back a page that should never have gone, or remove the link. Each
+    choice is written down for you before anything changes.</li>
+    <li><b>Forward the old addresses</b> (a "301 redirect") to their new pages,
+    so Google, old posts and bookmarks keep working. WordPress, Wix,
+    Squarespace and Shopify all have a redirects screen for this.</li>
+    <li><b>Make the "not found" page useful</b>: your phone number, hours and
+    the menu, so the rare visitor who still lands there can carry on.</li>
+    <li><b>Crawl again</b> on a phone and a desktop: zero dead links, and each
+    old address ends on the right page.</li>
+  </ol>
+
+  <h2>What it costs</h2>
+  <p>A fixed price, quoted before anything is touched, and you pay only after
+  every link works. No password needed: your website platform lets you add a
+  helper with limited access (WordPress, Wix, Squarespace and Shopify all have
+  this) and you remove me afterwards. If you would rather do it yourself, the
+  steps above are all of it, and I will send you the list of your dead links
+  and where each one should point, for free.</p>
+
+  <p class="muted">The site in the table is a composite built for this demo,
+  not a real business; the fault and the steps are the ones found on real
+  small-business sites in October 2026.
+  More before/after examples, and who I am: <a href="./">all demos</a>.</p>
+</main>
+</body>
+</html>
