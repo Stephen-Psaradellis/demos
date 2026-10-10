@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your address without the www fails: one DNS record</title>
+<style>
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:#1b1b1b; background:#f6f4ef; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: clamp(22px, 4vw, 32px); margin: 0 0 8px; }
+  p, li { line-height: 1.5; }
+  .bad { color: #a33; } .good { color: #1f6f5f; }
+  .table-wrap { overflow-x: auto; margin: 20px 0; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e6e2d8; border-radius: 12px; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee9de; vertical-align: top; }
+  th { background: #efebe2; }
+  tr:last-child td { border-bottom: 0; }
+  ol li { margin-bottom: 10px; }
+  pre { background: #1b1b1b; color: #f2f2f2; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 14px; }
+  .check { background:#fff; border:1px solid #e6e2d8; border-left: 4px solid #1f6f5f; border-radius: 8px; padding: 12px 14px; }
+  .muted { color: #6b6b6b; font-size: 14px; }
+  a { color: #1f6f5f; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Your address without the www fails: one DNS record</h1>
+  <p>A local shop's site opened fine at <b>www.example-shop.com</b>, which is
+  what the owner always clicked from a bookmark. But most people type the short
+  name, <b>example-shop.com</b>, from a business card, a van or a Google
+  listing, and that showed an error page. Nothing on the site itself was
+  broken: the short name simply was not pointed anywhere. Here is what each
+  address did before and after, and the fix.</p>
+
+  <div class="check"><b>Check yours in ten seconds:</b> on your phone, type
+  your address <i>without</i> the www into the browser and press Go. Then try it
+  with the www. Both should land on your home page.</div>
+
+  <div class="table-wrap">
+  <table>
+    <tr><th>What a customer types</th><th class="bad">Before</th><th class="good">After</th></tr>
+    <tr><td>example-shop.com</td><td>"This site can't be reached" on a phone; a certificate warning on some laptops</td><td>opens the home page (forwarded to https://www.example-shop.com)</td></tr>
+    <tr><td>http://example-shop.com</td><td>the same error</td><td>opens the home page, padlock on</td></tr>
+    <tr><td>www.example-shop.com</td><td>worked</td><td>still works, unchanged</td></tr>
+    <tr><td>Google</td><td colspan="2">Before, Google could see two different answers for one business and some links pointed at the dead name. After, every version forwards to the one address, so nothing is lost.</td></tr>
+  </table>
+  </div>
+
+  <h2>What was wrong</h2>
+  <p>The domain's DNS (the address book that tells browsers where a name lives)
+  had an entry for <b>www</b> and none for the bare name. That happens a lot
+  after a move to a new website company: the new host's setup page asks you to
+  add the www record, and the old record for the bare name is deleted or left
+  pointing at the old server.</p>
+  <pre>Before:
+  www              CNAME   shops.example-host.com
+  (bare name)      -- nothing --
+
+After:
+  www              CNAME   shops.example-host.com
+  @  (bare name)   A       the host's address, from its setup page
+                           (or the domain company's forwarding to www)</pre>
+
+  <h2>How it was fixed</h2>
+  <ol>
+    <li><b>Find who holds the DNS.</b> Not always the website company: often
+    the domain company (GoDaddy, Namecheap, Squarespace Domains) or Cloudflare.
+    A public lookup shows which, in a minute.</li>
+    <li><b>Ask the website company what the bare name should point at.</b>
+    Every host publishes it (Wix, Squarespace, Shopify and most hosting panels
+    show the exact record on their "connect a domain" page).</li>
+    <li><b>Add that one record</b> for the bare name, or turn on the domain
+    company's forwarding from the bare name to the www address. Nothing else in
+    the DNS is touched, so email keeps working.</li>
+    <li><b>Make sure the certificate covers both names</b>, so the short address
+    does not open on a "Not secure" warning. Most hosts issue it on their own
+    within an hour of the record appearing; some need one click.</li>
+    <li><b>Check every version</b>: bare and www, http and https, on a phone on
+    mobile data and on a desktop. Each one should end on the same home page
+    with the padlock on.</li>
+  </ol>
+
+  <h2>What it costs</h2>
+  <p>A fixed price, quoted before anything is touched, and you pay only after
+  both addresses open your site. No password needed: your domain company lets
+  you add a helper (GoDaddy, Namecheap and Cloudflare all have a "share access"
+  or "add member" screen) and you remove me afterwards. If you would rather do
+  it yourself, the steps above are all of it, and I will tell you the exact
+  record for your site for free.</p>
+
+  <p class="muted">The site in the table is a composite built for this demo,
+  not a real business; the fault and the steps are the ones found on real
+  small-business sites in October 2026.
+  More before/after examples, and who I am: <a href="./">all demos</a>.</p>
+</main>
+</body>
+</html>
