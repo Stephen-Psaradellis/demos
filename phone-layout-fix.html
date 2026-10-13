@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A website that shrinks on a phone: the layout fix</title>
+<style>
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:#1b1b1b; background:#f6f4ef; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: clamp(22px, 4vw, 32px); margin: 0 0 8px; }
+  p, li { line-height: 1.5; }
+  .bad { color: #a33; } .good { color: #1f6f5f; }
+  .table-wrap { overflow-x: auto; margin: 20px 0; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e6e2d8; border-radius: 12px; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee9de; vertical-align: top; }
+  th { background: #efebe2; }
+  tr:last-child td { border-bottom: 0; }
+  ol li { margin-bottom: 10px; }
+  pre { background: #1b1b1b; color: #f2f2f2; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 14px; }
+  .check { background:#fff; border:1px solid #e6e2d8; border-left: 4px solid #1f6f5f; border-radius: 8px; padding: 12px 14px; }
+  .muted { color: #6b6b6b; font-size: 14px; }
+  a { color: #1f6f5f; }
+  .phones { display:flex; flex-wrap:wrap; gap:24px; justify-content:center; margin: 24px 0; }
+  figure { margin:0; text-align:center; }
+  figcaption { font-size:14px; margin-top:8px; }
+  .phone { width:190px; height:360px; border:8px solid #222; border-radius:26px; background:#fff; overflow:hidden; position:relative; }
+  /* before: a 980px desktop page scaled into a 174px screen */
+  .shrunk { width:980px; transform: scale(0.1776); transform-origin: top left; font-size:14px; }
+  .shrunk .hd { background:#5b2a1d; color:#fff; padding:18px 24px; display:flex; justify-content:space-between; }
+  .shrunk .nav span { margin-left:22px; }
+  .shrunk .cols { display:flex; }
+  .shrunk .side { width:240px; background:#efe6d8; padding:20px; height:900px; }
+  .shrunk .body { width:700px; padding:20px; }
+  .shrunk .ph { background:#c9b79c; height:300px; margin-bottom:16px; }
+  .shrunk .ln { background:#ddd; height:14px; margin:10px 0; }
+  /* after: the same content stacked at phone width */
+  .fit .hd { background:#5b2a1d; color:#fff; padding:10px 12px; font-size:13px; font-weight:600; }
+  .fit .nav { display:flex; flex-wrap:wrap; gap:6px; padding:8px; background:#efe6d8; }
+  .fit .nav span { background:#fff; border:1px solid #d8ccb8; border-radius:6px; padding:8px 8px; font-size:11px; }
+  .fit .ph { background:#c9b79c; height:80px; margin:8px; border-radius:6px; }
+  .fit .ln { background:#ddd; height:8px; margin:8px 10px; border-radius:3px; }
+  .fit .btn { margin:10px; background:#1f6f5f; color:#fff; border-radius:8px; padding:10px; font-size:12px; font-weight:600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>A website that shrinks on a phone: the layout fix</h1>
+  <p>A neighborhood restaurant's website was built around 2012, before most
+  people browsed on phones. Every page was a fixed 980-pixel-wide desktop
+  layout: a menu column on the left, the content beside it, the hours and
+  phone number in a strip at the bottom. On a phone the whole thing showed as a
+  tiny shrunken copy of the desktop page - text too small to read, links too
+  small to tap, the "Order online" button a speck in a corner. Customers had
+  to pinch and zoom, and most simply went back to the search results. Here is
+  what was wrong, what changed, and how long it took.</p>
+
+  <div class="phones" aria-hidden="true">
+    <figure><div class="phone"><div class="shrunk">
+      <div class="hd"><b>Restaurant name</b><span class="nav"><span>Home</span><span>Menu</span><span>Catering</span><span>Order online</span><span>Contact</span></span></div>
+      <div class="cols"><div class="side"><div class="ln"></div><div class="ln"></div><div class="ln"></div><div class="ln"></div></div>
+      <div class="body"><div class="ph"></div><div class="ln"></div><div class="ln"></div><div class="ln"></div><div class="ln"></div><div class="ln"></div></div></div>
+    </div></div><figcaption class="bad">Before: the desktop page, shrunk</figcaption></figure>
+    <figure><div class="phone fit">
+      <div class="hd">Restaurant name</div>
+      <div class="nav"><span>Menu</span><span>Order online</span><span>Hours</span><span>Call</span></div>
+      <div class="btn">Order online</div>
+      <div class="ph"></div><div class="ln"></div><div class="ln"></div><div class="ln"></div>
+    </div><figcaption class="good">After: the same page, made to fit</figcaption></figure>
+  </div>
+
+  <div class="check"><b>Check yours in thirty seconds:</b> open your home page
+  on your own phone. If the text is too small to read without zooming in, or
+  you can drag the page sideways, the layout was built for a computer screen
+  only. For a second opinion on a computer, open the page in
+  Chrome, press <b>F12</b> and click the phone-and-tablet icon at the top left
+  of the panel: it shows the page at a phone's width.</div>
+
+  <div class="table-wrap">
+  <table>
+    <tr><th>Part of the page</th><th class="bad">Before</th><th class="good">After</th></tr>
+    <tr><td>Page width</td><td>fixed at 980px, no mobile setup - the phone shrank the whole page to fit</td><td>the mobile setup line added, and the 980px width changed to "up to 980px", so it narrows with the screen</td></tr>
+    <tr><td>Two-column layout</td><td>menu column and content side by side at any width</td><td>under 700px the columns stack: content first, the menu column below it</td></tr>
+    <tr><td>Photos and the menu table</td><td>fixed sizes wider than a phone - they pushed the page sideways</td><td>photos scale to the screen; the price table scrolls inside its own box</td></tr>
+    <tr><td>Links and buttons</td><td>12px text links packed together - hard to hit with a thumb</td><td>16px text, links at least 44px tall, "Order online" a full-width button</td></tr>
+    <tr><td>Phone number</td><td>plain text in the footer strip</td><td>a tap-to-call link near the top</td></tr>
+    <tr><td>Result</td><td colspan="2">Before, the page was a shrunken desktop copy on an iPhone, and with the setup line alone it could be dragged sideways. After, the text reads at normal size, nothing scrolls sideways, and the desktop look is unchanged because every change applies only below phone width.</td></tr>
+  </table>
+  </div>
+
+  <h2>What was wrong</h2>
+  <p>An older site is often laid out with fixed pixel widths - the page, each
+  column, each photo. A phone browser given such a page assumes it is a desktop
+  site and shrinks it to fit. The usual one-line fix, the "viewport" tag, tells
+  the phone to show the page at its real width - but on a fixed-width layout
+  that only makes things worse: the page is still 980px wide, so now it runs
+  off the right edge and has to be scrolled sideways. The tag is needed, but the
+  layout has to be made to fit too.</p>
+  <pre>The mobile setup line (in the page &lt;head&gt;):
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+
+Before (stylesheet):
+  #wrapper { width: 980px; }
+  #sidebar { float: left; width: 240px; }
+  #content { float: left; width: 700px; }
+
+After - the desktop rules stay; these apply only on a phone:
+  #wrapper { width: auto; max-width: 980px; }
+  img { max-width: 100%; height: auto; }
+  @media (max-width: 700px) {
+    #columns { display: flex; flex-direction: column; }
+    #sidebar, #content { float: none; width: auto; }
+    #content { order: -1; }
+    body { font-size: 16px; }
+    nav a { display: inline-block; padding: 12px 10px; }
+    .menu-table { display: block; overflow-x: auto; }
+  }</pre>
+
+  <h2>How it was fixed</h2>
+  <ol>
+    <li><b>Measure first:</b> open each main page (home, menu, contact,
+    order) at phone width and list everything wider than the screen - fixed
+    columns, photos, tables, embedded maps and forms.</li>
+    <li><b>Add the mobile setup line</b> to the page head, once, in the shared
+    header template.</li>
+    <li><b>Turn fixed widths into maximum widths</b> and let photos scale, so
+    nothing is wider than the phone.</li>
+    <li><b>Stack the columns below phone width</b> with one block of CSS that
+    only applies on small screens - the desktop design is not touched.</li>
+    <li><b>Make the important actions thumb-sized:</b> the phone number, order,
+    booking or directions link near the top and easy to tap.</li>
+    <li><b>Re-check</b> every page on a real iPhone and an Android phone, and at phone width in
+    Chrome on a computer.</li>
+  </ol>
+  <p>This works on a hand-built or older WordPress, GoDaddy or Dreamweaver
+  site. On Wix, the same result comes from the separate mobile editor; on
+  Squarespace or a modern theme it is usually one section that was given a
+  fixed width.</p>
+
+  <h2>What it costs</h2>
+  <p>I will send you the list for your site - each page part that breaks on a
+  phone and what changes - free. If you would rather I do it, it is a fixed
+  price quoted before any work, paid only after the pages fit your own phone.
+  No password shared: your host or site builder lets you add a helper account
+  (or a temporary file-transfer login) that you remove when we are done.
+  Usually one to two days, and your site looks exactly the same on a computer.</p>
+
+  <p class="muted">The restaurant in this example is a composite built for this
+  demo, not a real business; the fixed-width faults and the fix are the ones
+  found on real small-business home pages in October 2026.
+  More before/after examples, and who I am: <a href="./">all demos</a>.</p>
+</main>
+</body>
+</html>
