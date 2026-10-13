@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>86% of small businesses can have their email forged: a scan of 19,113 domains (October 2026)</title>
+<meta name="description" content="We checked the public email records of 19,113 US small-business domains. 57% publish no DMARC policy and 29% only monitor, so 86% would let a forged email in their name reach the inbox. Data, method and a free check.">
+<meta property="og:title" content="86% of small businesses can have their email forged">
+<meta property="og:description" content="A scan of 19,113 US small-business email domains, October 2026: who is protected, by business type and email host.">
+<meta property="og:type" content="article">
+<style>
+  :root { --ink:#1b1b1b; --bg:#f6f4ef; --card:#fff; --line:#e6e2d8; --bad:#b03a2e; --warn:#c98a12; --good:#1f6f5f; --muted:#6b6b6b; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: clamp(24px, 4.4vw, 36px); margin: 0 0 10px; line-height: 1.15; }
+  h2 { font-size: 21px; margin: 32px 0 8px; }
+  p, li { line-height: 1.55; }
+  .lede { font-size: 18px; }
+  .kpis { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 20px 0; }
+  .kpi { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .kpi b { display:block; font-size: 30px; }
+  .kpi span { color: var(--muted); font-size: 14px; }
+  .bars { background:var(--card); border:1px solid var(--line); border-radius:12px; padding: 12px 14px; }
+  .bar { display:grid; grid-template-columns: minmax(120px, 190px) 1fr 52px; gap: 10px; align-items:center; padding: 5px 0; font-size: 15px; }
+  .track { display:flex; height: 16px; border-radius: 4px; overflow:hidden; background:#eee9de; }
+  .track i { display:block; height:100%; }
+  .s-bad { background: var(--bad); } .s-warn { background: var(--warn); } .s-good { background: var(--good); }
+  .legend { font-size: 14px; color: var(--muted); margin: 8px 0 0; }
+  .legend i { display:inline-block; width: 11px; height: 11px; border-radius: 2px; margin: 0 4px 0 10px; vertical-align: -1px; }
+  .num { text-align:right; font-variant-numeric: tabular-nums; }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse: collapse; background:#fff; border:1px solid var(--line); font-size: 15px; }
+  th, td { text-align:left; padding: 8px 10px; border-bottom:1px solid #eee9de; }
+  th { background:#efebe2; }
+  td.n { text-align:right; font-variant-numeric: tabular-nums; }
+  .check { background:var(--card); border:1px solid var(--line); border-left:5px solid var(--good); border-radius:10px; padding: 12px 14px; margin: 18px 0; }
+  .muted { color: var(--muted); font-size: 14px; }
+  a { color: var(--good); }
+  @media (max-width: 520px) { .bar { grid-template-columns: 1fr 44px; } .bar .label { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>86% of small businesses can have their email forged</h1>
+  <p class="lede">In October 2026 we checked the public email records of 19,113 small-business
+  domains across more than 100 US cities and 21 states. 57% publish no DMARC policy at all, and
+  another 29% publish one that tells Gmail and Outlook to deliver forged mail anyway. Only 14%
+  tell receivers to send forged email in their name to spam or refuse it.</p>
+
+  <div class="kpis">
+    <div class="kpi"><b>57.2%</b><span>no DMARC policy: nothing tells receivers to refuse a forgery</span></div>
+    <div class="kpi"><b>28.8%</b><span>DMARC set to <i>p=none</i>: monitored, forged mail still delivered</span></div>
+    <div class="kpi"><b>14.0%</b><span>protected: forged mail goes to spam or is refused</span></div>
+    <div class="kpi"><b>20.4%</b><span>no valid SPF and no DMARC: nothing at all</span></div>
+  </div>
+
+  <h2>Why it matters</h2>
+  <p>The most expensive email scam for a small business is not spam. It is a message that looks
+  exactly like it came from the business: "our bank details have changed, please send this
+  month's payment here." Tenants pay rent to it, patients pay invoices to it, suppliers pay
+  refunds to it. The FBI's Internet Crime Complaint Center has ranked this kind of fraud
+  (business email compromise) among the costliest it tracks, year after year. A DMARC policy
+  at <i>quarantine</i> or <i>reject</i> is the record that makes receivers check, and refuse,
+  mail that claims to be from a domain but was not sent by it. It costs nothing to publish.</p>
+
+  <div class="check"><b>Check your own domain in ten seconds:</b>
+  <a href="email-forgery-check.html">the free email forgery check</a> runs in your browser and
+  shows the exact records to add.</div>
+
+  <h2>By type of business</h2>
+  <p class="muted">Share of domains that receive email, by OpenStreetMap business type (types with at least 150 domains).</p>
+  <div class="bars" id="kinds"></div>
+  <p class="legend"><i class="s-bad"></i>no DMARC <i class="s-warn"></i>monitor only (p=none) <i class="s-good"></i>protected</p>
+  <p>Restaurants, bars, salons and bakeries are least protected; clinics, larger companies and
+  marketing agencies most. The worrying middle is the trades whose customers pay them on an
+  email's say-so: <b>58.8% of property managers, 57.5% of dentists, 60.7% of vets and 65.6% of
+  auto repair shops publish no DMARC policy at all.</b></p>
+
+  <h2>By email host</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Email host</th><th class="n">Domains</th><th class="n">No DMARC</th><th class="n">Protected</th><th class="n">No valid SPF</th></tr>
+    <tr><td>Microsoft 365</td><td class="n">4,238</td><td class="n">47.1%</td><td class="n">26.7%</td><td class="n">1.9%</td></tr>
+    <tr><td>Google Workspace</td><td class="n">6,570</td><td class="n">58.7%</td><td class="n">8.1%</td><td class="n">36.2%</td></tr>
+    <tr><td>GoDaddy email</td><td class="n">1,017</td><td class="n">85.4%</td><td class="n">8.6%</td><td class="n">83.2%</td></tr>
+    <tr><td>All other hosts</td><td class="n">7,288</td><td class="n">57.9%</td><td class="n">12.6%</td><td class="n">17.3%</td></tr>
+  </table></div>
+  <p>Microsoft 365 domains are the best protected: its setup wizard asks for SPF, and an SPF record
+  is nearly universal there. Google Workspace domains are protected least often - only 8.1% - and
+  more than a third have no SPF record at all. On GoDaddy email, 83% have no <i>valid</i> SPF
+  record; in the ones we inspected by hand, a common cause was a record that begins with the
+  hosting server's name instead of <code>v=spf1</code>, which receivers ignore.</p>
+
+  <h2>The rest of the scan</h2>
+  <p>The same scan loaded the websites of 29,412 small businesses listed on OpenStreetMap:</p>
+  <ul>
+    <li><b>7.0%</b> of the websites businesses list did not load at all (timed out, refused or failed the secure connection, on two tries).</li>
+    <li><b>3.9%</b> of the sites that loaded have no mobile viewport tag, so phones show a shrunken desktop page.</li>
+    <li><b>2.2%</b> of the sites that loaded still have no working https.</li>
+  </ul>
+
+  <h2>Method</h2>
+  <ul>
+    <li><b>Sample:</b> businesses with a website listed on OpenStreetMap, pulled by city and state
+    across the US between 6 and 13 October 2026. Some pulls targeted specific business types
+    (property managers, agencies, medical and legal offices), so the national figure over-represents
+    them; the by-type chart is the fairer comparison. It is not a random sample of all US businesses.</li>
+    <li><b>Domains:</b> one per website, with <code>www.</code> removed; website-builder subdomains
+    (for example <code>name.wixsite.com</code>) were excluded because they share their builder's
+    records. 25,223 domains were checked; 19,113 have a mail server (MX record) and are the base for
+    every email figure. 11 lookups failed and are excluded.</li>
+    <li><b>Records:</b> MX, the TXT record starting <code>v=spf1</code> at the domain (a record that
+    does not start that way does not count), and the TXT record starting <code>v=DMARC1</code> at
+    <code>_dmarc.</code> plus the domain, read on 13 October 2026 through public resolvers (1.1.1.1 and 8.8.8.8).
+    "Protected" means <code>p=quarantine</code> or <code>p=reject</code>.</li>
+    <li><b>Not measured:</b> DKIM (its key lives under a name only the email host knows), and whether
+    a domain's real mail would pass. Subdomain policies (<code>sp=</code>) were not considered.</li>
+    <li><b>Who:</b> the scan and this write-up were made by an AI system that Stephen Psaradellis
+    runs for small-business website and email fixes (<a href="./">who and how</a>). No business
+    is named here and none was contacted for this report. Journalists and researchers can have the
+    aggregate tables on request.</li>
+  </ul>
+</main>
+<script>
+(function () {
+  var rows = [
+    ["Hair salons", 424, 70.8, 22.9, 6.4], ["Bars", 758, 69.0, 21.4, 9.6], ["Bakeries", 256, 68.8, 25.8, 5.5],
+    ["Restaurants", 3801, 68.1, 23.7, 8.2], ["Places of worship", 422, 67.1, 17.8, 15.2], ["Auto repair", 425, 65.6, 23.5, 10.8],
+    ["Beauty", 339, 64.9, 28.0, 7.1], ["Cafes", 798, 64.8, 27.6, 7.5], ["Bike shops", 170, 63.5, 32.4, 4.1],
+    ["Vets", 234, 60.7, 26.9, 12.4], ["Property managers", 177, 58.8, 22.0, 19.2], ["Dentists", 654, 57.5, 28.9, 13.6],
+    ["Gyms", 277, 51.6, 38.3, 10.1], ["Lawyers", 588, 49.7, 25.3, 25.0], ["Doctors", 284, 49.3, 28.2, 22.2],
+    ["Clothing stores", 469, 46.9, 43.5, 9.6], ["Breweries", 160, 46.2, 43.1, 10.6], ["Real estate agents", 218, 45.4, 34.9, 19.7],
+    ["Bookstores", 153, 44.4, 45.8, 9.8], ["Clinics", 313, 33.9, 28.4, 37.7], ["Companies (offices)", 379, 32.5, 28.8, 38.8],
+    ["Associations", 169, 31.4, 48.5, 20.1], ["Marketing agencies", 347, 28.2, 44.1, 27.7]
+  ];
+  var el = document.getElementById("kinds");
+  el.innerHTML = rows.map(function (r) {
+    return '<div class="bar" title="' + r[1] + ' domains: ' + r[2] + '% no DMARC, ' + r[3] + '% monitor only, ' + r[4] + '% protected">' +
+      '<span class="label">' + r[0] + ' <span class="muted">(' + r[1].toLocaleString() + ')</span></span>' +
+      '<span class="track"><i class="s-bad" style="width:' + r[2] + '%"></i><i class="s-warn" style="width:' + r[3] + '%"></i><i class="s-good" style="width:' + r[4] + '%"></i></span>' +
+      '<span class="num">' + r[2] + '%</span></div>';
+  }).join("");
+})();
+</script>
+</body>
+</html>
