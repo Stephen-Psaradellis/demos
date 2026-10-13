@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A website that stopped loading: getting it back up</title>
+<style>
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:#1b1b1b; background:#f6f4ef; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: clamp(22px, 4vw, 32px); margin: 0 0 8px; }
+  p, li { line-height: 1.5; }
+  .bad { color: #a33; } .good { color: #1f6f5f; }
+  .table-wrap { overflow-x: auto; margin: 20px 0; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e6e2d8; border-radius: 12px; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee9de; vertical-align: top; }
+  th { background: #efebe2; }
+  tr:last-child td { border-bottom: 0; }
+  ol li { margin-bottom: 10px; }
+  pre { background: #1b1b1b; color: #f2f2f2; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 14px; }
+  .check { background:#fff; border:1px solid #e6e2d8; border-left: 4px solid #1f6f5f; border-radius: 8px; padding: 12px 14px; }
+  .muted { color: #6b6b6b; font-size: 14px; }
+  a { color: #1f6f5f; }
+  .shots { display:flex; flex-wrap:wrap; gap:24px; justify-content:center; margin: 24px 0; }
+  figure { margin:0; text-align:center; }
+  figcaption { font-size:14px; margin-top:8px; }
+  .win { width:300px; height:200px; border:1px solid #cfcabd; border-radius:10px; background:#fff; overflow:hidden; text-align:left; }
+  .bar { background:#e9e6df; padding:6px 10px; font-size:11px; color:#555; border-bottom:1px solid #d8d3c7; }
+  .err { padding:22px 18px; font-size:13px; color:#444; }
+  .err b { display:block; font-size:16px; color:#222; margin-bottom:8px; }
+  .err code { font-size:11px; color:#777; }
+  .ok .hd { background:#7a4a2a; color:#fff; padding:10px 12px; font-size:13px; font-weight:600; }
+  .ok .ph { background:#e2cfae; height:70px; margin:8px; border-radius:6px; }
+  .ok .ln { background:#ddd; height:8px; margin:8px 10px; border-radius:3px; }
+  .ok .btn { display:inline-block; margin:6px 10px; background:#1f6f5f; color:#fff; border-radius:6px; padding:6px 10px; font-size:11px; font-weight:600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>A website that stopped loading: getting it back up</h1>
+  <p>A family bakery's website had run quietly for six years. Then the card on
+  file with the hosting company expired, three renewal emails went to an old
+  address nobody checked, and the hosting plan was suspended. The domain name
+  was still paid for, so Google Maps, Yelp and the bakery's Instagram kept
+  sending people to it - and every one of them got a browser error instead of
+  the menu, the hours and the custom-cake order form. The owner only found out
+  when a customer mentioned it at the counter. Here is how the cause was found
+  from the outside, what was done, and how long it took.</p>
+
+  <div class="shots" aria-hidden="true">
+    <figure><div class="win">
+      <div class="bar">bakery-name.com</div>
+      <div class="err"><b>This site can't be reached</b>bakery-name.com took too long to respond.<br><br><code>ERR_CONNECTION_TIMED_OUT</code></div>
+    </div><figcaption class="bad">Before: what every visitor saw</figcaption></figure>
+    <figure><div class="win ok">
+      <div class="bar">https://bakery-name.com</div>
+      <div class="hd">Bakery name</div>
+      <div class="ph"></div><div class="ln"></div><div class="ln"></div>
+      <span class="btn">Order a cake</span><span class="btn">Hours</span>
+    </div><figcaption class="good">After: the same site, back up</figcaption></figure>
+  </div>
+
+  <div class="check"><b>Check yours in thirty seconds:</b> turn off Wi-Fi on
+  your phone and open your website on mobile data. Your own computer can show
+  you an old saved copy, so a phone on mobile data is the honest test. If it
+  shows an error, a blank page or a "this domain is for sale" page, your
+  customers see the same thing.</div>
+
+  <h2>What is usually wrong</h2>
+  <p>"The site does not load" has only a handful of causes, and each one
+  leaves a different trace that can be read from outside, without any login.
+  That is how I can tell you which one it probably is before you share
+  anything.</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>What you see</th><th>What it usually means</th><th>The fix</th></tr>
+    <tr><td>"Took too long to respond" or "refused to connect"</td><td>the name still points at a server, but the server does not answer: a suspended or lapsed hosting plan, or a crashed server</td><td>renew or reactivate the plan (you do this, it is a payment), then I check the site came back whole and fix anything that broke while it was down</td></tr>
+    <tr><td>"Server not found" / "DNS address could not be found"</td><td>the domain name expired, or its records were deleted or pointed nowhere during a move</td><td>renew the domain (you), then I restore the records so the name points at the site again</td></tr>
+    <tr><td>A blank white page, or "There has been a critical error"</td><td>the server answers but the site software crashed - often after an automatic update of WordPress or its add-ons</td><td>I find the one add-on or update that broke it, switch it off, and bring the site back without losing content</td></tr>
+    <tr><td>"Your connection is not private"</td><td>the security certificate expired and the browser blocks the page</td><td>renew the certificate and set it to renew itself from now on</td></tr>
+    <tr><td>A parking page or "this domain is for sale"</td><td>the domain lapsed and was taken by someone else, or is in the registrar's grace period</td><td>if it is in grace, renew it today; if not, point customers at a new address and update the map listings</td></tr>
+  </table>
+  </div>
+  <p>For the bakery the trace was the first row: the name answered (it
+  still pointed at the hosting company), but the server never did, on http or
+  https, at any hour - a suspended plan, not a broken site.</p>
+  <pre>What the outside checks showed (before):
+  name lookup       bakery-name.com -> 203.0.113.48   (still points at the host)
+  connect, port 443 timed out after 15 seconds
+  connect, port 80  timed out after 15 seconds
+  domain renewal    paid until next year              (the name was fine)
+
+After the plan was reactivated:
+  connect, port 443 answers, page loads in 1.4 s
+  certificate       valid, set to renew automatically
+  pages checked     home, menu, cake order form, contact - all load</pre>
+
+  <h2>How it was fixed</h2>
+  <ol>
+    <li><b>Diagnose from outside first:</b> does the name resolve, does the
+    server answer, is the domain paid up, is the certificate valid. That
+    pointed at the hosting plan, not the site.</li>
+    <li><b>The owner reactivated the plan</b> - a payment, so it is always
+    theirs to make - and moved the renewal emails to an address they read.</li>
+    <li><b>Check the site came back whole:</b> after a suspension the files
+    and database are usually intact, but the certificate had lapsed in the
+    meantime and the cake order form's email setting had been reset.
+    Both fixed.</li>
+    <li><b>Make it not happen again:</b> auto-renew on the plan, the domain
+    and the certificate, and a free uptime check that emails the owner within
+    five minutes if the site stops answering.</li>
+    <li><b>Re-check</b> every main page on a phone on mobile data, and that a
+    test cake order arrives in the owner's inbox.</li>
+  </ol>
+  <p>If the site is gone for good - the host deleted it, or you have since
+  moved to a new one - the old address can still forward to the new site, so
+  map listings and old links do not end on an error. That part is a few
+  minutes of setup at the place the domain is registered.</p>
+
+  <h2>What it costs</h2>
+  <p>Tell me whether the site is still yours and I will send you what the
+  outside checks show for it, and which of the causes above it is, free. If
+  you would rather I bring it back, it is a fixed price quoted before any
+  work, paid only after it loads on your own phone. No password shared: your
+  host lets you add a helper account that you remove when we are done, and
+  anything that is a payment (a renewal, a plan) you make yourself.
+  Usually the same day once the plan or domain is active again.</p>
+
+  <p class="muted">The bakery in this example is a composite built for this
+  demo, not a real business, and the address shown is a documentation
+  address; the causes and fixes are the ones found on real small-business
+  websites that stopped loading in October 2026.
+  More before/after examples, and who I am: <a href="./">all demos</a>.</p>
+</main>
+</body>
+</html>
