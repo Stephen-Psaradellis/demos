@@ -152,7 +152,7 @@
     if (level !== "good") {
       var recs = [];
       if (!spf.length && mx.length) recs.push("Type TXT   Host @        Value  v=spf1 " + (p ? p.spf : "include:<your email host's SPF>") + " ~all");
-      if (!dmarc.length) recs.push("Type TXT   Host _dmarc   Value  v=DMARC1; p=" + (mx.length ? "none" : "reject") + "; rua=mailto:dmarc@" + dom);
+      if (!dmarc.length) recs.push("Type TXT   Host _dmarc   Value  v=DMARC1; p=" + (mx.length ? "none" : "reject") + "; rua=mailto:you@" + dom + "   (put an address you read in place of you@)");
       else if (policy === "none") recs.push("When reports show every real sender passing (1-2 weeks), change p=none to p=quarantine.");
       if (mx.length && !dkim.length) recs.push("DKIM: switch on signing at " + (p ? p.dkim : "your email host") + " and add the record it gives you.");
       html += '<div class="card"><b>The records to add at your domain company</b> (GoDaddy, Namecheap, Cloudflare, Squarespace Domains...):<pre>' + esc(recs.join("\n")) + "</pre>" +
