@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Can email in your name be forged? Free SPF, DKIM and DMARC check</title>
+<meta name="description" content="Free check: enter your domain and see in plain English whether anyone can send email that looks like it came from you. SPF, DKIM and DMARC, with the exact records to fix it.">
+<meta property="og:title" content="Can email in your name be forged? Free check">
+<meta property="og:description" content="Enter your domain. See whether a stranger can send email as you, and the exact records that stop it.">
+<meta property="og:type" content="website">
+<style>
+  :root { --ink:#1b1b1b; --bg:#f6f4ef; --card:#fff; --line:#e6e2d8; --good:#1f6f5f; --bad:#a33; --warn:#9a6a00; --muted:#6b6b6b; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: clamp(22px, 4vw, 32px); margin: 0 0 8px; }
+  h2 { font-size: 20px; margin: 28px 0 8px; }
+  p, li { line-height: 1.5; }
+  form { display:flex; gap:8px; flex-wrap:wrap; margin: 18px 0; }
+  input[type=text] { flex: 1 1 260px; font-size: 17px; padding: 12px 14px; border:1px solid #cfc9bb; border-radius: 10px; background:#fff; }
+  button { font-size: 17px; padding: 12px 20px; border:0; border-radius:10px; background:var(--good); color:#fff; cursor:pointer; }
+  button:focus-visible, input:focus-visible { outline: 3px solid #f0b429; outline-offset: 2px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
+  .verdict { border-left: 6px solid var(--muted); }
+  .verdict.bad { border-left-color: var(--bad); } .verdict.warn { border-left-color: var(--warn); } .verdict.good { border-left-color: var(--good); }
+  .verdict h3 { margin: 0 0 6px; font-size: 19px; }
+  .row { display:grid; grid-template-columns: 110px 1fr; gap: 6px 12px; padding: 10px 0; border-bottom: 1px solid #eee9de; }
+  .row:last-child { border-bottom:0; }
+  .tag { font-weight: 600; } .ok { color: var(--good); } .no { color: var(--bad); } .meh { color: var(--warn); }
+  pre { background:#1b1b1b; color:#f2f2f2; padding:12px; border-radius:8px; overflow-x:auto; font-size:14px; white-space: pre-wrap; word-break: break-all; }
+  .muted { color: var(--muted); font-size: 14px; }
+  a { color: var(--good); }
+  #out[hidden] { display:none; }
+  @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Can email in your name be forged?</h1>
+  <p>Email's "From" line is whatever the sender types. Three short records at your
+  domain company decide whether Gmail and Outlook can tell your real email from a
+  fake "our bank details changed" message in your name. Enter your domain (the part
+  after the @ in your email address) to see where you stand.</p>
+
+  <form id="f" autocomplete="off">
+    <label for="d" class="muted" style="flex-basis:100%">Your domain or email address</label>
+    <input id="d" type="text" inputmode="email" placeholder="yourbusiness.com" required>
+    <button type="submit">Check</button>
+  </form>
+  <p class="muted">The check runs in your browser using public DNS (Cloudflare's and
+  Google's DNS-over-HTTPS). Nothing you type is stored or sent anywhere else.</p>
+
+  <section id="out" hidden aria-live="polite"></section>
+
+  <h2>What the three records do</h2>
+  <ul>
+    <li><b>SPF</b> lists the services allowed to send email as you (your email host, invoicing tool, website form).</li>
+    <li><b>DKIM</b> puts a signature on each email, which receivers can verify against a key at your domain.</li>
+    <li><b>DMARC</b> tells receivers what to do with mail that fails both: deliver it anyway (<i>p=none</i>), send it to spam (<i>quarantine</i>), or refuse it (<i>reject</i>). Without it, a forged email has nothing stopping it.</li>
+  </ul>
+  <p>Since February 2024 Gmail and Yahoo require SPF or DKIM from every sender, so
+  missing records also push your own real email toward the spam folder.</p>
+
+  <h2>Want it fixed?</h2>
+  <p>The records shown above are a correct starting point you can paste in yourself.
+  If you would rather have it done, I add them at your domain company for a fixed $75,
+  paid only after this page shows you protected. No password shared: most domain
+  companies let you invite a helper and remove the access afterwards.
+  <a href="forged-email-fix.html">A worked example</a> &middot; <a href="./">all examples and who I am</a>.</p>
+</main>
+<script>
+(function () {
+  "use strict";
+  var DOH = [
+    function (n, t) { return "https://cloudflare-dns.com/dns-query?name=" + encodeURIComponent(n) + "&type=" + t; },
+    function (n, t) { return "https://dns.google/resolve?name=" + encodeURIComponent(n) + "&type=" + t; }
+  ];
+  var DKIM_SELECTORS = ["google", "selector1", "selector2", "k1", "k2", "s1", "s2", "default", "dkim", "mail", "zoho", "zmail", "protonmail", "mxvault", "smtp", "everlytickey1", "mandrill", "sig1"];
+
+  function q(name, type) {
+    var i = 0;
+    function attempt() {
+      return fetch(DOH[i](name, type), { headers: { accept: "application/dns-json" } })
+        .then(function (r) { if (!r.ok) throw new Error("dns " + r.status); return r.json(); })
+        .catch(function (e) { i += 1; if (i < DOH.length) return attempt(); throw e; });
+    }
+    return attempt().then(function (j) {
+      var want = { TXT: 16, MX: 15 }[type];
+      return (j.Answer || []).filter(function (a) { return a.type === want; }).map(function (a) {
+        return type === "TXT" ? a.data.replace(/^"|"$/g, "").replace(/"\s*"/g, "") : a.data;
+      });
+    });
+  }
+
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+
+  function clean(v) {
+    v = v.trim().toLowerCase();
+    if (v.indexOf("@") >= 0) v = v.split("@").pop();
+    v = v.replace(/^[a-z]+:\/\//, "").split("/")[0].split(":")[0].replace(/^www\./, "").replace(/\.$/, "");
+    return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v) ? v : "";
+  }
+
+  function provider(mx) {
+    var m = mx.join(" ");
+    if (/google|googlemail/.test(m)) return { name: "Google Workspace", spf: "include:_spf.google.com", dkim: "Google Admin > Apps > Google Workspace > Gmail > Authenticate email" };
+    if (/outlook\.com|protection\.outlook/.test(m)) return { name: "Microsoft 365", spf: "include:spf.protection.outlook.com", dkim: "Microsoft Defender portal > Email authentication settings > DKIM" };
+    if (/secureserver\.net/.test(m)) return { name: "GoDaddy email", spf: "include:secureserver.net", dkim: "GoDaddy email settings" };
+    if (/zoho/.test(m)) return { name: "Zoho Mail", spf: "include:zoho.com", dkim: "Zoho Mail admin > Domains > Email configuration > DKIM" };
+    if (/protonmail/.test(m)) return { name: "Proton Mail", spf: "include:_spf.protonmail.ch", dkim: "Proton settings > Domain names" };
+    if (/messagingengine/.test(m)) return { name: "Fastmail", spf: "include:spf.messagingengine.com", dkim: "Fastmail settings > Domains" };
+    if (/registrar-servers|privateemail/.test(m)) return { name: "Namecheap Private Email", spf: "include:spf.privateemail.com", dkim: "Namecheap > Private Email > DKIM" };
+    return null;
+  }
+
+  function render(dom, mx, spf, dmarc, dkim) {
+    var out = document.getElementById("out");
+    var p = provider(mx);
+    var policy = null;
+    if (dmarc.length) {
+      var m = /(?:^|;)\s*p\s*=\s*([a-z]+)/i.exec(dmarc[0]);
+      policy = m ? m[1].toLowerCase() : "none";
+    }
+    var level, head, body;
+    if (!mx.length) {
+      level = "warn"; head = "@" + dom + " does not receive email";
+      body = "There is no mail server (MX record) for this domain. If you never send email from it, add a DMARC record with p=reject so nobody else can either.";
+    } else if (!dmarc.length) {
+      level = "bad"; head = "Anyone can send email that looks like it came from @" + dom;
+      body = "There is no DMARC policy, so Gmail and Outlook have no instruction to refuse a forged email in your name.";
+    } else if (policy === "none") {
+      level = "warn"; head = "Monitored, but forged email is still delivered";
+      body = "Your DMARC policy is p=none: receivers are told to deliver mail that fails the checks. It is the right first step; the protection starts at quarantine or reject.";
+    } else {
+      level = "good"; head = "Protected: forged email in your name is sent to spam or refused";
+      body = "Your DMARC policy is p=" + esc(policy) + ".";
+    }
+    var spfTxt, spfCls;
+    if (!spf.length) { spfTxt = "missing - no list of who may send as you"; spfCls = "no"; }
+    else if (spf.length > 1) { spfTxt = "broken - " + spf.length + " SPF records found; a domain may have only one, so receivers treat it as a failure"; spfCls = "no"; }
+    else if (/\+all\b/.test(spf[0])) { spfTxt = "present but ends in +all, which allows anyone"; spfCls = "no"; }
+    else { spfTxt = "present"; spfCls = "ok"; }
+    var dkimTxt = dkim.length ? ("found (selector " + esc(dkim.join(", ")) + ")") :
+      "not found on the common selectors - your email host may use another name, so check its settings";
+    var html = '<div class="card verdict ' + level + '"><h3>' + esc(head) + "</h3><p>" + body + "</p></div>";
+    html += '<div class="card">';
+    html += '<div class="row"><span class="tag">Email host</span><span>' + (mx.length ? esc(p ? p.name : mx[0].replace(/\.$/, "")) : "none") + "</span></div>";
+    html += '<div class="row"><span class="tag">SPF</span><span class="' + spfCls + '">' + spfTxt + (spf.length ? "<br><code>" + esc(spf[0]) + "</code>" : "") + "</span></div>";
+    html += '<div class="row"><span class="tag">DKIM</span><span class="' + (dkim.length ? "ok" : "meh") + '">' + dkimTxt + "</span></div>";
+    html += '<div class="row"><span class="tag">DMARC</span><span class="' + (policy && policy !== "none" ? "ok" : policy ? "meh" : "no") + '">' +
+      (dmarc.length ? "p=" + esc(policy) + "<br><code>" + esc(dmarc[0]) + "</code>" : "missing") + "</span></div>";
+    html += "</div>";
+    if (level !== "good") {
+      var recs = [];
+      if (!spf.length && mx.length) recs.push("Type TXT   Host @        Value  v=spf1 " + (p ? p.spf : "include:<your email host's SPF>") + " ~all");
+      if (!dmarc.length) recs.push("Type TXT   Host _dmarc   Value  v=DMARC1; p=" + (mx.length ? "none" : "reject") + "; rua=mailto:dmarc@" + dom);
+      else if (policy === "none") recs.push("When reports show every real sender passing (1-2 weeks), change p=none to p=quarantine.");
+      if (mx.length && !dkim.length) recs.push("DKIM: switch on signing at " + (p ? p.dkim : "your email host") + " and add the record it gives you.");
+      html += '<div class="card"><b>The records to add at your domain company</b> (GoDaddy, Namecheap, Cloudflare, Squarespace Domains...):<pre>' + esc(recs.join("\n")) + "</pre>" +
+        '<p class="muted">Add every service that sends as you to the SPF line (invoicing, booking, newsletter, website form) before tightening DMARC, or their real email will start failing.</p></div>';
+    }
+    out.innerHTML = html;
+    out.hidden = false;
+  }
+
+  document.getElementById("f").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var out = document.getElementById("out");
+    var dom = clean(document.getElementById("d").value);
+    if (!dom) { out.hidden = false; out.innerHTML = '<div class="card verdict warn">That does not look like a domain. Try yourbusiness.com.</div>'; return; }
+    out.hidden = false; out.innerHTML = '<div class="card">Checking ' + esc(dom) + "...</div>";
+    var dkimQs = DKIM_SELECTORS.map(function (s) {
+      return q(s + "._domainkey." + dom, "TXT").then(function (r) { return r.some(function (t) { return /p=/.test(t); }) ? s : null; }).catch(function () { return null; });
+    });
+    Promise.all([
+      q(dom, "MX"),
+      q(dom, "TXT").then(function (r) { return r.filter(function (t) { return /^v=spf1/i.test(t); }); }),
+      q("_dmarc." + dom, "TXT").then(function (r) { return r.filter(function (t) { return /^v=dmarc1/i.test(t); }); }),
+      Promise.all(dkimQs).then(function (r) { return r.filter(Boolean); })
+    ]).then(function (r) { render(dom, r[0], r[1], r[2], r[3]); })
+      .catch(function () { out.innerHTML = '<div class="card verdict warn">The DNS lookup failed (network or a blocked request). Try again in a moment.</div>'; });
+  });
+
+  var pre = new URLSearchParams(location.search).get("d");
+  if (pre) { document.getElementById("d").value = pre; document.getElementById("f").requestSubmit(); }
+})();
+</script>
+</body>
+</html>
