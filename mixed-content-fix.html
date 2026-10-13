@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Browsers block part of your page: the http-file fix</title>
+<style>
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:#1b1b1b; background:#f6f4ef; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: clamp(22px, 4vw, 32px); margin: 0 0 8px; }
+  p, li { line-height: 1.5; }
+  .bad { color: #a33; } .good { color: #1f6f5f; }
+  .table-wrap { overflow-x: auto; margin: 20px 0; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e6e2d8; border-radius: 12px; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee9de; vertical-align: top; }
+  th { background: #efebe2; }
+  tr:last-child td { border-bottom: 0; }
+  ol li { margin-bottom: 10px; }
+  pre { background: #1b1b1b; color: #f2f2f2; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 14px; }
+  .check { background:#fff; border:1px solid #e6e2d8; border-left: 4px solid #1f6f5f; border-radius: 8px; padding: 12px 14px; }
+  .muted { color: #6b6b6b; font-size: 14px; }
+  a { color: #1f6f5f; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Browsers block part of your page: the http-file fix</h1>
+  <p>A family dental office moved its website to https years ago, and the
+  padlock showed in the address bar, so everyone assumed the job was done. But
+  the home page still pulled four files over plain <i>http://</i>: the web font,
+  one stylesheet, the slider script and the online-booking widget. Browsers
+  refuse to load scripts and stylesheets over http on an https page, and they
+  do it silently - no warning bar, no error the owner would ever see. Visitors
+  got a plain-font page, a slider stuck on its first photo, and an empty box
+  where "Book online" should have been. Here is what was found, what changed,
+  and how long it took.</p>
+
+  <div class="check"><b>Check yours in thirty seconds:</b> open your home page
+  in Chrome on a computer, press <b>F12</b> (or right-click &gt; Inspect) and
+  click <b>Console</b>. A red line starting <i>"Mixed Content: The page at
+  'https://...' was loaded over HTTPS, but requested an insecure ..."</i> names
+  each file the browser blocked. No such lines means your page is clean.</div>
+
+  <div class="table-wrap">
+  <table>
+    <tr><th>File on the home page</th><th class="bad">Before</th><th class="good">After</th></tr>
+    <tr><td>Web font (stylesheet)</td><td>http:// link - blocked, so the page fell back to a plain system font</td><td>https:// - the brand font shows again</td></tr>
+    <tr><td>Theme stylesheet</td><td>http:// address saved in the theme settings years ago - blocked, spacing and buttons unstyled</td><td>https:// - layout as designed</td></tr>
+    <tr><td>Photo slider script</td><td>http:// - blocked, slider frozen on the first slide</td><td>https:// - slides rotate</td></tr>
+    <tr><td>Online-booking widget</td><td>http:// embed code pasted in 2019 - blocked, an empty box where patients book</td><td>re-pasted from the booking company's current https embed code - booking works</td></tr>
+    <tr><td>Result</td><td colspan="2">Before, the padlock showed and the office saw nothing wrong on its own phone, which had the old files cached. New visitors got the stripped page. After, the Console shows no Mixed Content lines and the booking box loads on every browser.</td></tr>
+  </table>
+  </div>
+
+  <h2>What was wrong</h2>
+  <p>When a site switches to https, links typed into the page, the theme
+  settings or the database years earlier keep their old <i>http://</i> address.
+  The page itself is secure, so the padlock shows, but each of those files is
+  asked for over an unencrypted connection, and browsers block scripts,
+  stylesheets and embedded frames fetched that way. Images are usually
+  retried over https, and simply go missing if that fails.</p>
+  <pre>Before (in the page source):
+  &lt;link rel="stylesheet" href="http://fonts.example.com/css?family=Lato"&gt;
+  &lt;script src="http://www.yourdomain.com/wp-content/themes/x/slider.js"&gt;&lt;/script&gt;
+  &lt;iframe src="http://booking.example.com/widget?office=123"&gt;&lt;/iframe&gt;
+
+After:
+  &lt;link rel="stylesheet" href="https://fonts.example.com/css?family=Lato"&gt;
+  &lt;script src="https://www.yourdomain.com/wp-content/themes/x/slider.js"&gt;&lt;/script&gt;
+  &lt;iframe src="https://booking.example.com/widget?office=123"&gt;&lt;/iframe&gt;</pre>
+
+  <h2>How it was fixed</h2>
+  <ol>
+    <li><b>List every blocked file</b> from the Console on the home page and the
+    other main pages (contact, booking, services).</li>
+    <li><b>Files on your own domain</b>: change <i>http://yourdomain.com</i> to
+    <i>https://yourdomain.com</i> wherever it is stored. On WordPress that is one
+    database search-and-replace (the free Better Search Replace plugin), run on a
+    backup first; on Wix, Squarespace or Shopify it is the section or embed
+    setting that holds the address.</li>
+    <li><b>Files from other companies</b> (fonts, widgets, booking or chat
+    tools): switch the address to https, or re-copy the provider's current embed
+    code, which is https today.</li>
+    <li><b>Re-check</b> the Console on each page in a private window, so nothing
+    comes from the cache.</li>
+  </ol>
+
+  <h2>What it costs</h2>
+  <p>I will send you the exact list for your site - each http file and the line
+  that replaces it - free, and you can change them yourself. If you would rather
+  I do it, it is a small fixed price, paid only after the Console shows no
+  blocked files. No password shared: WordPress, Wix, Squarespace and Shopify all
+  let you add a helper account and remove it when we are done. Usually under an
+  hour, with nothing visible changing except the parts that were missing.</p>
+
+  <p class="muted">The office in this example is a composite built for this
+  demo, not a real business; the blocked files and the fix are the ones found
+  on real small-business home pages in October 2026.
+  More before/after examples, and who I am: <a href="./">all demos</a>.</p>
+</main>
+</body>
+</html>
