@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Email in your name can be forged: the DMARC fix</title>
+<style>
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:#1b1b1b; background:#f6f4ef; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: clamp(22px, 4vw, 32px); margin: 0 0 8px; }
+  p, li { line-height: 1.5; }
+  .bad { color: #a33; } .good { color: #1f6f5f; }
+  .table-wrap { overflow-x: auto; margin: 20px 0; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e6e2d8; border-radius: 12px; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee9de; vertical-align: top; }
+  th { background: #efebe2; }
+  tr:last-child td { border-bottom: 0; }
+  ol li { margin-bottom: 10px; }
+  pre { background: #1b1b1b; color: #f2f2f2; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 14px; }
+  .check { background:#fff; border:1px solid #e6e2d8; border-left: 4px solid #1f6f5f; border-radius: 8px; padding: 12px 14px; }
+  .muted { color: #6b6b6b; font-size: 14px; }
+  a { color: #1f6f5f; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Email in your name can be forged: the DMARC fix</h1>
+  <p>A small property management company sent rent reminders and owner
+  statements from its own domain. One month a tenant paid rent to a new bank
+  account after an email "from the office" said the details had changed. The
+  office never sent it. Nothing on the company's domain told Gmail or Outlook
+  that mail claiming to be from it, but sent from somewhere else, should be
+  refused, so the fake landed in the inbox looking exactly like the real thing.
+  Here is what was missing, what was added, and how long it takes.</p>
+
+  <div class="check"><b>Check yours in ten seconds:</b> go to
+  <a href="https://mxtoolbox.com/dmarc.aspx">mxtoolbox.com/dmarc.aspx</a> and
+  enter your domain (the part after the @ in your email address). <i>"No DMARC
+  record found"</i> means nothing stops someone sending email as you. A record
+  ending in <i>p=none</i> means receivers are told to deliver forged mail anyway;
+  it is a starting point, not protection.</div>
+
+  <div class="table-wrap">
+  <table>
+    <tr><th>Record</th><th class="bad">Before</th><th class="good">After</th></tr>
+    <tr><td>DMARC</td><td>none - receivers were given no instruction about mail that fails the checks</td><td>published with reports going to the office; tightened to <i>quarantine</i> once the reports showed every real sender passing, so forged mail goes to spam or is refused</td></tr>
+    <tr><td>SPF (who may send as you)</td><td>listed the email host but not the rent portal, so the portal's genuine reminders failed the check</td><td>one record naming every real sender: the email host, the rent portal and the website's contact form</td></tr>
+    <tr><td>DKIM (a signature on each email)</td><td>never switched on at the email host</td><td>switched on; every outgoing email now carries a signature receivers can verify</td></tr>
+    <tr><td>Result</td><td colspan="2">Before, a forged "our bank details changed" email passed as the company. After, it fails all three checks and Gmail, Outlook and Yahoo send it to spam or refuse it. The company's real email lands better too: since 2024 Gmail and Yahoo require SPF or DKIM from every sender, and all three from anyone sending in bulk.</td></tr>
+  </table>
+  </div>
+
+  <h2>What was wrong</h2>
+  <p>Email was designed before anyone thought about forgery: the "From" line is
+  whatever the sender types. Three short text records at your domain company
+  (GoDaddy, Namecheap, Cloudflare, Squarespace Domains and the like) are what
+  let a receiver tell your real email from a fake. Most small businesses never
+  add them because nothing breaks without them, until someone uses the gap.</p>
+  <pre>Before (DNS records for the domain):
+  (no _dmarc record)
+  TXT  "v=spf1 include:_spf.google.com ~all"     &lt;- the portal is missing
+
+After:
+  TXT  "v=spf1 include:_spf.google.com include:portal.example ~all"
+  google._domainkey  TXT  "v=DKIM1; k=rsa; p=MIIBIjANBg..."  (from the email host)
+  _dmarc             TXT  "v=DMARC1; p=quarantine; rua=mailto:dmarc@yourdomain.com"</pre>
+
+  <h2>How it was fixed</h2>
+  <ol>
+    <li><b>List every service that sends as you</b>: the email host (Google
+    Workspace, Microsoft 365...), any portal or invoicing system, the website's
+    contact form, a newsletter tool. Missing one is how real email ends up in spam.</li>
+    <li><b>One SPF record</b> naming all of them. A domain may have only one;
+    two records is a common mistake that breaks the check entirely.</li>
+    <li><b>Switch on DKIM</b> at the email host and at each service that offers
+    it, and paste the record each one gives you.</li>
+    <li><b>Publish DMARC with reports</b>, starting at <i>p=none</i> so nothing
+    real is blocked while the reports show which senders pass.</li>
+    <li><b>Tighten to <i>quarantine</i></b> once every real sender passes,
+    usually after one to two weeks of reports, and re-check on mxtoolbox.</li>
+  </ol>
+
+  <h2>What it costs</h2>
+  <p>I will send you the exact records for your domain, written for your
+  domain company's panel, free, and you can paste them in yourself. If you
+  would rather I add them, that is a fixed $75, paid only after mxtoolbox shows
+  the policy in place. No password shared: most domain companies let you invite
+  a helper (GoDaddy Delegate Access, Cloudflare members, Namecheap Share Access),
+  and you remove the access when we are done. Nothing on your website or in your
+  inbox has to change.</p>
+
+  <p class="muted">The company in this example is a composite built for this
+  demo, not a real business; the missing records and the fix are the ones found
+  on real small-business domains in October 2026.
+  More before/after examples, and who I am: <a href="./">all demos</a>.</p>
+</main>
+</body>
+</html>
