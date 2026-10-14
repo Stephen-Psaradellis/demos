@@ -158,7 +158,8 @@
       else if (policy === "none") recs.push("When reports show every real sender passing (1-2 weeks), change p=none to p=quarantine.");
       if (mx.length && !dkim.length) recs.push("DKIM: switch on signing at " + (p ? p.dkim : "your email host") + " and add the record it gives you.");
       html += '<div class="card"><b>The records to add at your domain company</b> (GoDaddy, Namecheap, Cloudflare, Squarespace Domains...):<pre>' + esc(recs.join("\n")) + "</pre>" +
-        '<p class="muted">Add every service that sends as you to the SPF line (invoicing, booking, newsletter, website form) before tightening DMARC, or their real email will start failing.</p></div>';
+        '<p class="muted">Add every service that sends as you to the SPF line (invoicing, booking, newsletter, website form) before tightening DMARC, or their real email will start failing.</p>' +
+        (p && p.name === "GoDaddy email" ? '<p><a href="godaddy-email-spf.html">Step by step in GoDaddy DNS</a></p>' : "") + '</div>';
       var ask = "Hi Stephen,\n\nThe free check says " + dom + ": " + head + ".\n" +
         "SPF: " + (spfCls === "ok" ? "present" : "needs work") + ". DKIM: " + (dkim.length ? "found" : "not found") +
         ". DMARC: " + (policy ? "p=" + policy : "missing") + ".\n\nPlease fix it for the fixed $75, paid after the check shows protected.\n" +
