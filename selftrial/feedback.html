@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SelfTrial feedback</title>
+<meta name="description" content="Tell us what works and what does not in the SelfTrial prototype. Anonymous; two minutes.">
+<meta name="theme-color" content="#1f6f5c">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+:root{--bg:#f6f7f5;--card:#fff;--ink:#1d2421;--mute:#5d6863;--line:#dfe3e0;--brand:#1f6f5c;--brandInk:#fff;--bad:#b4442f;--good:#2f7d4f}
+@media (prefers-color-scheme:dark){:root{--bg:#121614;--card:#1b201e;--ink:#e8ece9;--mute:#9aa6a0;--line:#2c3431;--brand:#5fb59c;--brandInk:#0d1110;--bad:#e27a63;--good:#6cc08c}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{background:var(--brand);color:var(--brandInk);padding:12px 16px}
+header h1{font-size:18px;margin:0}
+main{max-width:640px;margin:0 auto;padding:12px 16px 48px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:0 0 12px}
+h2{font-size:16px;margin:0 0 8px}
+fieldset{border:0;margin:10px 0 0;padding:0}
+legend{font-size:14px;color:var(--mute);padding:0;margin-bottom:4px}
+label{display:block;font-size:15px;margin:4px 0}
+label.block{font-size:14px;color:var(--mute);margin:10px 0 2px}
+select,textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px}
+textarea{min-height:96px}
+.btn{border:0;border-radius:8px;background:var(--brand);color:var(--brandInk);font:inherit;font-weight:600;padding:10px 14px;margin-top:12px}
+.mute{color:var(--mute);font-size:14px}
+a{color:var(--brand)}
+#msg{font-weight:600;margin-top:10px}
+#msg.ok{color:var(--good)}#msg.err{color:var(--bad)}
+</style>
+</head>
+<body>
+<header><h1>SelfTrial feedback</h1></header>
+<main>
+<section>
+  <h2>Help shape SelfTrial</h2>
+  <p>SelfTrial is a prototype diet and symptom tracker for people living with autoimmune disease. It lets you run a
+  short, randomised diet experiment on yourself. <a href="./">Try it here</a> (demo data loads on first open; your own
+  entries stay on your device).</p>
+  <p class="mute">Who is asking: Stephen Psaradellis, entering SelfTrial in the NIH NOURISH Challenge. The app, this page
+  and the questions were built with Claude, an AI system made by Anthropic. Answers are anonymous: we store only what you
+  type below and the date, never your name, email, IP address or anything from the app. Please do not include names,
+  contact details or your own medical details.</p>
+</section>
+<form id="f" novalidate>
+<section>
+  <label class="block" for="role">Which describes you best?</label>
+  <select id="role" name="role" required>
+    <option value="">Choose one</option>
+    <option value="patient">I live with an autoimmune condition</option>
+    <option value="carer">I care for someone who does</option>
+    <option value="clinician">Clinician</option>
+    <option value="dietitian">Dietitian</option>
+    <option value="other">Other</option>
+  </select>
+  <fieldset>
+    <legend>What did you try? (any)</legend>
+    <label><input type="checkbox" name="tried" value="log"> Logging a day (meals, symptoms)</label>
+    <label><input type="checkbox" name="tried" value="trial"> Planning or reading a diet trial</label>
+    <label><input type="checkbox" name="tried" value="insights"> Insights / food leads</label>
+    <label><input type="checkbox" name="tried" value="share"> Care-team summary or export</label>
+  </fieldset>
+  <label class="block" for="useful">Would something like this be useful to you or the people you see?</label>
+  <select id="useful" name="useful" required>
+    <option value="">Choose one</option>
+    <option value="5">Very useful</option>
+    <option value="4">Somewhat useful</option>
+    <option value="3">Not sure</option>
+    <option value="2">Not very useful</option>
+    <option value="1">Not useful at all</option>
+  </select>
+  <label class="block" for="confusing">What was confusing, missing or hard to do?</label>
+  <textarea id="confusing" name="confusing" maxlength="1500"></textarea>
+  <label class="block" for="change">If you could change one thing, what would it be?</label>
+  <textarea id="change" name="change" maxlength="1500"></textarea>
+  <label style="margin-top:12px"><input type="checkbox" name="quote_ok" value="1"> You may quote my comments, without
+  anything that identifies me, in the challenge entry.</label>
+  <button class="btn" type="submit">Send feedback</button>
+  <p id="msg" role="status" aria-live="polite"></p>
+</section>
+</form>
+</main>
+<script>
+const f = document.getElementById('f'), msg = document.getElementById('msg');
+f.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const d = new FormData(f);
+  const body = { role: d.get('role'), tried: d.getAll('tried'), useful: d.get('useful'),
+    confusing: d.get('confusing') || '', change: d.get('change') || '', quote_ok: d.get('quote_ok') === '1' };
+  if (!body.role || !body.useful) { msg.className = 'err'; msg.textContent = 'Please answer the two drop-down questions.'; return; }
+  msg.className = ''; msg.textContent = 'Sending...';
+  try {
+    const api = location.hostname.endsWith('github.io') ? 'https://selftrial.s-n-psaradellis.workers.dev/api/feedback' : 'api/feedback';
+    const r = await fetch(api, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+    f.reset(); msg.className = 'ok'; msg.textContent = 'Thank you - your feedback was saved.';
+  } catch (err) { msg.className = 'err'; msg.textContent = 'Could not send: ' + err.message; }
+});
+</script>
+</body>
+</html>

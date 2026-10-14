@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SelfTrial</title>
+<meta name="description" content="Diet and symptom tracking for autoimmune disease, with built-in n-of-1 diet trials. Data stays on your device.">
+<meta name="theme-color" content="#1f6f5c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#f6f7f5;--card:#fff;--ink:#1d2421;--mute:#5d6863;--line:#dfe3e0;--brand:#1f6f5c;--brandInk:#fff;--a:#8aa39b;--b:#e0a458;--bad:#b4442f;--good:#2f7d4f}
+@media (prefers-color-scheme:dark){:root{--bg:#121614;--card:#1b201e;--ink:#e8ece9;--mute:#9aa6a0;--line:#2c3431;--brand:#5fb59c;--brandInk:#0d1110;--a:#6f8a82;--b:#c98c40;--bad:#e27a63;--good:#6cc08c}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:2;background:var(--brand);color:var(--brandInk);padding:12px 16px calc(10px);display:flex;align-items:center;gap:10px}
+header h1{font-size:18px;margin:0;flex:1}
+header small{opacity:.85}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:2}
+nav button{flex:1;border:0;background:none;color:var(--mute);padding:10px 4px;font:inherit;font-size:13px}
+nav button[aria-current=page]{color:var(--brand);font-weight:600}
+main{max-width:640px;margin:0 auto;padding:12px 16px 96px}
+section.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:0 0 12px}
+h2{font-size:16px;margin:0 0 8px}
+label{display:block;font-size:14px;color:var(--mute);margin:8px 0 2px}
+input,select,textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px}
+input[type=range]{padding:0}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1}
+.btn{display:inline-block;border:0;border-radius:8px;background:var(--brand);color:var(--brandInk);font:inherit;font-weight:600;padding:10px 14px;margin-top:10px}
+.btn.ghost{background:none;color:var(--brand);border:1px solid var(--brand)}
+.mute{color:var(--mute);font-size:14px}
+.pill{display:inline-block;border-radius:99px;padding:2px 9px;font-size:13px;background:var(--line);color:var(--ink);margin:2px 4px 2px 0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.phase{border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:15px}
+.phase.A{background:color-mix(in srgb,var(--a) 22%,var(--card))}
+.phase.B{background:color-mix(in srgb,var(--b) 25%,var(--card))}
+.slider output{float:right;color:var(--ink);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{text-align:left;padding:6px 4px;border-bottom:1px solid var(--line)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.up{color:var(--bad)}.down{color:var(--good)}
+.verdict{font-size:17px;font-weight:600;margin:6px 0}
+svg{display:block;width:100%;height:auto}
+.foot{font-size:12px;color:var(--mute);text-align:center;margin-top:16px}
+.meal{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:6px 0}
+.meal button{border:0;background:none;color:var(--mute);font:inherit}
+@media print{nav,header,.noprint{display:none}main{padding:0}section.card{border:0}}
+</style>
+</head>
+<body>
+<header><h1>SelfTrial</h1><small id="who"></small></header>
+<main id="view" aria-live="polite"></main>
+<nav>
+  <button data-tab="today">Today</button>
+  <button data-tab="trial">Trial</button>
+  <button data-tab="insights">Insights</button>
+  <button data-tab="share">Share</button>
+</nav>
+<script type="module" src="app.js"></script>
+</body>
+</html>
