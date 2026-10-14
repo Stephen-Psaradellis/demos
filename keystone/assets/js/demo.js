@@ -27,7 +27,17 @@
 
   var wrap = document.createElement("div");
   wrap.className = "demo-panel";
+  // Live-preview only: where to buy the template (Gumroad). Not part of the template itself.
+  var BUY_URL = "https://neuralgirlsdaily.gumroad.com/l/keystone";
+  var css = document.createElement("style");
+  css.textContent =
+    ".demo-panel{display:flex;gap:.5rem;align-items:center}" +
+    ".demo-buy{display:inline-flex;align-items:center;padding:.7rem 1rem;border-radius:999px;font-weight:700;" +
+    "font-size:.88rem;background:#ff90e8;color:#0f1b2d;text-decoration:none;box-shadow:var(--shadow-lg)}" +
+    ".demo-buy:hover,.demo-buy:focus-visible{background:#ffb3ef;color:#0f1b2d}";
+  document.head.appendChild(css);
   wrap.innerHTML =
+    '<a class="demo-buy" href="' + BUY_URL + '" target="_blank" rel="noopener">Get Keystone &middot; $29</a>' +
     '<button type="button" aria-expanded="false" aria-controls="demo-box">' +
     '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.7 1.6-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.7 1.7-1.7h2c3.1 0 5.5-2.5 5.5-5.5C22 6 17.5 2 12 2z"/></svg>' +
     "Customize</button>" +

@@ -22,6 +22,8 @@ broken and then fixed, plus free checks and the data behind them.
   the evidence. Ten rows free for any city and business type.
 - [Prospect packs](https://stephen-psaradellis.github.io/demos/prospect-packs.html) -
   what a pack contains and how to order one.
+- [Keystone HTML template](https://stephen-psaradellis.github.io/demos/keystone/) -
+  16-page local-service business template; [buy on Gumroad](https://neuralgirlsdaily.gumroad.com/l/keystone) ($29 one site, $69 agency).
 
 Business data is derived from OpenStreetMap (ODbL); every pack carries the attribution.
 
