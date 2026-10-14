@@ -30,6 +30,7 @@
   .muted { color: var(--muted); font-size: 14px; }
   a { color: var(--good); }
   #out[hidden] { display:none; }
+  a.cta { display:inline-block; padding: 12px 20px; border-radius:10px; background:var(--good); color:#fff; text-decoration:none; font-weight:600; }
   @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -64,7 +65,8 @@
   <p>The records shown above are a correct starting point you can paste in yourself.
   If you would rather have it done, I add them at your domain company for a fixed $75,
   paid only after this page shows you protected. No password shared: most domain
-  companies let you invite a helper and remove the access afterwards.
+  companies let you invite a helper and remove the access afterwards. Write to
+  <a href="mailto:s.n.psaradellis@gmail.com?subject=Fix%20my%20email%20security">s.n.psaradellis@gmail.com</a> with your domain.
   <a href="forged-email-fix.html">A worked example</a> &middot; <a href="./">all examples and who I am</a>.</p>
 </main>
 <script>
@@ -157,6 +159,15 @@
       if (mx.length && !dkim.length) recs.push("DKIM: switch on signing at " + (p ? p.dkim : "your email host") + " and add the record it gives you.");
       html += '<div class="card"><b>The records to add at your domain company</b> (GoDaddy, Namecheap, Cloudflare, Squarespace Domains...):<pre>' + esc(recs.join("\n")) + "</pre>" +
         '<p class="muted">Add every service that sends as you to the SPF line (invoicing, booking, newsletter, website form) before tightening DMARC, or their real email will start failing.</p></div>';
+      var ask = "Hi Stephen,\n\nThe free check says " + dom + ": " + head + ".\n" +
+        "SPF: " + (spfCls === "ok" ? "present" : "needs work") + ". DKIM: " + (dkim.length ? "found" : "not found") +
+        ". DMARC: " + (policy ? "p=" + policy : "missing") + ".\n\nPlease fix it for the fixed $75, paid after the check shows protected.\n" +
+        "My domain company is: \nThe services that send email as us (invoicing, booking, newsletter, website form): \n";
+      html += '<div class="card verdict good"><h3>Rather have it done? $75, fixed</h3><p>I add the records at your domain company and ' +
+        'you pay only after this page shows ' + esc(dom) + ' protected. No password: you invite a helper and remove the access afterwards.</p>' +
+        '<p><a class="cta" href="mailto:s.n.psaradellis@gmail.com?subject=' + encodeURIComponent("Fix email security for " + dom) +
+        "&body=" + encodeURIComponent(ask) + '">Email me to fix ' + esc(dom) + '</a></p>' +
+        '<p class="muted">Opens your email app with the result filled in. Or write to s.n.psaradellis@gmail.com.</p></div>';
     }
     out.innerHTML = html;
     out.hidden = false;
