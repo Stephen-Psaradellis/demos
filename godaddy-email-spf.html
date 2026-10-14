@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GoDaddy email with no SPF record: the 10-minute fix</title>
+<meta name="description" content="83% of small-business domains on GoDaddy email publish no SPF record, so anyone can send mail as them. How to check yours and the exact TXT records to add in GoDaddy DNS.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/godaddy-email-spf.html">
+<style>
+ body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:#1b1b1b; background:#f6f4ef; }
+ main { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+ h1 { font-size: clamp(22px, 4vw, 32px); margin: 0 0 8px; }
+ h2 { margin-top: 32px; }
+ p, li { line-height: 1.5; }
+ .bad { color: #a33; } .good { color: #1f6f5f; }
+ .table-wrap { overflow-x: auto; margin: 20px 0; }
+ table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e6e2d8; border-radius: 12px; font-size: 15px; }
+ th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee9de; vertical-align: top; }
+ th { background: #efebe2; }
+ td.n { text-align: right; font-variant-numeric: tabular-nums; }
+ tr:last-child td { border-bottom: 0; }
+ ol li { margin-bottom: 10px; }
+ pre { background: #1b1b1b; color: #f2f2f2; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 14px; }
+ code { background: #efebe2; padding: 1px 4px; border-radius: 4px; }
+ pre code { background: none; padding: 0; }
+ .card { background:#fff; border:1px solid #e6e2d8; border-left: 4px solid #1f6f5f; border-radius: 8px; padding: 12px 14px; margin: 16px 0; }
+ .card.warn { border-left-color: #a33; }
+ form { display: flex; gap: 8px; flex-wrap: wrap; }
+ input { flex: 1 1 220px; font: inherit; padding: 10px; border: 1px solid #cfc9bb; border-radius: 8px; min-width: 0; }
+ button, .cta { font: inherit; background: #1f6f5f; color: #fff; border: 0; border-radius: 8px; padding: 10px 16px; cursor: pointer; text-decoration: none; display: inline-block; }
+ .muted { color: #6b6b6b; font-size: 14px; }
+ a { color: #1f6f5f; }
+ a.cta { color: #fff; }
+</style>
+</head>
+<body>
+<main>
+<h1>GoDaddy email with no SPF record: the 10-minute fix</h1>
+<p>In October 2026 I looked up the public email records of 19,113 small-business
+domains that receive mail. 1,017 of them use GoDaddy's own email (their mail
+servers are at <code>secureserver.net</code>). <b class="bad">83.2% of those publish no SPF
+record</b>, the one line of DNS that tells Gmail and Outlook which servers may send
+email for the domain. Without it, anyone can send mail that claims to come from
+the business, and the business's own email is more likely to land in spam.</p>
+
+<div class="table-wrap"><table>
+<tr><th>Email host</th><th>Domains</th><th>No SPF</th><th>No DMARC</th><th>Neither</th></tr>
+<tr><td><b>GoDaddy email</b></td><td class="n">1,017</td><td class="n bad"><b>83.2%</b></td><td class="n bad">85.4%</td><td class="n bad">80.5%</td></tr>
+<tr><td>Google Workspace</td><td class="n">6,570</td><td class="n">36.2%</td><td class="n">58.7%</td><td class="n">28.6%</td></tr>
+<tr><td>Microsoft 365</td><td class="n">4,238</td><td class="n good">1.9%</td><td class="n">47.1%</td><td class="n">1.3%</td></tr>
+<tr><td>Other hosts</td><td class="n">7,288</td><td class="n">17.3%</td><td class="n">57.9%</td><td class="n">15.8%</td></tr>
+</table></div>
+<p>Microsoft 365 asks for the SPF record as a step of connecting a domain, which is
+likely why almost every Microsoft domain has one. GoDaddy email works without it,
+so most domains on it can go years unprotected without anyone noticing. On 14 October 2026 I re-checked 60 of the GoDaddy domains with no SPF
+record: 59 still had none, and 1 had pasted its server name in front of the record
+(<code>a2plcpnl0712.prod.iad2.secureserver.net: v=spf1 ...</code>), which makes it invalid.</p>
+
+<h2>Check yours</h2>
+<div class="card">
+<form id="f" action="email-forgery-check.html" method="get">
+  <input name="d" id="d" placeholder="yourbusiness.com" autocomplete="off" aria-label="Your domain">
+  <button type="submit">Check my domain</button>
+</form>
+<p class="muted">Runs in your browser over public DNS; nothing is stored or sent to me.
+It shows SPF, DKIM and DMARC for the domain and the exact records it is missing.</p>
+</div>
+
+<h2>The fix in GoDaddy DNS</h2>
+<p>This is for domains whose email is GoDaddy email (Workspace Email or the older
+cPanel mail). If you moved your email to Microsoft 365 or Google, use the check
+above instead; it gives the right value for your host.</p>
+<ol>
+<li>Sign in at godaddy.com, open <b>My Products</b>, and next to your domain choose
+<b>DNS</b> (or <b>Manage DNS</b>).</li>
+<li>Look through the TXT records for one whose value starts with <code>v=spf1</code>.
+If there is one, <b>edit it</b> rather than adding a second: a domain may have only
+one SPF record, and two count as a failure.</li>
+<li>Otherwise choose <b>Add New Record</b> and enter:
+<pre><code>Type   TXT
+Name   @
+Value  v=spf1 include:secureserver.net ~all
+TTL    1 Hour</code></pre></li>
+<li>Add DMARC, which tells receivers what to do with mail that fails, and sends you
+a daily report of who is sending as you:
+<pre><code>Type   TXT
+Name   _dmarc
+Value  v=DMARC1; p=none; rua=mailto:you@yourbusiness.com
+TTL    1 Hour</code></pre>
+Put an address you actually read in place of <code>you@yourbusiness.com</code>.</li>
+<li>Wait an hour and run the check again. When the reports show every real sender
+passing (one to two weeks), change <code>p=none</code> to <code>p=quarantine</code>; that is the
+step that sends forged mail to spam.</li>
+</ol>
+
+<div class="card warn">
+<p><b>Before you save, list everything that sends email as you.</b> The website's
+contact form, an invoicing or booking system, a newsletter tool, a payment app.
+Each one needs its own <code>include:</code> in the same single SPF line, for example
+<code>v=spf1 include:secureserver.net include:&lt;the service's value&gt; ~all</code>. Leave one out and its genuine messages start failing once
+DMARC is tightened. The service's help pages name the include to use.</p>
+</div>
+
+<h2>Why it matters now</h2>
+<ul>
+<li>Since February 2024 Gmail and Yahoo require SPF or DKIM on mail sent to their
+users. Without SPF, your own quotes and invoices are more likely to land in spam.</li>
+<li>Invoice fraud starts with an email that looks like it came from you. With no SPF
+and no DMARC, nothing tells the receiver it did not.</li>
+<li>It costs nothing: these are free DNS records at the domain company you already pay.</li>
+</ul>
+
+<h2>Rather have it done?</h2>
+<div class="card">
+<p><b>$75, fixed.</b> I add the records at GoDaddy, check every service that sends as
+you so none of your real email breaks, and you pay only after the check above shows
+your domain protected. No password shared: GoDaddy lets you invite a helper with
+<b>Delegate Access</b> and remove it afterwards.</p>
+<p><a class="cta" href="mailto:s.n.psaradellis@gmail.com?subject=Fix%20GoDaddy%20email%20SPF&body=Hi%20Stephen%2C%0A%0AMy%20domain%3A%20%0AThe%20services%20that%20send%20email%20as%20us%20(invoicing%2C%20booking%2C%20newsletter%2C%20website%20form)%3A%20%0A%0APlease%20add%20SPF%20and%20DMARC%20for%20the%20fixed%20%2475%2C%20paid%20after%20the%20check%20shows%20protected.%0A">Email me to fix it</a></p>
+<p class="muted">Opens your email app. Or write to s.n.psaradellis@gmail.com.</p>
+</div>
+
+<h2>How these numbers were made</h2>
+<p class="muted">25,223 business domains taken from OpenStreetMap listings across US
+metro areas (shops, restaurants, trades, offices), looked up once each in October 2026:
+MX, the TXT record starting <code>v=spf1</code> at the domain, and DMARC at
+<code>_dmarc</code>. 19,113 receive mail; the host is read from the MX names
+(<code>secureserver.net</code> = GoDaddy email). A record with anything in front of
+<code>v=spf1</code> is counted as no SPF, because receivers ignore it. Full method and
+the other findings: <a href="small-business-email-forgery-2026.html">Most small businesses can be impersonated by email</a>.
+Business listings &copy; OpenStreetMap contributors (ODbL).</p>
+<p class="muted">Who: Stephen Psaradellis, Arlington Heights, Illinois. An AI system I run
+did the lookups and wrote this page; I am responsible for the work and the result.
+<a href="./">All examples</a> &middot; <a href="forged-email-fix.html">a worked DMARC example</a>.</p>
+</main>
+<script>
+document.getElementById("f").addEventListener("submit", function (e) {
+  var d = document.getElementById("d");
+  var v = d.value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^[^@]*@/, "").replace(/^www\./, "").split(/[\/?#]/)[0];
+  if (!v) { e.preventDefault(); d.focus(); return; }
+  d.value = v;
+});
+</script>
+</body>
+</html>
