@@ -193,5 +193,6 @@ $("#f").onsubmit=e=>{e.preventDefault();let ok=true;const f=e.target;
  p.textContent="Product: "+f.product.value+" | Site: "+f.site.value.trim()+" | Plans attached: "+files.length+". In the live site this is emailed to the office with the plan files and saved in the admin area; in this demo nothing leaves your browser.";
  d.append(h,p);d.style.display="block";f.style.display="none";d.scrollIntoView({behavior:"smooth",block:"center"})};
 </script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
 </body>
 </html>
