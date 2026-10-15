@@ -49,7 +49,7 @@
     "</div><p>Appearance</p><div class=\"demo-modes\">" +
     '<button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button><button type="button" data-mode="auto">Auto</button>' +
     "</div><p>Niche home pages</p><div class=\"demo-links\">" +
-    '<a href="index.html">Plumbing &amp; HVAC</a><a href="home-dental.html">Dental clinic</a><a href="home-cleaning.html">Cleaning company</a>' +
+    '<a href="index.html">Plumbing &amp; HVAC</a><a href="home-dental.html">Dental clinic</a><a href="home-cleaning.html">Cleaning company</a><a href="home-legal.html">Law firm</a>' +
     "</div></div>";
   document.body.appendChild(wrap);
 
