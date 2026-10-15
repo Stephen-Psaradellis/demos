@@ -28,7 +28,7 @@
   var wrap = document.createElement("div");
   wrap.className = "demo-panel";
   // Live-preview only: where to buy the template (Gumroad). Not part of the template itself.
-  var BUY_URL = "https://neuralgirlsdaily.gumroad.com/l/keystone";
+  var BUY_URL = "https://localwebkit.gumroad.com/l/keystone";
   var css = document.createElement("style");
   css.textContent =
     ".demo-panel{display:flex;gap:.5rem;align-items:center}" +
