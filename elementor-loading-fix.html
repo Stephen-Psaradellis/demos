@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elementor stuck on the loading screen: how to get the editor open again</title>
+<meta name="description" content="Elementor spins forever, shows a grey screen or says 'The preview could not be loaded'? Find the cause with Safe Mode and the browser's Network tab: memory limit, a plugin conflict, a speed setting, a blocked request or a wrong site address.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/elementor-loading-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.ed { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; display:grid; grid-template-columns: 34% 1fr; min-height:210px; }
+.ed .side { background:#26292c; color:#ccc; padding:10px; }
+.ed .side i { display:block; height:22px; border-radius:4px; background:#3a3e42; margin-bottom:8px; }
+.ed .canvas { background:#f1f3f5; display:flex; align-items:center; justify-content:center; padding:12px; min-width:0; }
+.spin { width:34px; height:34px; border-radius:50%; border:4px solid #d0d4d9; border-top-color:#92003b; animation: r 0.9s linear infinite; }
+@keyframes r { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation:none; } }
+.page { background:#fff; width:100%; border-radius:6px; padding:12px; }
+.page b { display:block; font-size:15px; margin-bottom:6px; }
+.page .btn { display:inline-block; margin-top:8px; background:#92003b; color:#fff; padding:6px 12px; border-radius:4px; font-weight:600; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Elementor is stuck on the loading screen</h1>
+<p class="lede">You click "Edit with Elementor" and get the spinning logo forever, a grey panel on the left with nothing on the right, or the message "The preview could not be loaded". The public site still works; only the editor won't open. Elementor loads the whole editor in your browser through a few background requests to your own site, so when one of them is cut short (not enough memory, another plugin, a speed setting, the host's firewall) the editor just waits. Two checks tell you which one it is. Below is a rebuilt example (not a real client), the two checks, and the fix for each cause.</p>
+
+<div class="switch" role="group" aria-label="Show the editor before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Edit with Elementor</h2>
+    <div class="ed" id="ed"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Check 1: Safe Mode</h2>
+<p>In the dashboard go to <b>Elementor &gt; Tools</b>, set <b>Safe Mode</b> to Enable and save, then open the page in Elementor again. Safe Mode loads the editor with only Elementor and a plain theme, without touching what visitors see.</p>
+<ul>
+  <li><b>The editor opens in Safe Mode:</b> another plugin or your theme is the cause. Jump to "A plugin or the theme" below.</li>
+  <li><b>It still hangs:</b> the cause is the server or a setting: memory, PHP, the firewall or the site address. Check 2 tells you which.</li>
+</ul>
+<p>Turn Safe Mode off again when you are done.</p>
+
+<h2>Check 2: the Network tab</h2>
+<p>On a computer, open the stuck editor, press <b>F12</b> (or right-click and choose Inspect), open the <b>Network</b> tab and reload. Type <code>admin-ajax</code> in the filter box and look at the Status column of the rows that appear. Then do the same with the <b>Console</b> tab and read the first red line.</p>
+
+<h2>What each answer means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td><code>admin-ajax.php</code> status 500, or "Allowed memory size exhausted" in the error log</td><td>The editor ran out of PHP memory</td><td>Elementor needs at least 256 MB (<b>Elementor &gt; System Info</b> shows your current limit). Add <code>define('WP_MEMORY_LIMIT', '256M');</code> to <code>wp-config.php</code> above the line that says "That's all, stop editing". If System Info still shows less, the host's own cap is lower: ask them to raise it, it is a setting on their side. More in <a href="memory-exhausted-fix.html">"Allowed memory size exhausted"</a></td></tr>
+  <tr><td>Status 403 on <code>admin-ajax.php</code>, or a page from your host or Cloudflare saying the request was blocked</td><td>A firewall rule (often ModSecurity, Wordfence or Cloudflare's WAF) took the editor's save-and-load request for an attack</td><td>Ask the host to check the firewall log for your IP at that minute and allow that rule for <code>/wp-admin/admin-ajax.php</code>; in Wordfence, use "Allowlist" on the blocked request under Firewall. Do not switch the whole firewall off</td></tr>
+  <tr><td>Editor opens in Safe Mode, hangs without it</td><td>A plugin or the theme loads a script that breaks the editor</td><td>Deactivate plugins in halves (keep Elementor and Elementor Pro on) until the editor opens; the last half you switched off holds the culprit. Speed and optimisation plugins are the usual suspects, then add-on packs for Elementor that are older than your Elementor version. Update or replace the one you find. Step by step: <a href="plugin-conflict-fix.html">a plugin update broke something</a></td></tr>
+  <tr><td>Console shows errors in files with names like <code>rocket-loader</code>, <code>autoptimize</code> or <code>wp-rocket</code></td><td>A speed setting combines or delays scripts, including the editor's own</td><td>Turn off Cloudflare's Rocket Loader (Speed &gt; Optimization), and exclude the editor from JavaScript delay and combine in your speed plugin; most have an option to skip logged-in users or the <code>elementor</code> scripts</td></tr>
+  <tr><td>"The preview could not be loaded", and the Network tab shows the preview page as 404 or redirected</td><td>The address WordPress uses for itself does not match the one you are on (http vs https, www vs not), or the permalink rules are stale</td><td>Under <b>Settings &gt; General</b>, make both addresses identical to the one in your browser bar, including https and www. Then open <b>Settings &gt; Permalinks</b> and press Save without changing anything; that rewrites the rules. See also <a href="too-many-redirects-fix.html">too many redirects</a></td></tr>
+  <tr><td>Nothing red anywhere, but it only fails in your usual browser</td><td>A browser extension (ad blockers and script blockers most often) stops the editor's files</td><td>Open the editor in a private window. If it works there, turn your extensions off one by one</td></tr>
+  <tr><td>Editor opens but the page looks unstyled or old</td><td>Elementor's generated style files are stale</td><td><b>Elementor &gt; Tools &gt; Regenerate Files &amp; Data</b>, then clear any cache plugin and your host's cache. More in <a href="changes-not-showing-fix.html">changes not showing on the live site</a></td></tr>
+</table>
+</div>
+
+<h2>Check it worked</h2>
+<p>Open two or three different pages in Elementor, change a word, press Update and reload the public page to see it. Then check <b>Elementor &gt; System Info</b> once more: the memory line and the PHP version (8.1 or newer is the safe range today) should no longer be flagged. If you changed a firewall or speed setting, open the public site on your phone too, to be sure visitors still get the fast version.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not reinstall Elementor or roll it back to an old version as the first move. Your pages are stored in the database, not in the plugin, so a reinstall rarely changes anything, and an old version brings back fixed security holes.</li>
+  <li>Do not delete plugins to test them; deactivating is enough and keeps their settings.</li>
+  <li>Do not switch the security firewall off for the whole site. Allow the one rule for the one request.</li>
+  <li>Do not test on the live site during business hours if you can avoid it. Many hosts give you a one-click staging copy to try things on first.</li>
+</ul>
+<p class="note">Most of these take ten minutes once you know which one it is. If you would rather someone else finds and fixes it, that is what the box below is for. Related: <a href="plugin-conflict-fix.html">a plugin update broke something</a>, <a href="memory-exhausted-fix.html">"Allowed memory size exhausted"</a> and <a href="changes-not-showing-fix.html">changes not showing on the live site</a>.</p>
+</div>
+
+<script>
+(function () {
+  var ed = document.getElementById("ed"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var side = '<div class="side"><i></i><i></i><i></i><i></i></div>';
+  var broken = side + '<div class="canvas"><div class="spin" role="img" aria-label="Loading, never finishes"></div></div>';
+  var fixed = side + '<div class="canvas"><div class="page"><b>Spring opening hours</b>Mon-Fri 8am-6pm, Sat 9am-1pm.<br><span class="btn">Book a visit</span></div></div>';
+  var logBefore = 'Site: dental practice, WordPress\n  + Elementor Pro, 23 plugins\n\n' +
+    'Safe Mode: editor opens\nNormal: spinner, 4+ minutes\n\nConsole:\n  Uncaught TypeError in\n  optimize-js (delayed script)\n\n' +
+    '<span class="bad">New hours could not be put on\nthe site before the holiday.</span>';
+  var logAfter = 'Steps taken:\n1. Plugins off in halves: the\n   speed plugin was the cause.\n' +
+    '2. Its "delay JavaScript" option\n   now skips logged-in users.\n' +
+    '3. Memory raised to 256M while\n   in wp-config.php (was 128M).\n4. Files regenerated, caches\n   cleared.\n\n' +
+    '<span class="good">Editor opens in 3 seconds; the\npublic site is still fast.</span>';
+  function show(isFixed) {
+    ed.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is Elementor stuck on the loading screen?","acceptedAnswer":{"@type":"Answer","text":"The editor loads through background requests to your own site, and one of them is being cut short: usually too little PHP memory, another plugin or the theme, a speed setting that delays scripts, a firewall rule, or a site address that does not match. Elementor's Safe Mode and the browser's Network tab tell you which."}},
+{"@type":"Question","name":"What does Elementor Safe Mode do?","acceptedAnswer":{"@type":"Answer","text":"Turned on under Elementor > Tools, it loads the editor with only Elementor and a plain theme, without changing what visitors see. If the editor opens in Safe Mode, another plugin or your theme is the cause; if it still hangs, look at the server: memory, PHP, the firewall or the site address."}},
+{"@type":"Question","name":"How much memory does Elementor need?","acceptedAnswer":{"@type":"Answer","text":"At least 256 MB. Elementor > System Info shows the current limit. Add define('WP_MEMORY_LIMIT', '256M'); to wp-config.php; if the limit still shows lower, the host caps it and has to raise it for you."}},
+{"@type":"Question","name":"How do I fix 'The preview could not be loaded' in Elementor?","acceptedAnswer":{"@type":"Answer","text":"Make the WordPress Address and Site Address under Settings > General match the address in your browser exactly, including https and www, then open Settings > Permalinks and press Save to rewrite the rules. If the preview request returns 403, a firewall rule is blocking it."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
