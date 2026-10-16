@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress white screen (a blank page): what it means and how it gets fixed</title>
+<meta name="description" content="Why a WordPress site shows a blank white page: a PHP error with error display switched off. How to find the cause in the error log and fix it safely.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/white-screen-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:22px 16px; min-height:190px; background:#fff; }
+.blank { min-height:146px; }
+.ok h3 { margin:0 0 6px; font-size:18px; }
+.ok p { margin:0 0 12px; color:var(--muted); }
+.ok .btn { display:inline-block; background:var(--brand); color:#fff; padding:8px 14px; border-radius:8px; font-weight:600; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Your WordPress site shows a blank white page</h1>
+<p class="lede">A completely white page, with no message at all, almost always means PHP stopped with an error and the server is set not to show errors to visitors (which is the right setting). WordPress normally catches this and shows "There has been a critical error on this website"; you get plain white when the error happens before WordPress can step in, when that safety net is switched off, or when a cache stored the blank page. Your posts, pages and orders are still in the database. Below is a rebuilt example (not a real client), then the safe order of steps.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What visitors see</h2>
+    <div class="site">
+      <div class="bar">yourbusiness.com</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: where is it white, and since when?</h2>
+<ul>
+  <li><b>Check in a private window and on your phone's mobile data.</b> If only your own browser shows white, it is a stored copy: clear that site's cache and purge any caching plugin or CDN.</li>
+  <li><b>Whole site, only <code>/wp-admin</code>, or one page?</b> Everything white points at a plugin, the theme or PHP itself. Only the dashboard usually means one plugin. A single page usually means a page-builder block or a shortcode on that page.</li>
+  <li><b>Look in the site admin's inbox</b> for "Your Site is Experiencing a Technical Issue". WordPress sends it when it catches a crash, names the plugin or theme, and includes a recovery-mode login link that lets you in with that plugin paused.</li>
+  <li><b>Note what changed last</b>: a plugin or theme update, a new plugin, an edit to <code>functions.php</code>, or the host moving the site to a newer PHP version. The cause is almost always the last change.</li>
+</ul>
+
+<h2>The safe order of steps</h2>
+<ol>
+  <li><b>Back up the files and the database</b> (host's backup tool, or the file manager plus phpMyAdmin export) before changing anything.</li>
+  <li><b>Read the error instead of guessing.</b> Your host's control panel usually has a PHP "Errors" or "Logs" page. If it shows nothing, open <code>wp-config.php</code> and, above the line that says "That's all, stop editing", add <code>define('WP_DEBUG', true);</code>, <code>define('WP_DEBUG_LOG', true);</code> and <code>define('WP_DEBUG_DISPLAY', false);</code>. Load the white page once, then open <code>wp-content/debug.log</code>. The last "PHP Fatal error" line names the file, and the folder in its path names the plugin or theme.</li>
+  <li><b>If it names a plugin</b>, rename that plugin's folder in <code>wp-content/plugins</code> (add <code>-off</code>). WordPress switches it off and keeps its settings. If you cannot tell which one, rename the whole <code>plugins</code> folder, log in, rename it back, then switch plugins on one at a time until the white page returns.</li>
+  <li><b>If it names the theme</b> (often its <code>functions.php</code> after an edit), undo the edit from your backup, or rename the active theme's folder in <code>wp-content/themes</code> so WordPress falls back to a default theme such as Twenty Twenty-Five. That only works if a default theme is still installed.</li>
+  <li><b>If it says "Allowed memory size ... exhausted"</b>, the site ran out of PHP memory. Add <code>define('WP_MEMORY_LIMIT', '256M');</code> to <code>wp-config.php</code>, and if that does not hold, ask the host to raise the PHP memory limit. Then find what is using it, usually one heavy plugin.</li>
+  <li><b>If the white page started when the host changed PHP version</b>, an old plugin or theme is not written for the new version. Update it, or replace it; switching PHP back in the host's PHP selector is a stopgap for a day, not a fix.</li>
+  <li><b>Switch debugging off again</b>: set <code>WP_DEBUG</code> back to <code>false</code> and delete <code>wp-content/debug.log</code>. That file sits at a public address and can show your folder layout to anyone who asks for it.</li>
+  <li><b>Test</b> the home page, an inner page, the contact or order form and the dashboard login in a private window, then purge every cache so no visitor is served the stored blank page.</li>
+</ol>
+
+<h2>Common causes and what each one needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you find</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Log names a file in <code>wp-content/plugins/...</code></td><td>That plugin crashed, often right after an update</td><td>Rename its folder, then update, replace or roll it back</td></tr>
+  <tr><td>Log names the theme's <code>functions.php</code></td><td>An edit or a snippet broke the theme</td><td>Undo the edit from a backup; use a child theme or a snippets plugin next time</td></tr>
+  <tr><td>"Allowed memory size of ... bytes exhausted"</td><td>PHP ran out of memory</td><td>Raise <code>WP_MEMORY_LIMIT</code> or the host's limit; find the heavy plugin</td></tr>
+  <tr><td>Started when the host moved to a newer PHP</td><td>Old code that the new PHP refuses to run</td><td>Update or replace the plugin or theme the log names</td></tr>
+  <tr><td>Only the dashboard is white</td><td>A plugin that runs only in the admin area</td><td>Rename plugin folders one at a time until it returns</td></tr>
+  <tr><td>Only you see white; a private window shows the site</td><td>A cache kept the blank page</td><td>Clear the browser cache, purge the caching plugin and CDN</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not leave <code>WP_DEBUG_DISPLAY</code> on for visitors. Error text on the page can show file paths and plugin versions to people looking for a way in.</li>
+  <li>Do not delete a plugin to fix a white screen. Renaming its folder switches it off and keeps its settings and data; deleting can take those with it.</li>
+  <li>Do not restore an old full backup just to clear a white page. Orders, bookings and form entries since that backup would be lost, and the fix is usually one folder rename.</li>
+  <li>Do not paste code into <code>functions.php</code> from the dashboard's theme editor on a live site. One missing bracket is enough to make the whole site white, and the editor cannot be reached to undo it.</li>
+</ul>
+<p class="note">If you can reach the host's file manager and the error log, the steps above are usually enough. If the site earns you money every hour it is blank, that is what the box below is for. Related: <a href="critical-error-fix.html">"There has been a critical error on this website"</a> is the same kind of crash with WordPress's message on it.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="blank" aria-label="An empty white page"></div>';
+  var fixed = '<div class="ok"><h3>Maple Ridge Dental</h3><p>Family dentistry, new patients welcome. Evening hours on Thursdays.</p>' +
+    '<span class="btn">Book a visit</span></div>';
+  var logBroken = 'Plugins updated automatically at 03:10;\nthe site has been blank since.\n\n' +
+    'curl -sI https://mapleridgedental.example\n' +
+    'HTTP/1.1 500 Internal Server Error\nContent-Length: 0\n\n' +
+    'wp-content/debug.log (last line):\n' +
+    'PHP Fatal error: Uncaught Error: Call to\nundefined function in\n' +
+    'wp-content/plugins/booking-widget/booking.php\n\n' +
+    '<span class="bad">The booking plugin\'s update needs a newer\nversion of another plugin, so PHP stops\nbefore the page is drawn and visitors get\nnothing at all.</span>';
+  var logFixed = 'Steps taken:\n1. Backup of the files and the database.\n' +
+    '2. Debug log switched on, error read (above).\n' +
+    '3. Renamed plugins/booking-widget to\n   booking-widget-off: site back.\n' +
+    '4. Updated the plugin it depends on, then\n   renamed booking-widget back: still working.\n' +
+    '5. Debug log switched off, debug.log deleted,\n   all caches purged.\n' +
+    '6. Home page, an inner page, the booking form and\n   the dashboard login checked in a private window.\n\n' +
+    'curl -sI https://mapleridgedental.example\n' +
+    'HTTP/1.1 200 OK\n\n' +
+    '<span class="good">Site back, bookings working, no backup\nrestored and no settings lost.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is my WordPress site showing a blank white page?","acceptedAnswer":{"@type":"Answer","text":"PHP stopped with an error and the server is set not to show errors to visitors. It is usually a plugin or theme that broke after an update or an edit, PHP running out of memory, or a host moving the site to a newer PHP version. Your content is still in the database."}},
+{"@type":"Question","name":"How do I find what is causing the WordPress white screen?","acceptedAnswer":{"@type":"Answer","text":"Read the PHP error log in your host's control panel, or turn on WP_DEBUG and WP_DEBUG_LOG in wp-config.php with WP_DEBUG_DISPLAY off, load the page once and read wp-content/debug.log. The last fatal error names the file, and its folder names the plugin or theme."}},
+{"@type":"Question","name":"How do I fix a white screen if I cannot log in to WordPress?","acceptedAnswer":{"@type":"Answer","text":"Use the host's file manager or SFTP. Rename the plugin's folder in wp-content/plugins to switch it off (or the whole plugins folder if you do not know which one), or rename the active theme's folder so WordPress falls back to a default theme. Renaming keeps settings; deleting does not."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement("aside");d.id="hire-footer";d.className="hire-v3";d.style.cssText="max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box";var s=encodeURIComponent("Fix for my site: "+document.title);d.innerHTML="<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action=\"site-check.html\" method=\"get\" style=\"display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px\"><input name=\"url\" type=\"text\" inputmode=\"url\" placeholder=\"yourbusiness.com\" aria-label=\"Your website address\" required style=\"flex:1 1 180px;min-width:0;padding:8px;font:inherit\"><button style=\"padding:8px 14px;font:inherit\">Check my site free</button></form>Want it done for you? From $49 a fix, quoted before I start: <a href=\"https://www.fiverr.com/s_psaradellis\">order on Fiverr</a> or <a href=\"mailto:s.n.psaradellis@gmail.com?subject="+s+"\">email s.n.psaradellis@gmail.com</a>. <br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered.</small>";document.body.appendChild(d);}catch(e){}})();</script>
+</body>
+</html>
