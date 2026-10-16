@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress sidebar showing below the content (or under the post): the causes and the fix</title>
+<meta name="description" content="Sidebar dropped to the bottom of the page on desktop? Usually a stray div tag or something too wide in one post. How to find which, and fix it in minutes.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/sidebar-below-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#f1f3f4; color:#202124; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; border-bottom:1px solid var(--line); }
+.site .body { padding:12px; min-height:190px; background:#fff; font-size:12.5px; }
+.mock-head { background:#3b2f2a; color:#fff; font-weight:700; padding:8px 10px; border-radius:4px; margin-bottom:8px; }
+.cols { display:flex; flex-wrap:wrap; gap:8px; }
+.mock-main { flex:1 1 62%; min-width:0; border:1px dashed #c9c9c9; border-radius:4px; padding:8px; }
+.mock-side { flex:0 0 30%; border:1px dashed #c9c9c9; border-radius:4px; padding:8px; background:#faf7f2; }
+.mock-side.dropped { flex:1 1 100%; outline:2px solid var(--bad); }
+.mock-line { height:7px; background:#e3e3e3; border-radius:4px; margin:6px 0; }
+.mock-line.short { width:60%; }
+.mock-table { height:26px; background:#dfe8ef; border-radius:3px; margin:6px 0; }
+.mock-table.wide { width:118%; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress sidebar showing below the content</h1>
+<p class="lede">On a computer the sidebar should sit beside the post, and suddenly it is at the very bottom of the page, under the comments or the footer of the article. Nothing in the theme was changed. In most cases one piece of content broke the layout: a stray <code>&lt;/div&gt;</code> tag pasted in with a menu, a table or an ad, or something wider than the column such as a big table, image or video. The first question finds it fast: does it happen on every page, or only some? Below is a rebuilt example (not a real client), how to find the cause, and the fix for each.</p>
+
+<div class="switch" role="group" aria-label="Show the page">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>The post on a desktop</h2>
+    <div class="site">
+      <div class="bar" id="site-bar"></div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: is it one page or every page?</h2>
+<ol>
+  <li><b>Check on a computer, not a phone.</b> On a phone almost every theme puts the sidebar under the content on purpose, because there is no room beside it. That is not a fault. The problem is when it happens on a wide screen.</li>
+  <li><b>Open three or four pages:</b> the home page, one post, one normal page, and the blog or category page.</li>
+  <li><b>Only some pages are broken?</b> Then the cause is inside the content of those pages (the first two rows of the table below). On the blog or home page, the broken one is usually the newest post, because its excerpt is shown there.</li>
+  <li><b>Every page is broken?</b> Then the cause is in something every page shares: the theme, a plugin, custom CSS, or code added to the header or footer (the last rows of the table).</li>
+</ol>
+
+<h2>The causes and their fixes</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>Cause</th><th>How to spot it</th><th>What to do</th></tr>
+  <tr><td>A stray or missing <code>&lt;/div&gt;</code> in a post</td><td>Only that post (and the blog page while it is listed) is broken. Paste the page address into the free W3C checker at <code>validator.w3.org/nu</code>: it reports "Stray end tag div" or "Unclosed element div" with the line</td><td>Open the post, switch to the code view (block editor: the three dots, then Code editor; classic editor: the Text tab) and remove the extra <code>&lt;/div&gt;</code> or add the missing one. It usually came in with something pasted from another site, a menu or price table, or an old page builder</td></tr>
+  <tr><td>Something wider than the column</td><td>A wide table, an image with a fixed width, a video or map embed with <code>width="800"</code>, or a very long link with no spaces. The page often also scrolls sideways a little</td><td>Set the embed's width to <code>100%</code>; resize the image in the editor instead of typing a width; turn on the table block's "Fixed width table cells" or split a huge table. A one-line rule in Appearance &gt; Customize &gt; Additional CSS covers most cases: <code>.entry-content img, .entry-content iframe { max-width:100%; height:auto; }</code></td></tr>
+  <tr><td>Code added to the header or footer</td><td>Every page broke at the same time someone added a tracking, chat or ad snippet ("Insert Headers and Footers", WPCode, the theme's "header scripts" box)</td><td>Remove the newest snippet and reload. Snippets should be only <code>&lt;script&gt;</code> lines; an extra <code>&lt;div&gt;</code> in one breaks every page</td></tr>
+  <tr><td>Custom CSS changed widths</td><td>Every page broke after an edit to Additional CSS or a child theme, often a <code>width</code> or <code>padding</code> on the content or sidebar</td><td>Copy the Additional CSS somewhere safe, delete the newest rules and reload. Widths that add up to more than 100% once padding is added are the usual culprit</td></tr>
+  <tr><td>A speed plugin combining CSS</td><td>Every page broke right after turning on "Combine CSS", "Optimize CSS delivery" or "Remove unused CSS" (WP Rocket, Autoptimize, LiteSpeed Cache, SiteGround Optimizer)</td><td>Turn that one setting off and clear the cache; if the layout comes back, exclude the theme's main stylesheet from it. More in <a href="changes-not-showing-fix.html">the changes-not-showing guide</a></td></tr>
+  <tr><td>A theme or plugin update</td><td>Every page broke right after updates, with no edit by you</td><td>Check the theme's changelog or support forum for a layout bug; roll that one update back on a staging copy, or ask the developer. Do not edit the theme's own files: an update would wipe the fix</td></tr>
+</table>
+</div>
+
+<h2>Finding the wide thing in a long post</h2>
+<p>If the W3C checker reports no stray tags, something is too wide. In Chrome, open the broken post, right-click, choose Inspect, then the Console tab, paste this line and press Enter. It lists every element wider than the post's column, and hovering one in the list highlights it on the page:</p>
+<pre>var c=document.querySelector('.entry-content, article, main');[...c.querySelectorAll('*')].filter(e=&gt;e.getBoundingClientRect().width&gt;c.clientWidth+1).forEach(e=&gt;console.log(e))</pre>
+
+<h2>The sidebar is missing, not below?</h2>
+<ul>
+  <li>The page may use a full-width template. In the editor, look under Page (or Post) &gt; Template, or the theme's own "Layout" or "Sidebar" box under the content, and pick the layout with a sidebar.</li>
+  <li>Many themes set the layout for blog, category and single post pages separately under Appearance &gt; Customize, often in a "Layout" or "Sidebar" section.</li>
+  <li>A block theme (Twenty Twenty-Three and later) has no classic sidebar at all; the column is added in Appearance &gt; Editor &gt; Templates with a Columns block.</li>
+</ul>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not edit the theme's own files to force the layout. The next update replaces them. Use Additional CSS or a child theme.</li>
+  <li>Do not deactivate every plugin on a live shop to test. Use a staging copy, or the Health Check plugin's troubleshooting mode, which only changes things for you.</li>
+  <li>Do not hide the sidebar on desktop to "fix" it. The broken tag is still there and usually breaks the footer next.</li>
+</ul>
+<p class="note">For most sites this is one stray tag in one post, a few minutes' work once you know which post. If you would rather hand it over, or it happens on every page, that is what the box below is for. Related: <a href="phone-layout-fix.html">an older site that shrinks on phones</a>, <a href="plugin-conflict-fix.html">a plugin conflict</a>, and <a href="changes-not-showing-fix.html">changes not showing</a>.</p>
+</div>
+
+<script>
+(function () {
+  var bar = document.getElementById("site-bar"), body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var lines = '<div class="mock-line"></div><div class="mock-line"></div><div class="mock-line short"></div>';
+  var side = '<b>Order ahead</b><div class="mock-line"></div><b>Hours</b><div class="mock-line short"></div>';
+  function page(fixed) {
+    return '<div class="mock-head">Corner Cafe</div><div class="cols">' +
+      '<div class="mock-main"><b>Our new autumn menu</b>' + lines +
+      '<div class="mock-table' + (fixed ? '' : ' wide') + '"></div>' + lines + '</div>' +
+      '<div class="mock-side' + (fixed ? '' : ' dropped') + '">' + side + '</div></div>';
+  }
+  var logBefore = 'Site: cafe, WordPress, classic theme\n  with a right sidebar\n\nOnly broken: the "Autumn menu" post\n  and the blog page (newest excerpt)\n\n' +
+    'validator.w3.org/nu:\n  Stray end tag "div" (line 212)\n  Unclosed element "table"\n\nCause: price table pasted from\n  a menu PDF tool, with an extra\n  &lt;/div&gt; and a fixed width="900"\n\n' +
+    '<span class="bad">Sidebar (order link, hours) pushed\nbelow the post on desktop.</span>';
+  var logAfter = 'Steps taken:\n1. Post opened in the Code editor.\n' +
+    '2. Stray &lt;/div&gt; removed, table\n   closed properly.\n3. width="900" removed; table\n   now fills the column.\n' +
+    '4. Validator: no errors.\n5. Page cache cleared; checked on\n   a desktop, a tablet and a phone.\n\n' +
+    '<span class="good">Sidebar back beside the post;\nother posts were never affected.</span>';
+  function show(isFixed) {
+    bar.textContent = "cornercafe.example/autumn-menu/";
+    body.innerHTML = page(isFixed);
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is my WordPress sidebar showing below the content?","acceptedAnswer":{"@type":"Answer","text":"Usually one piece of content broke the layout: a stray or missing closing div tag in a post, often pasted in with a table, menu or ad, or something wider than the content column, such as a wide table, a fixed-width image or a video embed. If every page is affected, look at code added to the header or footer, recent custom CSS, a speed plugin combining CSS, or a theme update."}},
+{"@type":"Question","name":"Why does the sidebar drop below the post on only one page?","acceptedAnswer":{"@type":"Answer","text":"The cause is inside that page's content. Check it with the free W3C validator at validator.w3.org/nu: a 'Stray end tag div' or 'Unclosed element div' error names the line. Remove or add the tag in the editor's code view. If there are no errors, something in the post is wider than the column; set its width to 100%."}},
+{"@type":"Question","name":"Is it normal for the sidebar to be below the content on a phone?","acceptedAnswer":{"@type":"Answer","text":"Yes. Almost every theme moves the sidebar under the content on phones because there is no room beside it. It is only a fault when it happens on a desktop or wide screen."}},
+{"@type":"Question","name":"Why did my sidebar disappear after changing the page template?","acceptedAnswer":{"@type":"Answer","text":"The page is using a full-width or no-sidebar template. In the editor, open the Page or Post settings and choose the template or layout with a sidebar, or set the default layout for posts and archives under Appearance, Customize. Block themes add a sidebar column in the Site Editor's templates instead."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
