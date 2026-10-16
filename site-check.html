@@ -70,7 +70,6 @@
 <script>
 (function () {
   var API = "https://sitecheck.s-n-psaradellis.workers.dev/check?url=";
-  var FIVERR = "https://www.fiverr.com/s_psaradellis";
   var EMAIL = "s.n.psaradellis@gmail.com";
   var f = document.getElementById("f"), u = document.getElementById("u"), go = document.getElementById("go");
   var out = document.getElementById("out"), status = document.getElementById("status");
@@ -98,8 +97,7 @@
         bad.map(function (p) { return "- " + p.what; }).join("\n") + "\n\nWhat would it cost to fix them?\n");
       h += '<div class="card cta"><strong>Rather have it done for you?</strong> Every guide works on its own, ' +
         'but if you would rather not touch the site, I fix them from $49 a fix, quoted before any work starts. By email you pay only after you see it working. ' +
-        '<br><a class="btn" href="mailto:' + EMAIL + '?subject=' + subj + '&body=' + body + '">Email me this list</a>' +
-        '<a class="btn alt" href="' + FIVERR + '">Or order on Fiverr</a></div>';
+        '<br><a class="btn" href="mailto:' + EMAIL + '?subject=' + subj + '&body=' + body + '">Email me this list</a>' + '</div>';
     }
     out.innerHTML = h;
   }
