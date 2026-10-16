@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress "Some plugins have failed to update" or "Background Update Failed" email: what to do</title>
+<meta name="description" content="Got an email from your WordPress site saying an automatic update failed, or that your site may be down? What each email means, the five-minute check in Site Health, and the fix for each cause.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/auto-update-failed-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.mail { border:1px solid #c3c4c7; border-radius:6px; overflow:hidden; font-size:13.5px; min-width:0; }
+.mail .row { padding:9px 12px; border-bottom:1px solid #e4e4e7; overflow-wrap:anywhere; }
+.mail .row:last-child { border-bottom:0; }
+.mail .from { color:var(--muted); font-size:12.5px; }
+.mail .subj { font-weight:600; }
+.mail .subj.badline { color:var(--bad); }
+.mail .subj.goodline { color:var(--good); }
+.sh { margin-top:12px; border:1px solid #c3c4c7; border-radius:6px; padding:10px 12px; font-size:13.5px; overflow-wrap:anywhere; }
+.sh b { display:block; margin-bottom:4px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:#ff8a80; font-weight:600; }
+.good { color:#8fd19e; font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Your WordPress site emailed you that an automatic update failed</h1>
+<p class="lede">WordPress updates itself, and many plugins, in the background, and it emails the site's admin address when that goes wrong. The subject line tells you how worried to be. Most of these emails mean "nothing broke, but the update did not happen", which is fixable in a few minutes. One of them means the site may be down right now. Below is a rebuilt example (not a real client), what each email means, the five-minute check, and the fix for each cause.</p>
+
+<div class="switch" role="group" aria-label="Show the site before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the site owner sees</h2>
+    <div class="mail" id="inbox"></div>
+    <div class="sh" id="health"></div>
+  </div>
+  <div class="panel">
+    <h2>What the check found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>What each email means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>Subject line (after your site name)</th><th>What it means</th><th>How urgent</th></tr>
+  <tr><td><b>URGENT: Your site may be down due to a failed update</b></td><td>A WordPress core update started, failed part way, and could not put the old files back</td><td><b>Now.</b> Open the site in a private window. If it shows an error or "Briefly unavailable for scheduled maintenance", see the first row of the fix table</td></tr>
+  <tr><td><b>Background Update Failed</b></td><td>A core update was tried and did not complete, but the site was left on the old version</td><td>Today. The site works, but it is missing a security release</td></tr>
+  <tr><td><b>Some plugins have failed to update</b> (or themes, or both)</td><td>A plugin or theme that is set to auto-update could not be updated. The email names each one. WordPress 6.6 and later also puts the old version back if the new one crashes the site</td><td>This week. Each failed plugin is still on its old version</td></tr>
+  <tr><td><b>WordPress x.y is available. Please update!</b></td><td>WordPress could not update itself and is asking you to do it from the dashboard. Often the files are not writable, or the background updates never ran</td><td>This week</td></tr>
+  <tr><td><b>Your site has updated to WordPress x.y</b>, or <b>Some plugins were automatically updated</b></td><td>It worked. Nothing to do except glance at the site</td><td>None</td></tr>
+</table>
+</div>
+
+<h2>The five-minute check</h2>
+<ol>
+  <li><b>Open the site in a private window.</b> If it loads normally, nothing is broken and you can take your time. If it does not, start with the first row below.</li>
+  <li><b>Go to Dashboard &gt; Updates.</b> It lists what is still out of date. Click <b>Update</b> on one failed plugin by hand: the error it shows (if any) is the real reason the background update failed. <a href="install-update-failed-fix.html">Plugin or theme won't update</a> explains each of those errors.</li>
+  <li><b>Open Tools &gt; Site Health.</b> The <b>Background updates</b> test says in plain words whether automatic updates can run on this site and, if not, why: files not writable, a version-control folder, or updates turned off in <code>wp-config.php</code>. The <b>scheduled event</b> test tells you whether the background jobs that run the updates are running at all.</li>
+  <li><b>Open Site Health &gt; Info &gt; Filesystem Permissions.</b> Every line should say <b>Writable</b>. Also check the disk space your host shows: a full disk fails every update.</li>
+</ol>
+
+<h2>What causes it and the fix</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Why it happens</th><th>The fix</th></tr>
+  <tr><td>The <b>URGENT</b> email, and the site shows "Briefly unavailable for scheduled maintenance" or an error</td><td>The update stopped half way. WordPress leaves a file called <code>.maintenance</code> in the site's main folder while it updates, and a half-copied set of core files can break every page</td><td>In the host's file manager, delete <code>.maintenance</code> from the main folder (see <a href="maintenance-mode-fix.html">stuck in maintenance mode</a>). If the site still errors, use <b>Dashboard &gt; Updates &gt; Re-install version</b>, or upload fresh <code>wp-admin</code> and <code>wp-includes</code> folders of the same version. Never replace <code>wp-content</code>: that is your theme, plugins and uploads</td></tr>
+  <tr><td>Site Health says files are <b>not writable</b>, or updating by hand asks for <b>FTP details</b></td><td>The web server is not allowed to write to the site's own files, usually after a migration or a manual upload with the wrong owner</td><td>Ask the host to set the file owner to the web server user (folders 755, files 644 is the usual target). Do not set anything to 777: that lets anyone on a shared server change your files</td></tr>
+  <tr><td>One plugin fails every time; by hand it says <b>"Download failed"</b>, <b>"Unauthorized"</b> or "update package not available"</td><td>It is a paid plugin or theme whose license expired or is not entered on this site, so its update server refuses to hand over the new version</td><td>Renew or re-enter the license in that plugin's settings, or download the new version from the seller's account page and upload it under <b>Plugins &gt; Add New &gt; Upload</b>. A plugin with no updates for a year is a security risk on its own</td></tr>
+  <tr><td>Site Health says <b>background updates are disabled</b>, or mentions a <code>.git</code> or <code>.svn</code> folder</td><td>A line in <code>wp-config.php</code> such as <code>AUTOMATIC_UPDATER_DISABLED</code> or <code>WP_AUTO_UPDATE_CORE</code> set to false turns them off, often added by a past developer. WordPress also skips automatic updates when it finds a version-control folder</td><td>If nobody updates the site by hand, remove the line (keep a copy) so security releases install themselves. If a developer deploys the site from a repository, leave it and have them update in that workflow</td></tr>
+  <tr><td>The <b>scheduled event</b> test fails, or you get the "Please update!" email every time</td><td>Background updates run through WordPress's scheduler (wp-cron), which only runs when someone visits. A site with few visits, a blocked <code>wp-cron.php</code>, or <code>DISABLE_WP_CRON</code> with no replacement never gets to run them</td><td>If <code>DISABLE_WP_CRON</code> is in <code>wp-config.php</code>, ask the host to call <code>https://yoursite.com/wp-cron.php</code> every 5 to 15 minutes. Same cause as <a href="scheduled-post-fix.html">scheduled posts not publishing</a></td></tr>
+  <tr><td>Updates fail with "could not copy file", <b>"Another update is currently in progress"</b>, or time out</td><td>The disk is full, PHP ran out of time or memory during the unpack, or an earlier failed run left a lock behind</td><td>Free disk space (old backups stored inside the site are the usual culprit). A stuck lock clears itself in about 15 minutes; try again after that. Memory errors: see <a href="memory-exhausted-fix.html">memory exhausted</a></td></tr>
+  <tr><td>The email says a plugin update was <b>rolled back</b>, or the site broke right after an update</td><td>The new version does not work with your PHP version, your theme or another plugin</td><td>Stay on the old version for now and turn off that plugin's auto-update in <b>Plugins</b>. Check its changelog and support forum for a fix, and update after it ships. A white screen or "critical error": see <a href="critical-error-fix.html">critical error</a></td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not ignore a "failed to update" email because the site still works. The plugin is still on the version the update was meant to replace, and security fixes are the usual reason for an update.</li>
+  <li>Do not turn automatic updates off to stop the emails. You stop the warnings, not the problem.</li>
+  <li>Do not set files or folders to 777 to make updates work. It works, and it lets other accounts on the server change your site.</li>
+  <li>Do not replace the <code>wp-content</code> folder when you re-install WordPress. That is where your site actually lives.</li>
+</ul>
+<p class="note">Most of these take minutes once you know the cause; fixing file ownership with a host, recovering a site that went down mid-update, or getting a paid plugin back on its update channel is where most owners would rather have someone do it. If that is you, the box below is for that. Related: <a href="install-update-failed-fix.html">plugin or theme won't install or update</a>, <a href="maintenance-mode-fix.html">stuck in maintenance mode</a> and <a href="outdated-php-fix.html">outdated PHP</a>.</p>
+</div>
+
+<script>
+(function () {
+  var inbox = document.getElementById("inbox"), health = document.getElementById("health"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  function mail(rows) {
+    return rows.map(function (x) {
+      return '<div class="row"><div class="from">WordPress &lt;wordpress@brightsmile-dental.example&gt; &middot; ' + x[0] + '</div>' +
+        '<div class="subj ' + x[2] + '">[Bright Smile Dental] ' + x[1] + '</div></div>';
+    }).join("");
+  }
+  var logBefore = 'Site: dental practice, WordPress 6.x\n  front page: loads normally\n\n' +
+    'Dashboard > Updates:\n  3 plugins out of date\n  booking plugin by hand:\n    "Download failed. Unauthorized"\n\n' +
+    'Site Health > Background updates:\n  "Your WordPress install does not\n  have write access" (2 folders)\n\n' +
+    'Cause: site moved to a new host;\nfiles owned by the old FTP user,\nand the booking plugin license\nwas never re-entered.\n\n' +
+    '<span class="bad">Nothing has updated for 7 weeks.</span>';
+  var logAfter = 'Steps taken:\n1. Full backup taken.\n2. Host reset file owner to the\n   web server user (755 / 644).\n' +
+    '3. Booking plugin license\n   re-entered, update installed.\n4. The other 2 plugins and the\n   core security release updated.\n' +
+    '5. Site Health: background\n   updates test passes.\n\n<span class="good">Up to date, and updating itself again.</span>';
+  function show(isFixed) {
+    inbox.innerHTML = isFixed
+      ? mail([['Thu', 'Some plugins were automatically updated', 'goodline'], ['Wed', 'Your site has updated to WordPress 6.8.3', 'goodline']])
+      : mail([['Mon', 'Some plugins have failed to update', 'badline'], ['Sun', 'Background Update Failed', 'badline'], ['Sep 2', 'Some plugins have failed to update', 'badline']]);
+    health.innerHTML = isFixed
+      ? '<b style="color:#1e7a3c">Site Health: Background updates are working</b>All files writable. Rebuilt example, not a real client.'
+      : '<b style="color:#b3261e">Site Health: Background updates are not working as expected</b>Your WordPress install does not have write access. Rebuilt example, not a real client.';
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'Some plugins have failed to update' mean?","acceptedAnswer":{"@type":"Answer","text":"A plugin set to update automatically could not be updated, so it is still on its old version. The site usually still works. Update it by hand from Dashboard > Updates to see the real error: most often the files are not writable, a paid plugin's license has expired, or the disk is full."}},
+{"@type":"Question","name":"What should I do about 'URGENT: Your site may be down due to a failed update'?","acceptedAnswer":{"@type":"Answer","text":"Open the site in a private window. If it shows 'Briefly unavailable for scheduled maintenance', delete the .maintenance file from the site's main folder in the host's file manager. If it still shows an error, re-install the same WordPress version from Dashboard > Updates or upload fresh wp-admin and wp-includes folders. Never replace wp-content."}},
+{"@type":"Question","name":"Why are WordPress automatic updates not working?","acceptedAnswer":{"@type":"Answer","text":"Tools > Site Health has a Background updates test that names the reason. The common ones are files the web server cannot write to, a line in wp-config.php that turns updates off, a version-control folder such as .git, or the WordPress scheduler (wp-cron) not running on a site with few visits."}},
+{"@type":"Question","name":"Should I turn off WordPress automatic updates to stop the emails?","acceptedAnswer":{"@type":"Answer","text":"No. The emails are a warning that security fixes are not being installed. Fix the cause instead; if one plugin's new version breaks the site, turn off auto-update for that plugin only until a fixed version ships."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
