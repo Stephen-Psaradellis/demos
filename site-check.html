@@ -27,6 +27,10 @@
   .cta a.btn { display: inline-block; margin: 6px 8px 0 0; padding: 10px 14px; border-radius: 8px; background: #1f6f5f; color: #fff; text-decoration: none; }
   .cta a.btn.alt { background: #fff; color: #1f6f5f; border: 1px solid #1f6f5f; }
   .muted { color: #6b6b6b; font-size: 14px; }
+  .cta form.ask { margin: 10px 0 6px; }
+  .cta form.ask input { font-size: 16px; padding: 10px; }
+  .cta form.ask button { font-size: 16px; padding: 10px 16px; }
+  #ask-msg { margin: 4px 0 6px; }
   .err { color: #a33; }
   a { color: #1f6f5f; }
   ul.checks { padding-left: 20px; }
@@ -71,6 +75,7 @@
 (function () {
   var API = "https://sitecheck.s-n-psaradellis.workers.dev/check?url=";
   var EMAIL = "s.n.psaradellis@gmail.com";
+  var ASK = "https://pagehits.s-n-psaradellis.workers.dev/ask";
   var f = document.getElementById("f"), u = document.getElementById("u"), go = document.getElementById("go");
   var out = document.getElementById("out"), status = document.getElementById("status");
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
@@ -96,10 +101,27 @@
       var body = encodeURIComponent("Hi, the free check found these on " + r.host + ":\n\n" +
         bad.map(function (p) { return "- " + p.what; }).join("\n") + "\n\nWhat would it cost to fix them?\n");
       h += '<div class="card cta"><strong>Rather have it done for you?</strong> Every guide works on its own, ' +
-        'but if you would rather not touch the site, I fix them from $49 a fix, quoted before any work starts. By email you pay only after you see it working. ' +
-        '<br><a class="btn" href="mailto:' + EMAIL + '?subject=' + subj + '&body=' + body + '">Email me this list</a>' + '</div>';
+        'but if you would rather not touch the site, I fix them from $49 a fix, quoted before any work starts. Nothing to pay until you OK the quote. ' +
+        '<form id="ask" class="ask"><input name="email" type="email" autocomplete="email" placeholder="Your email, for the quote" aria-label="Your email" required>' +
+        '<input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">' +
+        '<button type="submit">Send me a quote for these</button></form><div id="ask-msg" role="status"></div>' +
+        '<span class="muted">It sends ' + esc(r.host) + ' and the list above, nothing else. Or <a href="mailto:' + EMAIL + '?subject=' + subj + '&body=' + body + '">email me this list</a>.</span></div>';
     }
     out.innerHTML = h;
+    var a = document.getElementById("ask");
+    if (a) a.addEventListener("submit", function (e) { e.preventDefault(); ask(a, r, bad); });
+  }
+  function ask(a, r, bad) {
+    var b = a.querySelector("button"), m = document.getElementById("ask-msg");
+    var F = "Could not send - please email " + EMAIL + " instead.";
+    b.disabled = true; m.textContent = "Sending...";
+    var v = { site: r.host, email: a.elements.email.value, website: a.elements.website.value, page: location.pathname,
+      problem: ("Free check found: " + bad.map(function (p) { return p.what; }).join("; ")).slice(0, 1500) };
+    fetch(ASK, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(v) })
+      .then(function (res) { return res.json(); }).then(function (j) {
+        if (j && j.ok) { a.style.display = "none"; m.innerHTML = "<strong>Got it.</strong> A fixed quote for " + esc(r.host) + " comes by email from " + EMAIL + " within a day. Nothing to pay until you OK it."; }
+        else { b.disabled = false; m.textContent = j && j.error === "email" ? "That email address does not look right." : F; }
+      }).catch(function () { b.disabled = false; m.textContent = F; });
   }
   f.addEventListener("submit", function (e) {
     e.preventDefault();
@@ -120,6 +142,5 @@
   if (q) { u.value = q; f.requestSubmit ? f.requestSubmit() : go.click(); }
 })();
 </script>
-<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
 </body>
 </html>
