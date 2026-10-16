@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact form spam: how to stop the flood without losing real enquiries</title>
+<meta name="description" content="Dozens of junk messages a day through your website's contact form, and real enquiries buried under them? Find which kind of spam it is, and the fix for each: honeypot, Turnstile, content filtering, no copy-to-sender.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/contact-form-spam-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.inbox { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; }
+.inbox .top { background:#1d2327; color:#f0f0f1; padding:7px 10px; font-weight:600; }
+.inbox .row { display:flex; justify-content:space-between; gap:10px; padding:9px 10px; border-top:1px solid var(--line); }
+.inbox .row:nth-child(even) { background:#f6f7f7; }
+.inbox .t { min-width:0; overflow-wrap:anywhere; }
+.inbox .t b { display:block; }
+.inbox .s { white-space:nowrap; font-size:12px; color:var(--muted); text-align:right; }
+.inbox .junk .t { color:var(--bad); }
+.inbox .real .t b { color:var(--good); }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Contact form spam: stop the flood, keep the real enquiries</h1>
+<p class="lede">The website form sends you forty messages a day: link lists in Russian, "I can get you to page one of Google", crypto offers, blank names with random letters. Somewhere in there is the one customer who wanted a quote, and you missed them. Most of this is bots that find the form and post to it directly; the rest is people paid to paste sales pitches. Each kind has a different fix, and the right fix stops nearly all of it without making real customers solve puzzles. Below is a rebuilt example (not a real client), how to tell which kind you have, and what to do.</p>
+
+<div class="switch" role="group" aria-label="Show the inbox">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Website enquiries inbox, Tuesday 10:15</h2>
+    <div class="inbox" id="inbox"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: look at ten of them</h2>
+<ol>
+  <li><b>Note what the junk looks like.</b> Random letters in the name field, a message that is only links, or the same text arriving every few minutes: that is a bot. A readable, polite sales pitch (SEO, web design, "business funding") with a real-looking name: that is a person, or a bot that types like one.</li>
+  <li><b>Check the form for protection.</b> Open the form's settings in your form plugin (Contact Form 7, WPForms, Gravity Forms, Elementor, Wix or Squarespace's own forms). If there is no honeypot, no CAPTCHA and no anti-spam option switched on, that is the first row below and the fix is ten minutes.</li>
+  <li><b>Check whether the form emails the visitor.</b> A "send me a copy" box or an automatic "thanks, we got your message" email to the address typed in means anyone can make your site send mail to anyone. Spammers use that to deliver their message to strangers from your domain, and your own emails start landing in spam (the fourth row).</li>
+</ol>
+
+<h2>The kinds of spam and their fixes</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What it is</th><th>How to spot it</th><th>What to do</th></tr>
+  <tr><td>Simple bots, and the form has no protection</td><td>Gibberish names, link-only messages, bursts at night, sometimes hundreds a day. The form settings show no honeypot or CAPTCHA</td><td>Switch on the plugin's own honeypot or anti-spam option first: Gravity Forms "Enable anti-spam honeypot" in Form Settings, WPForms "Enable anti-spam protection", Elementor Pro's Honeypot field. Then add Cloudflare Turnstile (free, no puzzle for most visitors, works whether or not your site uses Cloudflare) through the plugin's CAPTCHA or Integration page</td></tr>
+  <tr><td>Bots that get past a CAPTCHA</td><td>An old reCAPTCHA (v2 checkbox or v3) is on, but junk still arrives, often posted straight to the form's address without loading the page</td><td>Replace it with Turnstile or hCaptcha, keep the honeypot alongside it, and make sure the plugin checks the token on the server (it does when the integration is set up in the plugin, not pasted in as page code)</td></tr>
+  <tr><td>People pasting sales pitches</td><td>Readable English, a real-looking name and email, the same SEO or "funding" offer sent to thousands of sites. CAPTCHAs do not stop these, because a person solves them</td><td>Content filtering: Akismet checks each message against what it has seen across millions of sites (Contact Form 7 uses it through field options such as <code>akismet:author_email</code>; free for personal sites, a business site needs a paid plan). Contact Form 7 also blocks words listed in Settings &gt; Discussion &gt; Disallowed Comment Keys, so add the phrases that keep coming back. A "How did you hear about us?" or "What service?" dropdown that is required also cuts it, because pitch-pasters skip forms that need thought</td></tr>
+  <tr><td>Your form is being used to send spam to others</td><td>Bounces and "who are you?" replies from people you never wrote to; your site's emails start going to spam. The form has a copy-to-sender box or an auto-reply to the typed address</td><td>Turn off copy-to-sender and the auto-reply, or send it only after a CAPTCHA passes. Never put the visitor's address in the From field: send from your own address and put theirs in Reply-To. If your mail already lands in spam, see <a href="emails-not-sending-fix.html">site emails not arriving</a></td></tr>
+  <tr><td>Junk sign-ups, comments or orders, not just the form</td><td>New user accounts with random names, comment spam, WooCommerce "card testing" orders of $1</td><td>Turn off "Anyone can register" in Settings &gt; General unless you need it, close comments on old posts, and add the same Turnstile check to the checkout (most payment plugins and anti-spam plugins offer it). Many fake orders at once is card testing: tell your payment provider</td></tr>
+</table>
+</div>
+
+<h2>Check it worked</h2>
+<p>Send yourself a real enquiry from your phone, on mobile data, through the live form: it should arrive, with your name and message intact. Then watch the inbox for two days. Most plugins keep blocked messages in a log or a spam folder (Flamingo for Contact Form 7, WPForms Entries, Gravity Forms' Spam list): look through it once, so a real customer caught by mistake gets a reply.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not delete the form and put a bare email address on the page instead. Address-harvesting bots pick it up and the spam moves to your inbox, with no filter in front of it.</li>
+  <li>Do not stack three CAPTCHAs and a math question. Real customers on phones give up; the honeypot plus Turnstile stops the bots without them noticing.</li>
+  <li>Do not block whole countries at the firewall to stop form spam. The bots run from cloud servers in every country, and you lose real visitors.</li>
+  <li>Do not reply to the pitches, even to say no. A reply marks your address as read by a person.</li>
+</ul>
+<p class="note">For most sites this is a honeypot switch, one free Turnstile key and a look at the auto-reply, about twenty minutes once you know which kind of spam it is. If you would rather hand it over, that is what the box below is for. Related: <a href="contact-form-fix.html">contact form messages never arrive</a>, <a href="emails-not-sending-fix.html">site emails not arriving</a>, and <a href="hacked-spam-fix.html">hidden spam on your website</a>.</p>
+</div>
+
+<script>
+(function () {
+  var inbox = document.getElementById("inbox"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var before = [
+    ["junk", "xkqzvbtr", "http://... http://... http://...", "10:09"],
+    ["junk", "Daniel Moore", "I can get your website to page 1 of Google", "09:52"],
+    ["junk", "jhgfdwq", "Crypto bonus waiting for you", "09:40"],
+    ["real", "Maria Lopez", "Quote for a water heater, this week?", "09:31"],
+    ["junk", "Business Funding Team", "Pre-approved for $250,000", "09:17"],
+    ["junk", "xkqzvbtr", "http://... http://...", "09:02"]
+  ];
+  var after = [
+    ["real", "Maria Lopez", "Quote for a water heater, this week?", "09:31"],
+    ["real", "Tom Becker", "Leaking shut-off valve under the sink", "08:47"]
+  ];
+  function rows(list) {
+    var h = '<div class="top">Website enquiries (Northline Plumbing)</div>';
+    list.forEach(function (m) {
+      h += '<div class="row ' + m[0] + '"><span class="t"><b>' + m[1] + '</b>' + m[2] + '</span><span class="s">' + m[3] + '</span></div>';
+    });
+    return h;
+  }
+  var logBefore = 'Site: plumber, WordPress,\n  Contact Form 7, no protection\n\nLast 7 days: 214 form messages\n  real enquiries: 6\n\n' +
+    'Form settings:\n  honeypot: none\n  CAPTCHA: none\n  auto-reply to visitor: ON\n\nBounces from strangers: 31\n\n' +
+    '<span class="bad">A quote request sat unread\nfor two days under the junk.</span>';
+  var logAfter = 'Steps taken:\n1. Honeypot field added to the form.\n' +
+    '2. Cloudflare Turnstile (free) set up\n   in Contact > Integration.\n3. Akismet on the name, email and\n   message fields.\n' +
+    '4. Auto-reply to visitor turned off;\n   From = own address, visitor in\n   Reply-To.\n5. Test enquiry from a phone: arrived.\n\n' +
+    'Next 7 days: 3 junk, 7 real.\n<span class="good">Every real enquiry answered the\nsame day.</span>';
+  function show(isFixed) {
+    inbox.innerHTML = rows(isFixed ? after : before);
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"How do I stop spam from my website contact form?","acceptedAnswer":{"@type":"Answer","text":"Switch on your form plugin's honeypot or anti-spam option, then add Cloudflare Turnstile (free) or hCaptcha through the plugin's own CAPTCHA or integration settings. For sales pitches typed by people, add content filtering such as Akismet or a disallowed-words list."}},
+{"@type":"Question","name":"Why does my contact form still get spam with reCAPTCHA on?","acceptedAnswer":{"@type":"Answer","text":"Some bots solve or skip older reCAPTCHA versions, or post straight to the form without loading the page, and people paid to paste pitches solve any CAPTCHA. Use Turnstile or hCaptcha checked on the server, keep a honeypot alongside it, and filter messages by content."}},
+{"@type":"Question","name":"Can spammers use my contact form to send email to other people?","acceptedAnswer":{"@type":"Answer","text":"Yes, if the form sends a copy or an automatic reply to whatever address is typed in. Turn those off or send them only after a CAPTCHA passes, and send from your own address with the visitor in Reply-To, so your domain does not end up on spam lists."}},
+{"@type":"Question","name":"Is Cloudflare Turnstile free?","acceptedAnswer":{"@type":"Answer","text":"Yes. Turnstile is free, most visitors never see a puzzle, and the site does not have to use Cloudflare for its hosting or DNS. Contact Form 7, WPForms and other form plugins can use it through their settings."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
