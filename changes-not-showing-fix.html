@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress changes not showing on the live site: find the cache and clear it</title>
+<meta name="description" content="Updated a page in WordPress but visitors still see the old version? Find which cache is holding it (browser, plugin, host, Cloudflare, page builder) or whether you edited the wrong copy, and fix it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/changes-not-showing-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#f1f3f4; color:#202124; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; border-bottom:1px solid var(--line); }
+.site .body { padding:16px; min-height:190px; background:#fff; font-size:14px; }
+.views { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+.view { border:1px solid var(--line); border-radius:8px; padding:10px; min-width:0; }
+.view .who { font-size:12px; color:var(--muted); margin:0 0 6px; }
+.hours { font-size:14px; margin:0; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress changes not showing on the live site</h1>
+<p class="lede">You changed your opening hours, a price or a photo, pressed Update, and it looks right to you. But a customer, or your own phone, still shows the old version, hours or even days later. Nothing is broken: a copy of the old page is being kept somewhere between WordPress and the visitor, or the change went into a different copy of the site. Below is a rebuilt example (not a real client), a two-minute test that tells you which, and how to clear each one.</p>
+
+<div class="switch" role="group" aria-label="Show the page">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>The same page, two visitors</h2>
+    <div class="site">
+      <div class="bar" id="site-bar"></div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: the two-minute test</h2>
+<ol>
+  <li><b>Open the page in a private (incognito) window</b>, where you are logged out. Logged-in WordPress users usually skip the cache, so you see the new page and visitors do not. If the private window shows the old version, a cache is holding it; if it shows the new one, the old copy is only in your normal browser (see the first cause).</li>
+  <li><b>Add a made-up query to the address</b>, such as <code>yoursite.com/contact/?test=123</code>. Most caches treat that as a new page. New version with it, old without it: a server or CDN cache, not WordPress.</li>
+  <li><b>Look at who answered.</b> In Chrome, press F12, open the Network tab, reload, click the first row and read the Response Headers. <code>cf-cache-status: HIT</code> means Cloudflare served its stored copy; <code>x-cache: HIT</code>, <code>x-proxy-cache</code> or a large <code>age</code> value means the host's cache did. A caching plugin often leaves a comment at the very bottom of the page source (Ctrl+U) naming itself and when the copy was made.</li>
+  <li><b>Still the old version everywhere, even with the query?</b> Then the cache is not the problem: the change was saved somewhere visitors never see. Go to the last causes.</li>
+</ol>
+
+<h2>The causes, most common first</h2>
+<ol>
+  <li><b>Your own browser kept the old page.</b> Press Ctrl+F5 (Cmd+Shift+R on a Mac) on the page. On a phone, close the tab and open it again, or try another browser. This only fixes what you see; if customers also see the old page, keep going.</li>
+  <li><b>A caching plugin kept the old copy.</b> WP Rocket, W3 Total Cache, WP Super Cache, LiteSpeed Cache and others store finished pages. Most clear the page you edit, but not always the home page, menus, footers or other pages that show the same text (opening hours in the footer appear on every page). Use the plugin's "clear all" or "purge all" button, usually in the black admin bar at the top of the dashboard.</li>
+  <li><b>The host's own cache.</b> Many hosts cache pages on the server whether or not you have a plugin: SiteGround, WP Engine, Kinsta, GoDaddy Managed WordPress and others add a purge button to the admin bar or their control panel. Clear it after the plugin's cache, not before, or the plugin can refill it from the old copy.</li>
+  <li><b>Cloudflare or another CDN.</b> If the headers showed <code>cf-cache-status: HIT</code>, log in to Cloudflare, open the site, then Caching &gt; Configuration &gt; Purge Everything. If it keeps coming back, look for a "Cache Everything" page rule or cache rule with a long edge time; that is the rule doing it. Turn on Development Mode while you work if you change things often.</li>
+  <li><b>A page builder or optimisation plugin kept old CSS.</b> If text changed but a colour, font or layout did not, the styles are stored in separate files. Elementor has a button under Elementor &gt; Tools that regenerates or clears its CSS files; Divi and others have similar settings. Plugins that combine and shrink CSS (Autoptimize, the "minify" options in caching plugins) also need their cache cleared.</li>
+  <li><b>You edited a different copy.</b> A staging or test copy (the address often has "staging" or "dev" in it), a second page with the same title (the real one may end in <code>-2</code>), a draft or a revision that was never published, or a post scheduled for later. Check the address bar in the editor against the page visitors open, and check the page's status reads Published.</li>
+  <li><b>The text is not on the page at all.</b> Opening hours, phone numbers and addresses often live in a widget, the footer, the theme's Customizer, a header plugin or a Google Business Profile embed rather than in the page you edited. Find where it really lives: Appearance &gt; Widgets, Appearance &gt; Customize, or the page builder's header and footer templates.</li>
+  <li><b>You edited the theme's files and an update put them back.</b> Changes made directly in a theme (Appearance &gt; Theme File Editor) are lost when the theme updates. Put them in a child theme or the Customizer's Additional CSS instead.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Usual cause</th><th>Usual fix</th></tr>
+  <tr><td>New version for you, old for customers</td><td>You are logged in and skip the cache</td><td>Test in a private window; clear the plugin, host and CDN caches</td></tr>
+  <tr><td>Old version only on your own computer or phone</td><td>Your browser's copy</td><td>Ctrl+F5 / Cmd+Shift+R, or reopen the tab</td></tr>
+  <tr><td>New with <code>?test=123</code>, old without</td><td>Server or CDN cache</td><td>Purge the host cache, then Cloudflare's</td></tr>
+  <tr><td>Headers show <code>cf-cache-status: HIT</code></td><td>Cloudflare stored the page</td><td>Purge Everything; check for a "Cache Everything" rule</td></tr>
+  <tr><td>Text changed, colours or layout did not</td><td>Old CSS files from a builder or minify plugin</td><td>Regenerate the builder's CSS; clear the optimisation cache</td></tr>
+  <tr><td>Footer or header still shows old hours on every page</td><td>The text lives in a widget, the Customizer or a template</td><td>Edit it there, then clear caches</td></tr>
+  <tr><td>Old everywhere, even in a private window with a query</td><td>Wrong copy edited, draft not published, or scheduled</td><td>Check the editor's address and the page status</td></tr>
+  <tr><td>A change worked, then disappeared after an update</td><td>Edited theme files directly</td><td>Move it to a child theme or Additional CSS</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not switch every cache off for good to make the problem go away. The site gets slower for every visitor and on every search. Clear the caches when you change something instead, and keep them on.</li>
+  <li>Do not edit the same thing in three places hoping one of them sticks. Find where the text really lives first, or you will have three versions to keep in step.</li>
+  <li>Do not judge the fix from your logged-in browser. Check in a private window and on a phone with mobile data before you call it done.</li>
+</ul>
+<p class="note">Once you know which layer is holding the old copy, the fix takes minutes. If you would rather hand it over, or the change still will not show, that is what the box below is for. Related: <a href="slow-site-fix.html">a site that is slow to load</a>, <a href="woocommerce-checkout-fix.html">a WooCommerce checkout that fails</a> (often a cache too) and <a href="old-year-fix.html">a footer still showing an old year</a>.</p>
+</div>
+
+<script>
+(function () {
+  var bar = document.getElementById("site-bar"), body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var oldH = 'Mon-Fri 7am-3pm<br>Sat-Sun closed';
+  var newH = 'Mon-Fri 7am-3pm<br><b>Sat 8am-1pm</b> (new)';
+  function views(you, them, themOk) {
+    return '<div class="views"><div class="view"><p class="who">You, logged in</p><p class="hours">' + you + '</p></div>' +
+      '<div class="view"><p class="who">A customer, private window</p><p class="hours ' + (themOk ? 'good' : 'bad') + '">' + them + '</p></div></div>';
+  }
+  var broken = views(newH, oldH, false) + '<p class="note" style="margin:12px 0 0">Hours updated 2 days ago. Customers still read "closed" on Saturday.</p>';
+  var fixed = views(newH, newH, true) + '<p class="note" style="margin:12px 0 0">Every visitor sees the Saturday hours, on every page.</p>';
+  var logBroken = 'Private window, logged out:\n  old hours (Sat-Sun closed)\n\n' +
+    'Same page with ?test=123:\n  new hours\n\n' +
+    'Response headers on /:\n  cf-cache-status: HIT\n  age: 172800  (2 days)\n  (cache rule "Cache Everything",\n   edge TTL 1 month)\n\n' +
+    'Page source, last line:\n  &lt;!-- page cached by the caching\n  plugin, 2 days ago --&gt;\n\n' +
+    'Hours live in: footer widget\n  (on all 14 pages)\n\n' +
+    '<span class="bad">Two caches hold the old footer: the\nplugin on the server and Cloudflare\nat the edge.</span>';
+  var logFixed = 'Steps taken:\n1. Caching plugin: Clear all\n   (not just this page; the footer\n   is on every page).\n' +
+    '2. Host cache purged.\n3. Cloudflare: Purge Everything;\n   edge TTL cut to 2 hours, Cart and\n   admin pages still bypassed.\n' +
+    '4. Checked logged out, on a phone\n   with mobile data.\n\n' +
+    '<span class="good">Headers now: cf-cache-status: MISS,\nthen HIT with the new hours.</span>';
+  function show(isFixed) {
+    bar.textContent = "harborcafe.example/";
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why are my WordPress changes not showing on the live site?","acceptedAnswer":{"@type":"Answer","text":"Usually a cache is serving a stored copy of the old page: your browser, a caching plugin, the host's server cache, or a CDN such as Cloudflare. Less often the change went into a different copy (a staging site, a draft, a duplicate page) or the text lives somewhere else, such as a footer widget. Opening the page logged out in a private window, then again with ?test=123 added to the address, tells you which."}},
+{"@type":"Question","name":"Why do I see my WordPress changes but my customers do not?","acceptedAnswer":{"@type":"Answer","text":"Logged-in WordPress users usually bypass the page cache, so you see the new page while visitors get the cached old one. Clear the caching plugin's cache, then the host's cache, then the CDN's, and check again in a private window."}},
+{"@type":"Question","name":"How do I clear the Cloudflare cache for a WordPress site?","acceptedAnswer":{"@type":"Answer","text":"In the Cloudflare dashboard open the site, then Caching > Configuration > Purge Everything. If old pages keep coming back, look for a Cache Everything rule with a long edge cache time, and use Development Mode while you are making a lot of changes."}},
+{"@type":"Question","name":"Why did my WordPress text change but not the colours or layout?","acceptedAnswer":{"@type":"Answer","text":"Page builders and optimisation plugins keep styles in separate CSS files that are cached on their own. Regenerate the builder's CSS (Elementor has a button for it under Elementor > Tools) and clear the cache of any plugin that combines or minifies CSS."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
