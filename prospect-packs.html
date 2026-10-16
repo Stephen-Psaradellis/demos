@@ -31,6 +31,7 @@
   .pick select, .pick input { font: inherit; padding: 8px; border:1px solid var(--line); border-radius:8px; background:#fff; min-width:0; }
   a.btn { display:inline-block; padding: 11px 18px; border-radius:10px; background:var(--good); color:#fff; text-decoration:none; font-weight:600; }
   a { color: var(--good); }
+  pre.pitch { white-space: pre-wrap; font-family: inherit; font-size: 15px; line-height: 1.55; background:var(--card); border:1px solid var(--line); border-radius:10px; padding: 14px; margin: 10px 0; }
 </style>
 </head>
 <body>
@@ -45,7 +46,7 @@ with a specific, true problem instead of "do you need a new website?".</p>
 
 <div class="offers">
   <div class="offer"><b>Free</b><span>10 rows for any city and business type you name. Judge the data first.</span></div>
-  <div class="offer"><b>$49</b><span>A city's full urgent list as CSV (business, site, platform, defects, evidence, scan date).</span></div>
+  <div class="offer"><b>$49</b><span>A city's full urgent list as CSV (business, site, platform, defects, evidence, scan date), with a draft first email per business.</span></div>
   <div class="offer"><b>$149</b><span>The same list, sold to no other agency for 90 days.</span></div>
   <div class="offer"><b>$149 / site</b><span>White-label fix: I fix the defects on a site you sign, under your name.</span></div>
 </div>
@@ -103,6 +104,25 @@ evidence for every line (the exact version string, the failing request, the DNS 
 <tr><td>Bakery</td><td><code>a******.com</code></td><td>custom / unknown</td><td><ul><li>the site does not load at all (timed out or refused, on http and https, twice)</li></ul></td><td>2026-10-06</td></tr>
 </table></div>
 
+<h2>Every row comes with a draft first email</h2>
+<p class="muted">Written from that business's own defects, in your agency's voice, for you to edit and send
+from your own address. Drafted by an AI model and checked against the scan; nothing in it that the scan did
+not find. Here is the one for the first sample row (name hidden):</p>
+<pre class="pitch">Dear [Business] Team,
+
+We noticed a couple of things on your website that could be improved.
+
+First, your site isn&#x27;t using HTTPS, which means browsers flag it as &quot;Not secure.&quot; This can deter potential customers and also negatively impact your search engine ranking.
+
+Second, your WordPress installation is several years out of date. This is a significant security risk, as older versions are often targeted by hackers.
+
+We&#x27;d be happy to help you address these issues and ensure your website is secure and up-to-date. Would you be open to a brief chat about how we can assist?
+
+Sincerely,
+
+[Your name]
+[Agency name]</pre>
+
 <h2>Cities scanned so far</h2>
 <p class="muted">"Urgent" = something a visitor or a customer hits today: the site does not load, browsers
 warn "Not secure", WordPress on a release with known holes, or email that can be forged in the owner's name.
@@ -129,13 +149,6 @@ operate; I am responsible for the data and the work. Code fixes merged into
 <a href="https://github.com/solidjs/solid/pull/3422">SolidJS</a> and
 <a href="https://github.com/tursodatabase/turso/pull/9100">Turso</a>; worked examples of site fixes are on the
 <a href="index.html">examples page</a>.</p>
-
-<h2>Related</h2>
-<ul>
-  <li><a href="leads/">Web design leads by city</a> - 25 US metros, ten rows free for any city and business type.</li>
-  <li><a href="keystone/">Keystone</a> - a fast, accessible HTML template for local service businesses (plumbing, dental, cleaning, legal presets) to rebuild a prospect's site on. <a href="https://localwebkit.gumroad.com/l/keystone">$29 one site, $69 agency licence</a>.</li>
-  <li><a href="https://microsoftedge.microsoft.com/addons/detail/hcdpnkilmailiiljmaeldcomceoibajh">Local Site Audit + Pitch</a> - a free browser extension: one click on any local business site gives a client report of its defects with evidence, plus a pitch email (<a href="https://github.com/Stephen-Psaradellis/local-site-audit">source</a>).</li>
-</ul>
 </main>
 <script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
 </body>
