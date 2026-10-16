@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress site redirects to a spam site, or Google says "This site may be hacked"</title>
+<meta name="description" content="WordPress site sending visitors to spam, scam or casino pages, or flagged as hacked by Google? How to confirm it, clean it fully and get the warning removed.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/hacked-redirect-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.page { font-family:system-ui,sans-serif; font-size:14px; color:#3c434a; }
+.page h3 { margin:0 0 10px; font-size:18px; color:#1d2327; }
+.page p { margin:0 0 8px; overflow-wrap:anywhere; }
+.scam { background:#fff4d6; border:2px dashed #c58a00; border-radius:8px; padding:12px; text-align:center; }
+.scam h3 { color:#8a5a00; }
+.serp { border-top:1px solid var(--line); padding:8px 0; overflow-wrap:anywhere; }
+.serp .u { color:#1e7a3c; font-size:12.5px; }
+.serp .t { color:#1a0dab; }
+.serp .w { color:var(--bad); font-size:12.5px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress site redirects visitors to a spam site</h1>
+<p class="lede">A customer tells you your website sent them to a "you have won a prize" page, a casino or a pharmacy. You open the site yourself and it looks fine. Or Google now shows "This site may be hacked" under your listing, your results carry Japanese or pill-shop titles you never wrote, or Chrome shows a red "Dangerous site" screen. All of these are the same thing: someone has added code to the site, and it is written to hide from the owner. Below is a rebuilt example (not a real client), then how to confirm it, how to clean it so it stays clean, and how to get Google's warning taken off.</p>
+
+<div class="switch" role="group" aria-label="Show the visit">
+  <button type="button" id="b-broken" aria-pressed="true">Hacked</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Cleaned</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>A phone visitor who came from Google</h2>
+    <div class="site">
+      <div class="bar" id="site-bar"></div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Why you do not see it yourself</h2>
+<p>The added code is selective on purpose, so the owner is the last to notice. It typically redirects only visitors who are not logged in, only phones, only people arriving from a Google search, or only someone's first visit (it sets a cookie and leaves them alone afterwards). Some versions show Google's crawler a different page from the one people see, which is how spam titles end up in your search results while the site looks normal in your browser. The way in is usually an out-of-date plugin or theme with a known hole, a "nulled" (pirated) copy of a paid plugin, or a reused or leaked password.</p>
+
+<h2>First, confirm it (about 15 minutes)</h2>
+<ol>
+  <li><b>Visit like a stranger.</b> On your phone, in a private window, not logged in, search Google for your business name and tap your own result. Try again on mobile data rather than your office Wi-Fi.</li>
+  <li><b>Search <code>site:yourdomain.com</code></b> in Google. Pages you never made (Japanese text, "cheap", "casino", brand-name handbags) mean spam pages were added or are being shown to Google.</li>
+  <li><b>Open Google Search Console</b>, Security &amp; Manual Actions, Security issues. Google lists what it found and sample URLs. If you have no Search Console account, the free Google Safe Browsing site status page (Google Transparency Report) shows whether the domain is flagged.</li>
+  <li><b>Run a free outside scan</b> such as Sucuri SiteCheck. It fetches the site the way a visitor does and often names the injected script. A clean result does not prove the site is clean; a dirty one confirms it.</li>
+  <li><b>Look at Users</b> in the dashboard, filtered to Administrator. An admin you do not recognise, often with a plausible name, is a strong sign.</li>
+</ol>
+
+<h2>The clean-up</h2>
+<ol>
+  <li><b>Take a full backup of the site as it is now</b> (files and database) and keep it apart from your good backups. It is your evidence and your way back if a step goes wrong. Do not restore it later.</li>
+  <li><b>Change every password that touches the site</b>: hosting control panel, SFTP/FTP, the database user (then put the new one in <code>wp-config.php</code>), and every WordPress administrator. Delete admin users you do not recognise.</li>
+  <li><b>Replace WordPress itself with a fresh copy.</b> Dashboard, Updates, Re-install version, or upload fresh <code>wp-admin</code> and <code>wp-includes</code> folders from wordpress.org. Your content lives in the database and <code>wp-content</code>, so this does not touch it.</li>
+  <li><b>Replace every plugin and theme with a fresh copy</b> from wordpress.org or the seller's own account. Delete anything unused, anything you do not recognise, and any nulled plugin: those often ship with the backdoor already inside.</li>
+  <li><b>Clean what a reinstall does not replace.</b> Read <code>.htaccess</code>, <code>wp-config.php</code> and the root <code>index.php</code> for added lines (long unreadable strings, <code>eval</code>, <code>base64_decode</code>, rules that check for Google as the referrer). Delete any <code>.php</code> file inside <code>wp-content/uploads</code>: that folder should only hold images and documents. Check <code>wp-content/mu-plugins</code>, which loads silently and does not appear in the plugin list.</li>
+  <li><b>Clean the database.</b> Search posts and pages for <code>&lt;script</code> and links you did not add, and check Settings, General that both site addresses are still yours.</li>
+  <li><b>Log everyone out everywhere</b> by putting fresh security keys in <code>wp-config.php</code> (WordPress publishes a generator at api.wordpress.org/secret-key/1.1/salt/), then update everything to its latest version and turn on two-factor login for admins.</li>
+  <li><b>Test as a stranger again</b>: private window, phone, from a Google result, three or four times. Re-run the outside scan. Then, and only then, ask Google for a review.</li>
+</ol>
+
+<h2>Getting Google's warning removed</h2>
+<ul>
+  <li>In Search Console, Security issues, tick that you fixed each issue and press Request review, with a line on what you cleaned and how you closed the way in. Reviews for hacked sites usually take a few days.</li>
+  <li>Let the spam pages return "not found" (404 or 410) rather than redirecting them to your home page, then use Search Console's Removals tool for the worst ones and resubmit your sitemap. They drop out of results over the following weeks.</li>
+  <li>Ask for the review once the site is really clean. Google can hold a site that is flagged again after a review for 30 days before it may ask again.</li>
+</ul>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Usual cause</th><th>Usual fix</th></tr>
+  <tr><td>Customers land on a prize, casino or pharmacy page; you never do</td><td>Conditional redirect for logged-out, phone or Google visitors</td><td>Full clean-up above; test as a stranger</td></tr>
+  <tr><td>Japanese or shop titles in your Google results</td><td>Spam pages added, or a different page shown to Google only</td><td>Remove them, let them 404, Removals tool, sitemap</td></tr>
+  <tr><td>"This site may be hacked" under your listing</td><td>Google found injected content or spam pages</td><td>Clean, then Search Console Request review</td></tr>
+  <tr><td>Red "Dangerous site" screen in Chrome</td><td>Safe Browsing flagged malware or a scam redirect</td><td>Clean, then review in Search Console Security issues</td></tr>
+  <tr><td>Fixed it, it came back a few days later</td><td>A backdoor or an unknown admin was left, or the hole was not closed</td><td>Fresh copies of everything, delete stray PHP, new passwords and keys</td></tr>
+  <tr><td>An admin user you never created</td><td>Account added during the break-in</td><td>Delete it, change every password, fresh keys</td></tr>
+  <tr><td>Host suspended the account for malware</td><td>Host's own scanner found the same code</td><td>Clean, then ask the host to rescan and lift it</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not just delete the one redirect line you found. These break-ins almost always leave a second way back in, and the redirect returns within days.</li>
+  <li>Do not restore an old backup and call it done. You may not know when the break-in happened, and the hole that let it in is still there.</li>
+  <li>Do not install a "security" or "cleaner" plugin from an unknown source, or any nulled plugin. That is one of the common ways in.</li>
+  <li>Do not request a Google review before you have tested as a stranger. A failed review only delays the next one.</li>
+</ul>
+<p class="note">A clean-up like this is usually a few hours of careful work, most of it reinstalling and checking. If you would rather hand it over, that is what the box below is for. Related: <a href="too-many-redirects-fix.html">a site stuck in a redirect loop</a>, <a href="login-loop-fix.html">a login page that just reloads</a> and <a href="white-screen-fix.html">a blank white page</a>.</p>
+</div>
+
+<script>
+(function () {
+  var bar = document.getElementById("site-bar"), body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="page"><div class="scam"><h3>Congratulations!</h3>' +
+    '<p>You are today\'s lucky visitor. Claim your prize in 60 seconds.</p></div>' +
+    '<div class="serp"><div class="u">cedarridgelandscaping.example</div><div class="t">Cedar Ridge Landscaping | Lawn care and patios</div><div class="w">This site may be hacked.</div></div>' +
+    '<div class="serp"><div class="u">cedarridgelandscaping.example/cheap-designer-bags/</div><div class="t">Cheap designer bags outlet 80% off</div></div></div>';
+  var fixed = '<div class="page"><h3>Cedar Ridge Landscaping</h3>' +
+    '<p>Lawn care, planting and patios. Free quotes within two days.</p>' +
+    '<div class="serp"><div class="u">cedarridgelandscaping.example</div><div class="t">Cedar Ridge Landscaping | Lawn care and patios</div></div></div>';
+  var logBroken = 'Owner, logged in, on a laptop:\n  site looks normal.\n' +
+    'Phone, private window, from Google:\n  sent to a prize page.\n\n' +
+    'site:cedarridgelandscaping.example\n  412 results, 390 of them shop\n  pages nobody wrote.\n\n' +
+    'Search Console, Security issues:\n  "Hacked: content injection"\n\n' +
+    'Found on the server:\n  .htaccess: redirect if the visitor\n    came from google and is on a phone\n' +
+    '  wp-content/uploads/2024/03/cache.php\n  mu-plugins/wp-sys.php (hidden loader)\n  admin user "wpsupport" (unknown)\n' +
+    '  slider plugin 6 versions behind,\n    known hole in that version\n\n' +
+    '<span class="bad">Visitors from Google are being sent\naway, and the warning is on the listing.</span>';
+  var logFixed = 'Steps taken:\n1. Infected copy saved apart.\n2. Host, SFTP, database and all admin\n   passwords changed; "wpsupport" deleted.\n' +
+    '3. WordPress core reinstalled fresh.\n4. Every plugin and theme replaced from\n   fresh copies; unused slider removed.\n' +
+    '5. .htaccess rebuilt; cache.php and\n   wp-sys.php deleted.\n6. Database: 3 posts had a script\n   tag added; removed.\n' +
+    '7. New security keys, 2FA for admins.\n8. Phone + Google test x4: no redirect.\n   Outside scan clean.\n' +
+    '9. Spam pages return 410; review\n   requested in Search Console.\n\n' +
+    '<span class="good">Visitors land on the real site, and the\nwarning came off after the review.</span>';
+  function show(isFixed) {
+    bar.textContent = isFixed ? "cedarridgelandscaping.example" : "prize-claim-now.example/win";
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does my WordPress site redirect to a spam site only for some visitors?","acceptedAnswer":{"@type":"Answer","text":"The site has been broken into and the added code is written to hide from the owner. It usually redirects only visitors who are not logged in, people on phones, or people arriving from a Google search. Test from a phone in a private window by tapping your own Google result."}},
+{"@type":"Question","name":"How do I remove 'This site may be hacked' from Google?","acceptedAnswer":{"@type":"Answer","text":"Clean the site fully first: fresh copies of WordPress, every plugin and theme, remove stray PHP files and unknown admin users, change every password. Then in Google Search Console, Security issues, request a review. Reviews for hacked sites usually take a few days."}},
+{"@type":"Question","name":"Why did the redirect come back after I removed it?","acceptedAnswer":{"@type":"Answer","text":"A break-in usually leaves a backdoor, such as a PHP file in the uploads folder, a hidden must-use plugin or an extra admin user, and the original hole is often still open. Replace core, plugins and themes with fresh copies, delete stray PHP files, change all passwords and the security keys, and update everything."}},
+{"@type":"Question","name":"Can I just restore a backup of my hacked WordPress site?","acceptedAnswer":{"@type":"Answer","text":"Only as part of a clean-up. You may not know when the break-in happened, so the backup can carry the same code, and the plugin or password that let it in is still there. Restore, then still update everything, change every password and check for unknown admins and stray files."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
