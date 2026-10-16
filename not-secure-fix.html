@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>WordPress site says "Not Secure" or "Your connection is not private": find which and fix it</title>
-<meta name="description" content="Browser shows Not Secure, a crossed-out padlock, or Your connection is not private on your WordPress site? One look at the certificate tells you which: none, expired, wrong name or mixed content. Then fix it.">
+<meta name="description" content="Browser shows Not Secure, a crossed-out padlock or Your connection is not private? The warning code tells you which: no https, expired certificate, wrong name or mixed content. Fixes for WordPress and any host.">
 <link rel="canonical" href="https://stephen-psaradellis.github.io/demos/not-secure-fix.html">
 <style>
 :root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
@@ -83,6 +83,19 @@ th { background:#f0f1f4; }
   <li><b>Mixed content: the page is https, some of its parts are not.</b> WordPress stores full addresses inside posts, widgets and theme settings, so images and scripts added before the move still say <code>http://</code>. Browsers block or flag them and the padlock goes. Fix it with a database search-and-replace from <code>http://example.com</code> to <code>https://example.com</code> (Better Search Replace or <code>wp search-replace</code>), a backup and a dry run first. Then check the theme options, page builder settings and any hard-coded script (chat widget, map, old analytics) for <code>http://</code>. A plugin like Really Simple SSL rewrites these on the fly, which hides the problem rather than removing it.</li>
   <li><b>Cloudflare and the host disagree.</b> With Cloudflare's SSL mode on "Flexible", Cloudflare talks to your server over plain http, which can loop forever once WordPress insists on https. Error 526 means "Full (strict)" is on but the server's own certificate is invalid. Give the server a valid certificate, then use "Full (strict)".</li>
 </ol>
+
+<h2>The http-to-https redirect, by where the site is hosted</h2>
+<p>Once the certificate works, send every <code>http://</code> visitor to <code>https://</code>, so nobody who types the bare address lands on the "Not Secure" copy.</p>
+<ul>
+  <li><b>Apache / cPanel hosting</b> (GoDaddy, Bluehost, HostGator and similar): turn on the free SSL in cPanel, then put this at the top of <code>.htaccess</code>, above the WordPress block:
+<pre>RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]</pre></li>
+  <li><b>Nginx:</b>
+<pre>server { listen 80; server_name example.com www.example.com; return 301 https://$host$request_uri; }</pre></li>
+  <li><b>Cloudflare:</b> SSL/TLS, Edge Certificates, "Always Use HTTPS" (with SSL mode "Full (strict)", see cause 5).</li>
+  <li><b>Wix, Squarespace, Shopify:</b> HTTPS is a switch in the domain or SSL settings; turn it on and the platform redirects for you. The certificate and the mixed-content causes above still apply to pages you edited by hand.</li>
+</ul>
 
 <h2>What you see, what it means, what it needs</h2>
 <div class="tablewrap">
