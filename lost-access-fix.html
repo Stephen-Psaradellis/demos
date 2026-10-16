@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your web person left and you don't have the logins: how to get your website back</title>
+<meta name="description" content="The designer who built your site stopped answering and the domain, hosting or website login is in their name? Find who holds what, which company can hand each piece back, and the order to do it in: domain first.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/lost-access-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.map { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; }
+.map .top { background:#1d2327; color:#f0f0f1; padding:7px 10px; font-weight:600; }
+.map .row { display:flex; justify-content:space-between; gap:10px; padding:9px 10px; border-top:1px solid var(--line); }
+.map .row:nth-child(even) { background:#f6f7f7; }
+.map .t { min-width:0; overflow-wrap:anywhere; }
+.map .t b { display:block; }
+.map .s { white-space:nowrap; font-size:12px; font-weight:600; text-align:right; }
+.map .lost .s { color:var(--bad); }
+.map .ok .s { color:var(--good); }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>The web person left and you don't have the logins</h1>
+<p class="lede">The designer, nephew or agency that built your website stopped answering, and now something needs changing: new hours, a new phone number, a renewal notice you can't act on. The site is yours, but the domain, the hosting and the website login are in their accounts. This is fixable, and usually without starting over. Each piece is held by a different company, each company has its own way of handing it back, and the order matters: get the domain name first, because almost every other recovery asks you to prove you control it. Below is a rebuilt example (not a real client), how to find who holds what, and how each piece comes back.</p>
+
+<div class="switch" role="group" aria-label="Show who holds what">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Who holds what</h2>
+    <div class="map" id="map"></div>
+  </div>
+  <div class="panel">
+    <h2>What the lookups found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: find out who holds each piece</h2>
+<ol>
+  <li><b>The domain name.</b> Look it up at <code>lookup.icann.org</code>. It names the registrar (GoDaddy, Namecheap, Squarespace Domains, Network Solutions...) and the expiry date. The owner's name is usually hidden for privacy, so the registrar is what you are after. Note the expiry date: if it is close, this is now urgent.</li>
+  <li><b>The hosting.</b> The same lookup lists the name servers. Names like <code>ns1.bluehost.com</code> or <code>dns1.p08.nsone.net</code> point at a host or a DNS service; a "who hosts this website" lookup on your address names the server company. Wix, Squarespace and Shopify sites say so in the page source and in the footer of their error pages.</li>
+  <li><b>Your own inbox.</b> Search your email (and the business card statement) for the registrar and host names, "renewal" and "invoice". If the renewals come to you, the account may already be in your name with an email address you forgot; account recovery is then a password reset, not a negotiation.</li>
+  <li><b>The website login.</b> Try "Lost your password?" on the login page with every address you have used. If the reset email never arrives, the steps are in <a href="login-loop-fix.html">the login page just reloads</a>.</li>
+</ol>
+
+<h2>Getting each piece back</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you lost</th><th>Who can hand it back</th><th>How</th></tr>
+  <tr><td>The domain name</td><td>The registrar, and whoever is named as its owner (the registrant)</td><td>If the registrant is your business, the registrar's account recovery gets you in with photo ID and proof of the business. If it is the developer's name, ask them to move it to an account of yours at the same registrar: most registrars have a free account-to-account "push" or "change of account" that takes minutes and does not touch the website. If they will not answer, the registrar has an ownership-dispute process; send it invoices that show you paid for the domain, your business registration, and anything showing the name has been your trading name</td></tr>
+  <tr><td>The hosting</td><td>The hosting company, for whoever holds the account</td><td>If the account is yours, recover it like any account. If the developer hosts many clients under one reseller account, you cannot be given their account; ask for a full backup (the files and the database) or a move to a hosting account of your own. Hosts will not hand a reseller's data to a third party, so if the developer has vanished, the copy comes from the live site instead: a migration plugin or a person who rebuilds it from what is public</td></tr>
+  <tr><td>The WordPress admin login</td><td>Whoever controls the hosting</td><td>Once you hold the hosting, you can make yourself a new administrator without anyone's old password: the host's WordPress tool (cPanel's WP Toolkit, Softaculous, or the host's own dashboard) usually has a "Log in" or "Reset password" button, or run <code>wp user create yourname you@yourbusiness.com --role=administrator</code> where the host offers WP-CLI. Then remove the old accounts you do not recognise</td></tr>
+  <tr><td>A Wix, Squarespace or Shopify site</td><td>The account that owns the site, then the platform's support</td><td>The current owner can hand it over in a few clicks: Wix "Transfer site", Squarespace "Transfer ownership" under Permissions, Shopify "Transfer ownership" under Users and permissions. If they are unreachable, each platform's support has an ownership-verification process; expect to show you control the domain and the business</td></tr>
+  <tr><td>Business email (Google Workspace, Microsoft 365)</td><td>The email provider</td><td>If the developer is the only administrator, both providers have an admin-recovery route that asks you to prove you control the domain, usually by adding a record they give you to its DNS. That is why the domain comes first</td></tr>
+  <tr><td>Google Business Profile (the map listing)</td><td>Google, then the current owner</td><td>Search your business on Google Maps, choose "Own this business?" and request access. The current owner is asked to approve; if they do not answer within about a week, Google may let you verify it yourself</td></tr>
+</table>
+</div>
+
+<h2>Check it worked</h2>
+<p>Log in to each account from your own device and change the password and the recovery email and phone to yours. Turn on two-step sign-in for the registrar and the email admin, the two that everything else hangs off. Set the domain to renew automatically on your own card. Then write one page: each service, its company, the login email, and the renewal date. Keep it somewhere a second person in the business can find it.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not let the domain expire hoping to buy it back afterwards. An expired name goes through grace and redemption periods during which only the old account can renew it, and when it finally drops it is often caught by resellers within seconds.</li>
+  <li>Do not pay a "domain recovery" service that writes to you out of the blue. The registrar's own process is the only one that can move the name.</li>
+  <li>Do not rebuild the site at a new host before you hold the domain. A new site nobody can point the address at does nothing.</li>
+  <li>Do not swap passwords by email when a developer or helper does reply. Every service here has an "add a user" or "invite" feature; use it, and remove their access when the work is done.</li>
+</ul>
+<p class="note">With a cooperative registrar this takes an afternoon; a dispute can take a few weeks, mostly waiting on the companies. If you would rather hand the paperwork and the moves to someone, that is what the box below is for. Related: <a href="site-down-fix.html">your website stopped loading</a>, <a href="site-unreachable-fix.html">"This site can't be reached"</a>, and <a href="login-loop-fix.html">the login page just reloads</a>.</p>
+</div>
+
+<script>
+(function () {
+  var map = document.getElementById("map"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var before = [
+    ["lost", "Domain name", "Registrar account: the old designer", "not yours"],
+    ["lost", "Hosting", "Reseller account: the old designer", "not yours"],
+    ["lost", "Website admin", "Only login: designer's email", "not yours"],
+    ["lost", "Business email", "Admin: designer's address", "not yours"],
+    ["ok", "Google Business Profile", "Owner: you", "yours"]
+  ];
+  var after = [
+    ["ok", "Domain name", "Your registrar account, auto-renew on", "yours"],
+    ["ok", "Hosting", "Your own hosting account", "yours"],
+    ["ok", "Website admin", "You (old accounts removed)", "yours"],
+    ["ok", "Business email", "Admin: you, two-step on", "yours"],
+    ["ok", "Google Business Profile", "Owner: you", "yours"]
+  ];
+  function rows(list) {
+    var h = '<div class="top">Ridgeview Landscaping: accounts</div>';
+    list.forEach(function (m) {
+      h += '<div class="row ' + m[0] + '"><span class="t"><b>' + m[1] + '</b>' + m[2] + '</span><span class="s">' + m[3] + '</span></div>';
+    });
+    return h;
+  }
+  var logBefore = 'Site: landscaper, WordPress,\n  built 2019 by a freelancer who\n  stopped answering in 2025\n\n' +
+    'Domain: registered at the\n  designer\'s registrar account,\n  expires in 41 days\nHosting: on the designer\'s\n  reseller plan\nWebsite login: designer only\n\n' +
+    '<span class="bad">Spring prices could not be changed,\nand the address was weeks from\nlapsing.</span>';
+  var logAfter = 'Steps taken:\n1. Invoices for the domain found\n   in the owner\'s inbox.\n' +
+    '2. Designer replied to a short\n   email; domain pushed to the\n   owner\'s registrar account.\n' +
+    '3. Site copied with a migration\n   plugin to the owner\'s own\n   hosting; address pointed there.\n' +
+    '4. New admin made from the host\n   panel; old logins removed.\n5. Email admin recovered with a\n   DNS record.\n\n' +
+    '<span class="good">Every account in the owner\'s\nname, renewals on their card.</span>';
+  function show(isFixed) {
+    map.innerHTML = rows(isFixed ? after : before);
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"My web designer disappeared. How do I get my website back?","acceptedAnswer":{"@type":"Answer","text":"Find who holds each piece: look up the domain at lookup.icann.org to see the registrar and name servers, and search your inbox for renewal invoices. Recover the domain first through the registrar, then the hosting or a copy of the site, then the website login, which you can recreate from the hosting control panel."}},
+{"@type":"Question","name":"The domain is registered in my developer's name. Can I get it back?","acceptedAnswer":{"@type":"Answer","text":"Yes. The quickest route is asking the developer to move it to an account of yours at the same registrar, which most registrars allow for free. If they will not respond, the registrar has an ownership-dispute process; send invoices showing you paid for the domain and proof of your business."}},
+{"@type":"Question","name":"How do I get into WordPress without the old admin password?","acceptedAnswer":{"@type":"Answer","text":"With access to the hosting account you can make a new administrator: use the host's WordPress tool (such as cPanel's WP Toolkit or Softaculous), or run wp user create with the administrator role where the host offers WP-CLI. Then remove old accounts you do not recognise."}},
+{"@type":"Question","name":"What happens if my domain expires while I'm locked out?","acceptedAnswer":{"@type":"Answer","text":"It goes through grace and redemption periods during which only the account that holds it can renew it, and after that it can be registered by anyone, often by resellers within seconds. Start the registrar's recovery process well before the expiry date."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
