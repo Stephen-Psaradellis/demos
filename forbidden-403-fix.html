@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress "403 Forbidden": who is refusing you, and the fix for each</title>
+<meta name="description" content="WordPress 403 Forbidden on the whole site, only wp-admin, or when you save a post? Find out who sent the 403 (server, firewall, plugin, Cloudflare) and fix it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/forbidden-403-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.err { font-family: "Times New Roman", serif; font-size:15px; color:#000; }
+.err h3 { margin:0 0 10px; font-size:24px; }
+.err p { margin:0 0 10px; }
+.home h3 { margin:0 0 8px; font-size:20px; }
+.home p { margin:0 0 10px; color:#333; font-size:14.5px; }
+.cta { display:inline-block; background:#1d5fa8; color:#fff; padding:8px 14px; border-radius:6px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress shows "403 Forbidden"</h1>
+<p class="lede">"Forbidden. You don't have permission to access this resource." A 403 means something between the visitor and WordPress looked at the request and refused it on purpose. That something is not always the same thing: the web server, the host's firewall, a security plugin, Cloudflare, or a password lock on a folder. The fix depends entirely on which one said no, so the first job is finding out who it was. Below is a rebuilt example (not a real client), then how to tell the five apart and what fixes each.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What visitors see</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">hartwellflorist.example</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Find out who said no (five minutes)</h2>
+<ol>
+  <li><b>Read the page that refused you.</b> A plain white page saying "Forbidden" (sometimes with "Apache", "LiteSpeed" or "nginx" at the bottom) comes from the web server. "Sorry, you have been blocked" with a "Cloudflare Ray ID" line comes from Cloudflare. "Access Denied - Sucuri Website Firewall" or a page with your host's logo comes from a firewall in front of the site. A styled page that names a plugin, such as "Your access to this site has been limited by the site owner" (Wordfence), comes from a security plugin.</li>
+  <li><b>Note where it happens.</b> Every page, only <code>/wp-admin</code> and <code>/wp-login.php</code>, only when you press Save or Update, or only on images. Each points at a different cause in the table below.</li>
+  <li><b>Try from another network.</b> Open the site on your phone with Wi-Fi switched off. If it works there, your own internet address is blocked, and the site itself is fine for customers.</li>
+  <li><b>Think back one step.</b> A host move, a new security plugin, a changed password, a "hardening" tip pasted into a file, or a Cloudflare setting switched on the same day is usually the cause.</li>
+</ol>
+
+<h2>The fixes, by who refused</h2>
+<ol>
+  <li><b>The web server, on every page.</b> Three usual causes. First, the <code>.htaccess</code> file in the site's main folder: in the host's File Manager rename it to <code>.htaccess-old</code> and reload. If the site comes back, log in and press Save in Settings, Permalinks to write a clean one, then look in the old file for lines such as <code>Deny from all</code>, <code>Require all denied</code> or <code>Require ip</code> that a plugin or tutorial left. Second, the main folder has no <code>index.php</code>: after a host move the files are often sitting one folder too deep (for example <code>public_html/site-backup/</code>), and a server with no front page to show refuses with a 403. Move them up a level. Third, permissions: folders should be 755 and files 644 (<code>wp-config.php</code> may be 640 or 600). A folder at 700 or a file at 600 that the server must read gives a 403; ask the host to reset ownership if files were copied in as the wrong user.</li>
+  <li><b>A security plugin, on wp-admin or wp-login.</b> Too many wrong passwords, a country block or a "hide login" setting can lock out the owner. Use the unlock link the plugin emails, if it offers one. If not, in File Manager rename the plugin's folder in <code>wp-content/plugins</code> (for example <code>wordfence</code> to <code>wordfence-off</code>), log in, rename it back, then remove your address from its block list and check what triggered it.</li>
+  <li><b>The host's firewall, when you save a post or submit a form.</b> Hosts run a rule set (often called mod_security) that blocks requests that look like attacks, and a post containing code, a long link list or certain words can trip it. Send the host the page address, the exact time and your internet address; they can see which rule fired and allow it for your site. Do not paste <code>SecFilterEngine Off</code> into <code>.htaccess</code> from an old tutorial: modern servers do not accept it and some answer with a <a href="internal-server-error-fix.html">500 error</a> instead.</li>
+  <li><b>Cloudflare: "Sorry, you have been blocked".</b> In the Cloudflare dashboard open Security, Events, and search for the Ray ID shown on the page. It names the rule that blocked the visit: a custom rule, a country block, Bot Fight Mode or a managed rule. Change or skip that rule for the address that should get through. If a customer sent the screenshot, their Ray ID finds their visit.</li>
+  <li><b>A password-protected folder.</b> In cPanel, Directory Privacy (or "Password Protect Directories") can lock <code>wp-admin</code>. You normally see a password box first, and cancelling it gives a 403 or 401. Remove the lock or use its password.</li>
+  <li><b>Images only.</b> Hotlink protection in the host panel or Cloudflare can refuse images when the request comes from an address it does not list, such as a <code>www</code> versus non-<code>www</code> mix-up. Add both versions of the domain to its allowed list.</li>
+  <li><b>Test</b>: open the home page, a few inner pages, <code>/wp-login.php</code> and an image address, from your computer and from the phone on mobile data, and save one draft post.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Who refused</th><th>Usual fix</th></tr>
+  <tr><td>Plain "Forbidden. You don't have permission to access this resource" on every page</td><td>Web server</td><td>Rename <code>.htaccess</code>, check <code>index.php</code> is in the main folder, folders 755 and files 644</td></tr>
+  <tr><td>Same page, right after a host move</td><td>Web server, no front page</td><td>Files are one folder too deep: move them up</td></tr>
+  <tr><td>403 only on <code>/wp-admin</code> or <code>/wp-login.php</code>, site works on mobile data</td><td>Security plugin or a block on your address</td><td>Unlock link, or rename the plugin folder to get in</td></tr>
+  <tr><td>403 when pressing Save, Update or Publish</td><td>Host firewall rule (mod_security)</td><td>Host allows the rule for your site, given the time and page</td></tr>
+  <tr><td>"Sorry, you have been blocked" with a Ray ID</td><td>Cloudflare</td><td>Security, Events, search the Ray ID, adjust that rule</td></tr>
+  <tr><td>"Access Denied" with a firewall company's name</td><td>A firewall service in front of the site</td><td>Its dashboard's block log, or its support</td></tr>
+  <tr><td>Images broken, pages fine</td><td>Hotlink protection</td><td>Add both domain versions to the allowed list</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not set folders or files to 777 to "make it allowed". It lets anything on the server change your site, and many servers refuse to run files set that way, which gives you a new error.</li>
+  <li>Do not delete a security plugin's folder to get in. Rename it, log in, rename it back, then fix the setting that locked you out.</li>
+  <li>Do not switch the host's firewall off for the whole site because one post would not save. Have the one rule allowed.</li>
+  <li>Do not keep retrying the login. Most lockouts lengthen with every failed attempt.</li>
+</ul>
+<p class="note">Most 403s are one of the first three rows and are fixed in minutes once you know who sent them. If the host, the plugin and Cloudflare each say it is not them, that is what the box below is for. Related: <a href="too-many-redirects-fix.html">"too many redirects"</a> and <a href="login-loop-fix.html">a login page that keeps reloading</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="err"><h3>Forbidden</h3><p>You don\'t have permission to access this resource.</p>' +
+    '<p style="font-size:13px;color:#555">Additionally, a 403 Forbidden error was encountered while trying to use an ErrorDocument to handle the request.</p></div>';
+  var fixed = '<div class="home"><h3>Hartwell Florist</h3><p>Fresh flowers, same-day delivery across town. Order by 2pm.</p>' +
+    '<span class="cta">Order flowers</span></div>';
+  var logBroken = 'Owner moved hosts on Saturday. Since\nthen every page, and /wp-login.php,\nshows "Forbidden".\n\n' +
+    'Same on a phone on mobile data, so no\nblock on one address. Plain server page,\nno Cloudflare, no plugin message.\n\n' +
+    'File Manager, public_html holds only:\n  cgi-bin/\n  hartwell-backup/   <- every WordPress\n                        file is in here\n' +
+    'No index.php at the top, so the server\nhas no front page to show.\n\n' +
+    '<span class="bad">403 on every page: the site was\nunpacked one folder too deep.</span>';
+  var logFixed = 'Steps taken:\n1. Moved everything in hartwell-backup/\n   up into public_html (wp-config.php,\n   .htaccess and index.php included).\n' +
+    '2. Folders 755, files 644,\n   wp-config.php 640. Nothing at 777.\n' +
+    '3. Logged in, Settings > Permalinks >\n   Save, so .htaccess matches this host.\n' +
+    '4. Home, inner pages, the order form,\n   an image and /wp-login.php opened\n   on a laptop and on mobile data.\n\n' +
+    '<span class="good">Site back for everyone, nothing\ninstalled, no permissions loosened.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What causes a 403 Forbidden error on a WordPress site?","acceptedAnswer":{"@type":"Answer","text":"Something in front of WordPress refused the request on purpose: the web server (a bad .htaccess rule, a missing index.php or wrong file permissions), the host's firewall, a security plugin, Cloudflare, or a password lock on a folder. The page that refused you usually names which one."}},
+{"@type":"Question","name":"Why do I get 403 Forbidden only on wp-admin or wp-login.php?","acceptedAnswer":{"@type":"Answer","text":"Usually a security plugin or firewall has blocked your internet address after failed logins or a country rule. Check from a phone on mobile data; if the login works there, use the plugin's unlock link or rename its folder in wp-content/plugins to get in, then fix the rule."}},
+{"@type":"Question","name":"How do I fix 403 Forbidden when saving a post in WordPress?","acceptedAnswer":{"@type":"Answer","text":"The host's firewall (often mod_security) has matched something in the post and blocked the save. Send the host the page address, the time and your internet address so they can allow that rule for your site, rather than switching the firewall off."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
