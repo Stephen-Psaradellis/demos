@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress "Briefly unavailable for scheduled maintenance": what it means and how it gets fixed</title>
+<meta name="description" content="Why a WordPress site is stuck on 'Briefly unavailable for scheduled maintenance': an update that stopped halfway left a .maintenance file. How to fix it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/maintenance-mode-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:22px 16px; min-height:190px; }
+.crash p { margin:0 0 6px; color:#333; font-size:15px; }
+.crash .code { font-size:12px; color:#777; margin-top:12px; }
+.ok h3 { margin:0 0 6px; font-size:18px; }
+.ok p { margin:0 0 12px; color:var(--muted); }
+.ok .btn { display:inline-block; background:var(--brand); color:#fff; padding:8px 14px; border-radius:8px; font-weight:600; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>"Briefly unavailable for scheduled maintenance. Check back in a minute."</h1>
+<p class="lede">WordPress shows this line, and nothing else, while it installs an update. To do that it puts a small file called <code>.maintenance</code> in the site's main folder and deletes it when the update finishes. If the update stops halfway (the tab was closed, the server ran out of time or memory, several updates ran at once), the file can be left behind and every visitor gets the message. Your pages and orders are not lost. Below is a rebuilt example (not a real client), then the safe order of steps.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What visitors see</h2>
+    <div class="site">
+      <div class="bar">yourbusiness.com</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: is it still updating, or stuck?</h2>
+<ul>
+  <li><b>Wait ten minutes, then reload in a private window.</b> A normal update takes seconds to a couple of minutes. Current WordPress versions also stop honouring a leftover <code>.maintenance</code> file about ten minutes after the update began, so a site that clears by itself needs nothing more than a check that the update really finished.</li>
+  <li><b>Still there after that?</b> Something else is keeping it up: the file was written by a maintenance-mode plugin or a host tool with a later time in it, a cache is serving a stored copy of the message, or the update broke a plugin and the site is about to show a different error once the message goes.</li>
+  <li><b>Note what was updating.</b> The dashboard's Updates page, the plugin list or your host's activity log usually shows which plugin, theme or WordPress version it was. That is the thing to finish properly later.</li>
+</ul>
+
+<h2>The safe order of steps</h2>
+<ol>
+  <li><b>Back up the files</b> (host's file manager or SFTP) before changing anything.</li>
+  <li><b>Delete <code>.maintenance</code></b> from the folder that holds <code>wp-config.php</code> (often <code>public_html</code>). Its name starts with a dot, so file managers hide it: in cPanel's File Manager open Settings and tick "Show Hidden Files (dotfiles)"; in an SFTP app turn on hidden files. Delete only that one file.</li>
+  <li><b>Load the home page and <code>/wp-admin</code></b> in a private window. If the site is back, go to Dashboard &gt; Updates and finish what was updating, <b>one item at a time</b>, and do not leave the page until each one says it is done.</li>
+  <li><b>If the site now shows "There has been a critical error" or a blank page</b>, the update stopped mid-copy and left a plugin or theme half-installed. Rename that plugin's folder in <code>wp-content/plugins</code> (add <code>-off</code>), log in, and reinstall it fresh from Plugins &gt; Add New. Our <a href="critical-error-fix.html">critical error guide</a> covers the rest.</li>
+  <li><b>If WordPress itself was updating</b>, go to Dashboard &gt; Updates and use "Re-install version". If you cannot log in, upload fresh <code>wp-admin</code> and <code>wp-includes</code> folders of the same version from wordpress.org over the old ones. Never overwrite <code>wp-content</code> or <code>wp-config.php</code>: that is your content and your settings.</li>
+  <li><b>If there was no <code>.maintenance</code> file</b>, look for a "coming soon" or "maintenance mode" plugin (rename its folder) and your host's own maintenance or staging switch, then purge every cache (caching plugin, host cache, Cloudflare "Purge everything").</li>
+  <li><b>Remove the leftovers</b>: an empty or stale <code>wp-content/upgrade</code> folder can be deleted once everything works. Then test the home page, an inner page, the contact or order form and the dashboard login.</li>
+</ol>
+
+<h2>Common causes and what each one needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you find</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td><code>.maintenance</code> in the main folder, message on every page</td><td>An update stopped before it could clean up</td><td>Delete the file, then re-run the update one item at a time</td></tr>
+  <tr><td>Message gone, now "critical error" or a blank page</td><td>A plugin or theme was half-copied</td><td>Rename its folder, reinstall it fresh</td></tr>
+  <tr><td>Started during "Update all" of many plugins</td><td>The server hit its time or memory limit partway through</td><td>Update in small batches; ask the host to raise PHP memory and time limits</td></tr>
+  <tr><td>No <code>.maintenance</code> file, a "coming soon" style page</td><td>A maintenance-mode plugin or the host's switch is on</td><td>Turn that plugin or switch off, purge caches</td></tr>
+  <tr><td>Only you still see it; a private window shows the site</td><td>Your browser or a cache kept the old page</td><td>Clear the cache for that site, purge the CDN</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not delete other dot-files you find next to it, such as <code>.htaccess</code>: that one controls your addresses and redirects.</li>
+  <li>Do not start the same update again while the first one may still be running. Wait the ten minutes first.</li>
+  <li>Do not restore an old backup over the whole site just for this message. Orders, bookings and form entries since that backup would be lost, and deleting one file is usually the whole fix.</li>
+  <li>Do not run "Update all" on a busy shop in the middle of the day. Small batches, at a quiet hour, with a backup taken first.</li>
+</ul>
+<p class="note">If you can reach the host's file manager and the WordPress dashboard, the steps above are usually enough. If the site earns you money every hour it is down, that is what the box below is for.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="crash"><p>Briefly unavailable for scheduled maintenance. Check back in a minute.</p>' +
+    '<div class="code">HTTP 503 &middot; Retry-After: 600</div></div>';
+  var fixed = '<div class="ok"><h3>Harbor Street Bakery</h3><p>Custom cakes and fresh bread. Order by noon for next-day pickup.</p>' +
+    '<span class="btn">Order a cake</span></div>';
+  var logBroken = '"Update all" ran on 9 plugins last night;\nthe browser tab was closed on plugin 6.\n\n' +
+    'curl -sI https://harborstreetbakery.example\n' +
+    'HTTP/1.1 503 Service Unavailable\nRetry-After: 600\n\n' +
+    'public_html/ (hidden files shown)\n' +
+    '  .htaccess\n  .maintenance      &lt;- left behind\n  wp-config.php\n\n' +
+    'wp-content/plugins/order-form/  incomplete copy\n\n' +
+    '<span class="bad">The update never reached its clean-up step,\nso the site still says it is updating, and one\nplugin is half-installed.</span>';
+  var logFixed = 'Steps taken:\n1. Backup of the files.\n' +
+    '2. Deleted public_html/.maintenance (only that file).\n' +
+    '3. Site loaded; the order form showed an error.\n' +
+    '4. Renamed the order-form plugin folder, reinstalled\n   it fresh; its settings and orders were kept.\n' +
+    '5. Ran the 3 remaining plugin updates one at a time.\n' +
+    '6. Home page, an inner page, the order form and the\n   dashboard login checked in a private window.\n\n' +
+    'curl -sI https://harborstreetbakery.example\n' +
+    'HTTP/1.1 200 OK\n\n' +
+    '<span class="good">Site back, every update finished, no backup\nrestored and no orders lost.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'Briefly unavailable for scheduled maintenance' mean in WordPress?","acceptedAnswer":{"@type":"Answer","text":"WordPress shows it while it installs an update, using a temporary .maintenance file in the site's main folder. If the update stops halfway, the file can be left behind and visitors keep seeing the message. Nothing on the site is lost."}},
+{"@type":"Question","name":"How do I get my WordPress site out of maintenance mode?","acceptedAnswer":{"@type":"Answer","text":"Wait about ten minutes and reload in a private window. If the message is still there, delete the .maintenance file from the folder that holds wp-config.php (turn on hidden files in your file manager), then finish the interrupted update from Dashboard > Updates one item at a time."}},
+{"@type":"Question","name":"Why is my site showing a critical error after removing .maintenance?","acceptedAnswer":{"@type":"Answer","text":"The update stopped while copying a plugin or theme, so it is half-installed. Rename that plugin's folder in wp-content/plugins to switch it off, log in, and reinstall it fresh."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement("aside");d.id="hire-footer";d.className="hire-v3";d.style.cssText="max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box";var s=encodeURIComponent("Fix for my site: "+document.title);d.innerHTML="<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action=\"site-check.html\" method=\"get\" style=\"display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px\"><input name=\"url\" type=\"text\" inputmode=\"url\" placeholder=\"yourbusiness.com\" aria-label=\"Your website address\" required style=\"flex:1 1 180px;min-width:0;padding:8px;font:inherit\"><button style=\"padding:8px 14px;font:inherit\">Check my site free</button></form>Want it done for you? From $49 a fix, quoted before I start: <a href=\"https://www.fiverr.com/s_psaradellis\">order on Fiverr</a> or <a href=\"mailto:s.n.psaradellis@gmail.com?subject="+s+"\">email s.n.psaradellis@gmail.com</a>. <br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered.</small>";document.body.appendChild(d);}catch(e){}})();</script>
+</body>
+</html>
