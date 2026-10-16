@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress "Updating failed. The response is not a valid JSON response": what it means and how it gets fixed</title>
+<meta name="description" content="WordPress will not save a page: 'The response is not a valid JSON response'. Find out what the save got back instead, then fix that one cause.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/json-response-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.ed h3 { margin:0 0 8px; font-size:20px; }
+.ed p { margin:0 0 10px; color:#333; font-size:14.5px; }
+.ed .tools { display:flex; justify-content:flex-end; margin:0 0 12px; }
+.ed .btn { display:inline-block; background:#2271b1; color:#fff; padding:5px 12px; border-radius:3px; font-size:13px; }
+.snack { margin-top:14px; background:#1e1e1e; color:#fff; border-radius:3px; padding:10px 12px; font-size:13.5px; }
+.snack.okmsg { background:#1e1e1e; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress says "Updating failed. The response is not a valid JSON response"</h1>
+<p class="lede">You press Update or Publish in the WordPress editor and a black bar says the save failed: "The response is not a valid JSON response". The editor sends your page to the site and expects a short data reply (JSON) back. Something got in the way and the site answered with a web page instead: a "not found" page, a firewall's "forbidden" page, or a PHP warning stuck in front of the data. The message is the same in every case, so the fix starts with finding out which reply came back. Below is a rebuilt example (not a real client), then the order of steps.</p>
+
+<div class="switch" role="group" aria-label="Show the editor">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees after pressing Update</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">brightsidebakery.example/wp-admin/post.php?post=12&amp;action=edit</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Find out what the site sent back (five minutes)</h2>
+<ol>
+  <li><b>Does it fail on every page, or only this one?</b> Make a new draft with one word in it and press Save draft. If the empty draft saves, the problem is something in this page's content (usually a firewall objecting to it, see step 4 below). If nothing saves anywhere, it is site-wide.</li>
+  <li><b>Open your site's data address</b> in a new tab: <code>https://yoursite.com/wp-json/</code>. A healthy site shows a screen of text and brackets. Your theme's "page not found" or the host's plain "Not Found" page means the addresses WordPress uses for saving are not reaching it (step 2 below). A "Forbidden" or "Not Acceptable" page means a firewall is in the way (step 4).</li>
+  <li><b>Ask WordPress itself.</b> Tools, Site Health. Under Status, a line such as "The REST API encountered an error" or "The REST API encountered an unexpected result" confirms it and usually quotes the error.</li>
+  <li><b>Read the failed save in the browser</b> if the two checks above look fine. On a computer, press F12, open the Network tab, press Update again, and click the red line whose name starts with the page or post number (it goes to <code>wp-json/wp/v2/pages/...</code> or <code>.../posts/...</code>). The Response tab shows what came back. A "Warning:" or "Deprecated:" line before the <code>{</code> means a plugin or the theme is printing errors into the reply (step 5).</li>
+</ol>
+
+<h2>The fixes, in the order to try them</h2>
+<ol>
+  <li><b>Back up first.</b> In the host's control panel, take a backup or at least download <code>.htaccess</code> and <code>wp-config.php</code>. Copy the text of the page you were editing somewhere safe: an unsaved edit is lost if the tab closes.</li>
+  <li><b>Re-save the permalinks.</b> Settings, Permalinks, change nothing, press Save Changes. This rewrites the rules that send <code>/wp-json/</code> addresses to WordPress. If <code>/wp-json/</code> still shows a not-found page, the <code>.htaccess</code> file is missing or ignored, often after a host move; the <a href="pages-404-fix.html">pages 404 guide</a> has the standard file and what to check on the server.</li>
+  <li><b>Check the two site addresses.</b> Settings, General: "WordPress Address" and "Site Address" must both start with <code>https://</code> if the site has a certificate, and match the address in your browser bar. An <code>http://</code> address there sends the editor's save to an insecure address that the browser blocks or redirects, and a redirected save loses its data. If the dashboard misbehaves after changing them, the <a href="login-loop-fix.html">login loop guide</a> has the reversible <code>wp-config.php</code> way.</li>
+  <li><b>Let the save past the firewall.</b> If only some pages fail, or <code>/wp-json/</code> says Forbidden or Not Acceptable, a security filter is refusing the save. Pages with embedded code, form or map snippets, or text that looks like database commands are the usual trigger.
+    <ul>
+      <li>Host firewall (ModSecurity): its block page often names it. Ask the host's support to allow your site's <code>/wp-json/</code> saves, or, if your control panel has a ModSecurity switch, turn it off for this domain only, save, and turn it back on.</li>
+      <li>A security plugin (Wordfence, Sucuri, iThemes and similar): look in its firewall or blocked-requests log for the time you pressed Update, and allow that request. Wordfence also has a short "learning mode" for exactly this.</li>
+      <li>Cloudflare or another CDN: the firewall events log shows the block; add a skip rule for the save addresses under <code>/wp-json/wp/v2/</code> rather than turning the firewall off for the whole site.</li>
+    </ul>
+  </li>
+  <li><b>Stop errors printing into the reply.</b> In <code>wp-config.php</code>, if you find <code>define( 'WP_DEBUG', true );</code>, add <code>define( 'WP_DEBUG_DISPLAY', false );</code> below it so warnings go to the log instead of into the save. Then update the plugin or theme the warning names, or switch it off.</li>
+  <li><b>Switch plugins off to find the culprit</b> if nothing above explains it. Plugins, Installed Plugins, select all, Bulk actions, Deactivate, try saving, then switch them back on one at a time, saving after each. If the dashboard cannot be used, rename <code>wp-content/plugins</code> in the file manager instead (renaming keeps every setting).</li>
+  <li><b>Test</b>: save a draft, update a real page, upload an image in the editor, and check the page on your phone.</li>
+</ol>
+
+<h2>What came back, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you find</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td><code>/wp-json/</code> shows a "page not found"</td><td>The saving addresses never reach WordPress (rewrite rules missing)</td><td>Save Permalinks; restore <code>.htaccess</code> (pages 404 guide)</td></tr>
+  <tr><td>"Forbidden", "Not Acceptable" or a security plugin's block page</td><td>A firewall refused the save, often because of code or unusual text in the page</td><td>Allow the request in the plugin, the host's ModSecurity, or the CDN's firewall</td></tr>
+  <tr><td>Fails on one page only, empty drafts save fine</td><td>The page's content trips a filter</td><td>Same as above; until then, remove the snippet, save, add it back in a Custom HTML block</td></tr>
+  <tr><td>Site address in Settings starts with <code>http://</code> on an https site</td><td>The save goes to an insecure address and is blocked or redirected</td><td>Set both addresses to <code>https://</code></td></tr>
+  <tr><td>"Warning:", "Notice:" or "Deprecated:" text before the data</td><td>A plugin or theme prints PHP errors into the reply</td><td><code>WP_DEBUG_DISPLAY</code> false; update or replace what the warning names</td></tr>
+  <tr><td>Started right after installing or updating one plugin</td><td>That plugin interferes with saving</td><td>Switch it off, check for an update, tell its author</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not switch permalinks to "Plain" to make the error go away. Saving starts working, but every page address on the site changes, links from Google and your Business Profile break, and the real cause is still there.</li>
+  <li>Do not install the Classic Editor plugin as the fix. It hides the message by saving another way, so the firewall rule, PHP warning or missing rewrite rule that caused it is still there, and other plugins that use the same data address keep failing.</li>
+  <li>Do not turn off the host's or plugin's firewall for the whole site and leave it off. Allow the one kind of request, or switch it back on after saving.</li>
+  <li>Do not keep pressing Update. Each failed try can count against you in a security plugin, and an unsaved page lives only in that browser tab.</li>
+</ul>
+<p class="note">Most sites need step 2 or step 4, and either takes a few minutes once you know which one it is. If the editor is still refusing to save, or the page has to go live today, that is what the box below is for. Related: <a href="pages-404-fix.html">pages that 404 except the home page</a> share the first cause, and <a href="critical-error-fix.html">"there has been a critical error"</a> is what a broken plugin looks like from the front of the site.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var page = '<div class="ed"><div class="tools"><span class="btn">Update</span></div><h3>Order a birthday cake</h3>' +
+    '<p>Choose a size and flavour, then pick a collection time below.</p><p>[ embedded order form ]</p>';
+  var broken = page + '<div class="snack">Updating failed. The response is not a valid JSON response.</div></div>';
+  var fixed = page + '<div class="snack okmsg">Page updated. View Page</div></div>';
+  var logBroken = 'Owner pasted the order form\'s embed code\ninto the Order page; pressing Update now\nfails every time. Other pages save.\n\n' +
+    'New empty draft: saves fine.\n/wp-json/ opens: a screen of data, fine.\nSite Health: no REST API error.\n\n' +
+    'F12 > Network > the failed save:\nPOST /wp-json/wp/v2/pages/12\nStatus 406, Response:\n"Not Acceptable! ... This error was\ngenerated by Mod_Security."\n\n' +
+    '<span class="bad">The host\'s firewall reads the embed\ncode inside the save as an attack and\nanswers with a web page, so the editor\ngets HTML where it expected data.</span>';
+  var logFixed = 'Steps taken:\n1. Backup; the page text copied out.\n' +
+    '2. Host support asked to allow saves to\n   /wp-json/ for this site (their\n   ModSecurity rule id quoted from the\n   error log).\n' +
+    '3. Rule allowed for this domain only;\n   firewall stays on for everything else.\n' +
+    '4. Update pressed: "Page updated".\n' +
+    '5. A draft, an image upload and the\n   live Order page on a phone checked.\n\n' +
+    '<span class="good">Saving works, permalinks unchanged, no\nClassic Editor, the firewall still on.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'Updating failed. The response is not a valid JSON response' mean in WordPress?","acceptedAnswer":{"@type":"Answer","text":"The block editor saves through the site's REST API (/wp-json/) and expects a JSON reply. Something answered with a web page instead: a not-found page when the rewrite rules or .htaccess are missing, a firewall's Forbidden or Not Acceptable page, or PHP warnings printed before the data."}},
+{"@type":"Question","name":"How do I fix the WordPress 'not a valid JSON response' error?","acceptedAnswer":{"@type":"Answer","text":"Open yoursite.com/wp-json/ and read Tools > Site Health to see which reply comes back. Then re-save Settings > Permalinks, make both site addresses https, allow the save in the host's ModSecurity, security plugin or CDN firewall, and stop PHP warnings from displaying with WP_DEBUG_DISPLAY false."}},
+{"@type":"Question","name":"Why does only one WordPress page fail to save with the JSON response error?","acceptedAnswer":{"@type":"Answer","text":"When empty drafts save but one page does not, that page's content, often embedded code, a form or map snippet, is tripping a security filter such as ModSecurity, Wordfence or a CDN firewall. Allow that request in the filter rather than switching it off for the whole site."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement("aside");d.id="hire-footer";d.className="hire-v4";d.style.cssText="max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box";var s=encodeURIComponent("Fix for my site: "+document.title);d.innerHTML="<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action=\"site-check.html\" method=\"get\" style=\"display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px\"><input name=\"url\" type=\"text\" inputmode=\"url\" placeholder=\"yourbusiness.com\" aria-label=\"Your website address\" required style=\"flex:1 1 180px;min-width:0;padding:8px;font:inherit\"><button style=\"padding:8px 14px;font:inherit\">Check my site free</button></form>Want it done for you? From $49 a fix, quoted before I start, no payment until you OK the quote: <a href=\"mailto:s.n.psaradellis@gmail.com?subject="+s+"\" style=\"display:inline-block;margin:4px 0;padding:6px 12px;border:1px solid #222;border-radius:6px;color:#222;text-decoration:none\">Email me your site address</a> (s.n.psaradellis@gmail.com). <br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered.</small>";document.body.appendChild(d);}catch(e){}})();</script>
+</body>
+</html>
