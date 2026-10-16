@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Website suddenly looks broken: plain text, no styling, layout gone (how to fix it)</title>
+<meta name="description" content="Your site shows plain black text, blue links and stacked images? The styling (CSS) is not loading. Find which file fails in two minutes, then fix the cause.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/unstyled-site-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { min-width:0; overflow-wrap:anywhere; }
+.site.raw { font-family: "Times New Roman", Times, serif; font-size:15px; color:#000; }
+.site.raw a { color:#00e; text-decoration:underline; }
+.site.raw h3 { font-size:22px; margin:6px 0; }
+.site.raw ul { margin:4px 0 8px; padding-left:22px; }
+.site.raw .ph { width:100%; max-width:260px; height:90px; background:#bbb; margin:6px 0; }
+.site.ok { font-size:14px; }
+.site.ok .bar { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; background:#2d4a3e; color:#fff; padding:10px 12px; border-radius:8px; }
+.site.ok .bar b { margin-right:auto; }
+.site.ok .bar a { color:#fff; text-decoration:none; font-size:13px; }
+.site.ok .hero { display:grid; grid-template-columns: minmax(0,1fr) 110px; gap:10px; align-items:center; margin:12px 0; }
+.site.ok h3 { font-size:19px; margin:0 0 4px; }
+.site.ok .ph { height:80px; border-radius:8px; background:linear-gradient(135deg,#7fa88f,#2d4a3e); }
+.site.ok .btn { display:inline-block; background:#e07a2e; color:#fff; padding:7px 12px; border-radius:6px; font-weight:600; text-decoration:none; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:#ff8a80; font-weight:600; }
+.good { color:#8fd19e; font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Your website suddenly looks broken: plain text, no styling</h1>
+<p class="lede">The words are all there, but the page looks like a document from 1996: black serif text, underlined blue links, the menu as a bullet list, pictures stacked down the left. Nothing was deleted. The file that tells the browser how the site should look (the stylesheet, or CSS) is not reaching it. One check shows which file fails and why, and the reason points straight to the fix. Below is a rebuilt example (not a real client), the two-minute check, and the fix for each cause.</p>
+
+<div class="switch" role="group" aria-label="Show the broken page or the page after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What a visitor sees</h2>
+    <div class="site raw" id="page"></div>
+  </div>
+  <div class="panel">
+    <h2>What the check found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>The two-minute check: which file fails?</h2>
+<ol>
+  <li><b>Open the site in a private window</b> (Ctrl+Shift+N in Chrome, Ctrl+Shift+P in Firefox). If it looks right there, your own browser held on to something old: clear its cache and you are done. If it is broken there too, every visitor sees it.</li>
+  <li><b>Press F12 and open the Console tab</b>, then reload. Red lines about styles name the problem in words: <code>Mixed Content</code>, <code>Refused to apply style ... MIME type ('text/html')</code>, <code>net::ERR_NAME_NOT_RESOLVED</code>, <code>404</code> or <code>403</code>.</li>
+  <li><b>Open the Network tab, click "CSS", reload.</b> Each style file is listed with a status. Look at the ones that are red or not 200, and at the address they were loaded from. An old domain, <code>http://</code> instead of <code>https://</code>, a <code>cdn.</code> address or a <code>/cache/</code> path is your answer in the table below.</li>
+  <li><b>Open one failing file's address in a new tab.</b> If you see a "page not found", a login page or a security block instead of lines of code, that is what the browser received too.</li>
+</ol>
+
+<h2>What causes it and the fix</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What the check shows</th><th>Why it happens</th><th>The fix</th></tr>
+  <tr><td>Style files load from an <b>old domain</b>, a staging address or <code>http://</code></td><td>The site was moved, renamed or switched to https, but WordPress still has the old address saved, so every page asks for its styles from a place that no longer answers (or that the browser blocks as insecure)</td><td>In <b>Settings &gt; General</b>, set both <b>WordPress Address</b> and <b>Site Address</b> to the exact current address, with https. If you cannot reach the admin, add <code>define('WP_HOME','https://yoursite.com');</code> and <code>define('WP_SITEURL','https://yoursite.com');</code> to <code>wp-config.php</code>. Then replace the old address inside the content with a search-and-replace plugin (take a backup first). See <a href="not-secure-fix.html">"Not secure"</a> for the mixed-content side</td></tr>
+  <tr><td>Console: <b>Mixed Content</b> ... was not loaded over HTTPS</td><td>The page is https but its stylesheet is asked for over plain http, and browsers refuse it</td><td>Same fix as above: the saved address still says http. If the address is right, a theme or plugin setting has a hard-coded http link (look in the theme's custom CSS or header settings)</td></tr>
+  <tr><td>Style file from <code>/wp-content/cache/</code> or a <b>minified / combined</b> file returns <b>404</b></td><td>A speed plugin glued the styles into one file and saved the page with a link to it. The file was cleared, but the saved pages (in the plugin, at the host or at Cloudflare) still point to it</td><td>Clear all caches in order: the speed plugin, then the host's cache in the hosting panel, then Cloudflare's <b>Purge Everything</b>. If it comes back, switch off the plugin's "combine CSS" / "minify CSS" / "remove unused CSS" options and test again. See <a href="changes-not-showing-fix.html">changes not showing</a></td></tr>
+  <tr><td>Files from <code>cdn.yoursite.com</code> or a CDN address fail to load at all</td><td>A CDN was set up once (often by a past web person), then the CDN account lapsed or its DNS record was removed, but a plugin still rewrites every file address to it</td><td>Turn off the CDN rewrite in the speed or CDN plugin (WP Rocket: <b>CDN</b> tab; W3 Total Cache: <b>CDN</b>; LiteSpeed: <b>CDN</b>), clear caches, reload. Bring the CDN back later only if you still pay for it</td></tr>
+  <tr><td>Style files return <b>403 Forbidden</b></td><td>File permissions changed after a move or a malware clean-up, or a security rule now blocks the <code>wp-content</code> folder</td><td>Ask the host to reset permissions to folders 755 and files 644. Look for an <code>.htaccess</code> file inside <code>wp-content</code> or <code>wp-content/themes</code> with "deny from all" that a security plugin added, and remove that line for <code>.css</code> and <code>.js</code>. See <a href="forbidden-403-fix.html">403 Forbidden</a></td></tr>
+  <tr><td>Console: <b>Refused to apply style ... MIME type ('text/html')</b></td><td>The browser asked for a style file and got a web page back: a 404 page, a login page or a maintenance page. The file itself is missing or redirected</td><td>Open that file's address directly to see which page comes back. A theme or plugin update that did not finish leaves files missing: reinstall the same version of that theme or plugin (<a href="install-update-failed-fix.html">update failed</a>). A redirect rule catching everything is the other usual cause</td></tr>
+  <tr><td>Only pages built with <b>Elementor</b> look bare; the header and footer are fine</td><td>Elementor keeps each page's design in its own generated CSS file, and those files were lost in a move, a cache clear or a restore</td><td>In <b>Elementor &gt; Tools</b>, click <b>Regenerate Files &amp; Data</b> (older versions: <b>Regenerate CSS</b>), then clear caches. If it keeps happening, set <b>Elementor &gt; Settings &gt; Performance &gt; CSS Print Method</b> to <b>Internal Embedding</b>. See <a href="elementor-loading-fix.html">Elementor stuck on loading</a></td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not switch themes to "see if it helps". A new theme brings its own menus, widgets and page layouts, and switching back does not always restore them.</li>
+  <li>Do not paste the theme's CSS into the Customizer's Additional CSS box. It hides the symptom on some pages and leaves you with two copies of every style to keep in step.</li>
+  <li>Do not run a search-and-replace on the database without a backup. One typo in the address breaks every link at once.</li>
+  <li>Do not keep reloading the live site with caches off for days. The cache plugin is what keeps the site fast; find the broken file, fix it, then turn the cache back on.</li>
+</ul>
+<p class="note">Finding the failing file takes two minutes; changing the saved address, permissions or cache settings is where most people would rather have someone do it. If that is you, the box below is for that. Related: <a href="images-not-showing-fix.html">images not showing</a>, <a href="plugin-conflict-fix.html">plugin conflict</a> and <a href="white-screen-fix.html">white screen</a>.</p>
+</div>
+
+<script>
+(function () {
+  var page = document.getElementById("page"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<h3>Greenfield Landscaping</h3><ul><li><a href="#">Home</a></li><li><a href="#">Services</a></li><li><a href="#">Gallery</a></li><li><a href="#">Contact</a></li></ul>' +
+    '<p>Lawn care, planting and patios in the Riverside area.</p><div class="ph" aria-hidden="true"></div>' +
+    '<p><a href="#">Get a free estimate</a></p><p>Rebuilt example, not a real client.</p>';
+  var fixed = '<div class="bar"><b>Greenfield Landscaping</b><a href="#">Services</a><a href="#">Gallery</a><a href="#">Contact</a></div>' +
+    '<div class="hero"><div><h3>Lawn care, planting and patios</h3><p style="margin:0 0 8px">Serving the Riverside area since 2009.</p>' +
+    '<a class="btn" href="#">Get a free estimate</a></div><div class="ph" aria-hidden="true"></div></div>' +
+    '<p style="color:#666;margin:0">Rebuilt example, not a real client.</p>';
+  var logBefore = 'Site: landscaping company, WordPress\n  moved to a new host last night\n\n' +
+    'Private window: still broken\n' +
+    'Network > CSS:\n  style.css      http://old-host\n    .tempurl.example  FAILED\n' +
+    '  blocks.css     same address  FAILED\n\n' +
+    'Console:\n  Mixed Content: stylesheet\n  http://old-host... was not loaded\n\n' +
+    '<span class="bad">WordPress Address still names the\nold host\'s temporary http address.</span>';
+  var logAfter = 'Steps taken:\n1. Backup taken.\n2. Settings > General: both\n   addresses set to\n   https://greenfield.example\n' +
+    '3. Search-and-replace of the old\n   temporary address in content\n   (312 rows).\n4. Speed plugin and host cache\n   cleared.\n\n' +
+    'Network > CSS: all files 200\n\n<span class="good">Styled again in 15 minutes.</span>';
+  function show(isFixed) {
+    page.className = "site " + (isFixed ? "ok" : "raw");
+    page.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does my website suddenly show plain text with no styling?","acceptedAnswer":{"@type":"Answer","text":"The stylesheet (CSS file) that controls the look is not reaching the browser. The content is fine. Open the browser's developer tools (F12), reload, and look at the Network tab filtered to CSS: the failing file and its address show the cause, usually an old site address, mixed http content, a cleared cache file, a dead CDN or blocked permissions."}},
+{"@type":"Question","name":"My WordPress site lost its styling after moving hosts. How do I fix it?","acceptedAnswer":{"@type":"Answer","text":"WordPress usually still has the old or temporary address saved. Set WordPress Address and Site Address in Settings > General to the current https address (or define WP_HOME and WP_SITEURL in wp-config.php), replace the old address in the content with a search-and-replace plugin after a backup, then clear every cache."}},
+{"@type":"Question","name":"What does 'Refused to apply style because its MIME type is text/html' mean?","acceptedAnswer":{"@type":"Answer","text":"The browser asked for a CSS file and received a web page instead, typically a 404 page, a login page or a maintenance page. Open the file's address directly to see which. A missing file from an unfinished update or a redirect rule catching everything are the usual causes."}},
+{"@type":"Question","name":"Why do only my Elementor pages look unstyled?","acceptedAnswer":{"@type":"Answer","text":"Elementor stores each page's design in generated CSS files, which can be lost in a move, restore or cache clear. Use Elementor > Tools > Regenerate Files & Data, clear caches, and if it repeats set the CSS Print Method to Internal Embedding."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
