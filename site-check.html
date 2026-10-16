@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Free website check for small businesses: 12 problems in 20 seconds</title>
+<meta name="description" content="Type your business website address and see, in plain English, whether it is marked Not secure, broken on phones, missing its Google title, showing an old year, and more. Free, no sign-up.">
+<style>
+  :root { color-scheme: light; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:#1b1b1b; background:#f6f4ef; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: clamp(22px, 4vw, 32px); margin: 0 0 8px; }
+  p, li { line-height: 1.5; }
+  form { display: flex; gap: 8px; flex-wrap: wrap; margin: 20px 0 8px; }
+  input { flex: 1 1 240px; min-width: 0; font: inherit; font-size: 17px; padding: 12px; border: 1px solid #bdb7a8; border-radius: 8px; background: #fff; }
+  button { font: inherit; font-size: 17px; padding: 12px 20px; border: 0; border-radius: 8px; background: #1f6f5f; color: #fff; cursor: pointer; }
+  button[disabled] { opacity: .6; cursor: wait; }
+  .card { background: #fff; border: 1px solid #e6e2d8; border-radius: 12px; padding: 16px; margin: 16px 0; }
+  .row { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid #eee; }
+  .row:first-of-type { border-top: 0; }
+  .mark { flex: none; width: 22px; height: 22px; border-radius: 50%; color: #fff; font-weight: 700; display: grid; place-items: center; font-size: 14px; }
+  .bad .mark { background: #b23b3b; } .ok .mark { background: #1f6f5f; }
+  .ok { color: #3d3d3d; }
+  .row div { min-width: 0; overflow-wrap: anywhere; }
+  .ev { color: #6b6b6b; font-size: 13px; }
+  .cta { background: #fffbea; border-color: #e8d98a; }
+  .cta a.btn { display: inline-block; margin: 6px 8px 0 0; padding: 10px 14px; border-radius: 8px; background: #1f6f5f; color: #fff; text-decoration: none; }
+  .cta a.btn.alt { background: #fff; color: #1f6f5f; border: 1px solid #1f6f5f; }
+  .muted { color: #6b6b6b; font-size: 14px; }
+  .err { color: #a33; }
+  a { color: #1f6f5f; }
+  ul.checks { padding-left: 20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Free website check for small businesses</h1>
+  <p>Type your business website address. In about 20 seconds you see, in plain
+  English, what a customer or Google runs into on your home page, and a free
+  step-by-step guide for anything that needs fixing. No sign-up, nothing stored.</p>
+
+  <form id="f">
+    <input id="u" name="url" type="text" inputmode="url" autocomplete="url" placeholder="yourbusiness.com" aria-label="Your website address" required>
+    <button id="go" type="submit">Check my site</button>
+  </form>
+  <p class="muted" id="status">These are the same checks I ran on 43,077 small-business home pages in 2026.</p>
+
+  <div id="out"></div>
+
+  <div class="card">
+    <strong>What it checks</strong>
+    <ul class="checks">
+      <li>Is the site up, and does it answer with your page rather than an error?</li>
+      <li>Does it have a working secure (https) address, and do visitors who type the plain address land on it?</li>
+      <li>Do any images, scripts or styles still load over insecure http:// (browsers block or flag them)?</li>
+      <li>Does it fit a phone screen (the mobile viewport tag)?</li>
+      <li>Does it have a page title and a search snippet, or is Google making them up?</li>
+      <li>Does the footer still show an old copyright year?</li>
+      <li>Is the phone number a tap-to-call link? Does the contact form rely on mailto:?</li>
+      <li>Is the WordPress version published in the page, or behind the current release?</li>
+      <li>Do images have descriptions, are any over 1 MB, and do links to your own pages work?</li>
+    </ul>
+    <p class="muted">It reads your home page once, as a visitor would, plus a quick look at up to 12 images and 10 of your own links.
+    It does not log in, change anything, or keep the address you type (results are cached for 10 minutes, then gone).</p>
+  </div>
+
+  <p class="muted">This check and the guides it links to were built with an AI system I run; I am responsible for what is delivered.
+  <a href="index.html">All guides and before-and-after examples</a>.</p>
+</main>
+<script>
+(function () {
+  var API = "https://sitecheck.s-n-psaradellis.workers.dev/check?url=";
+  var FIVERR = "https://www.fiverr.com/s_psaradellis";
+  var EMAIL = "s.n.psaradellis@gmail.com";
+  var f = document.getElementById("f"), u = document.getElementById("u"), go = document.getElementById("go");
+  var out = document.getElementById("out"), status = document.getElementById("status");
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function evidence(e) {
+    if (e == null) return "";
+    if (Array.isArray(e)) return e.map(function (x) { return typeof x === "string" ? x : (x.url + (x.mb ? " (" + x.mb + " MB)" : "") + (x.status ? " (" + x.status + ")" : "")); }).join(", ");
+    return typeof e === "object" ? "" : String(e);
+  }
+  function render(r) {
+    var bad = r.problems || [], ok = r.passed || [];
+    var h = '<div class="card"><strong>' + esc(r.host) + '</strong>: ' +
+      (bad.length ? bad.length + ' thing' + (bad.length > 1 ? 's' : '') + ' to fix' : 'nothing to fix on the home page') + '<div style="margin-top:8px">';
+    bad.forEach(function (p) {
+      var ev = evidence(p.evidence);
+      h += '<div class="row bad"><span class="mark">!</span><div>' + esc(p.what) +
+        (ev ? '<div class="ev">' + esc(ev).slice(0, 300) + '</div>' : '') +
+        ' <a href="' + esc(p.guide) + '">How to fix it (free guide)</a></div></div>';
+    });
+    ok.forEach(function (t) { h += '<div class="row ok"><span class="mark">&#10003;</span><div>' + esc(t) + '</div></div>'; });
+    h += '</div></div>';
+    if (bad.length) {
+      var subj = encodeURIComponent("Fix for my site: " + r.host);
+      var body = encodeURIComponent("Hi, the free check found these on " + r.host + ":\n\n" +
+        bad.map(function (p) { return "- " + p.what; }).join("\n") + "\n\nWhat would it cost to fix them?\n");
+      h += '<div class="card cta"><strong>Rather have it done for you?</strong> Every guide works on its own, ' +
+        'but if you would rather not touch the site, I fix these at a fixed price, quoted before any work starts. ' +
+        '<br><a class="btn" href="mailto:' + EMAIL + '?subject=' + subj + '&body=' + body + '">Email me this list</a>' +
+        '<a class="btn alt" href="' + FIVERR + '">Or order on Fiverr</a></div>';
+    }
+    out.innerHTML = h;
+  }
+  f.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var v = u.value.trim();
+    if (!v) return;
+    go.disabled = true; out.innerHTML = "";
+    status.textContent = "Checking " + v + " ... (up to 20 seconds)";
+    fetch(API + encodeURIComponent(v)).then(function (res) { return res.json(); }).then(function (r) {
+      if (r.error) { status.innerHTML = '<span class="err">' + esc(r.error) + '</span>'; return; }
+      status.textContent = "Checked " + r.host + " just now.";
+      render(r);
+      try { history.replaceState(null, "", "?url=" + encodeURIComponent(r.host)); } catch (x) {}
+    }).catch(function () {
+      status.innerHTML = '<span class="err">The check could not finish. Try again in a minute.</span>';
+    }).then(function () { go.disabled = false; });
+  });
+  var q = new URLSearchParams(location.search).get("url");
+  if (q) { u.value = q; f.requestSubmit ? f.requestSubmit() : go.click(); }
+})();
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+</body>
+</html>
