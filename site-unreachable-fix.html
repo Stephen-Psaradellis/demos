@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Website down, "This site can't be reached": what each error means and the fix</title>
+<meta name="description" content="DNS_PROBE_FINISHED_NXDOMAIN, ERR_CONNECTION_TIMED_OUT, 'Account Suspended' or a parked page instead of your business site? What each one means, how to tell which, and how it gets fixed.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/site-unreachable-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#f1f3f4; color:#202124; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; border-bottom:1px solid var(--line); }
+.site .body { padding:14px; min-height:190px; background:#fff; font-size:13px; }
+.err-icon { width:28px; height:28px; border:3px solid #9aa0a6; border-radius:4px; margin-bottom:10px; }
+.err-title { font-size:17px; font-weight:600; color:#202124; margin:0 0 6px; }
+.err-code { color:#5f6368; font-size:11.5px; letter-spacing:.3px; margin-top:12px; }
+.mock-head { background:#1d4e89; color:#fff; font-weight:700; padding:8px 10px; border-radius:4px; margin-bottom:8px; }
+.mock-line { height:7px; background:#e3e3e3; border-radius:4px; margin:6px 0; }
+.mock-line.short { width:60%; }
+.mock-btn { display:inline-block; background:#e8590c; color:#fff; font-weight:600; border-radius:4px; padding:5px 10px; margin-top:6px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:#ff8a80; font-weight:600; }
+.good { color:#8fe0a6; font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Website down: "This site can't be reached"</h1>
+<p class="lede">You type your business address and get a grey error page, a "this domain has expired" page full of ads, or a plain "Account Suspended". Customers see the same thing, and often your business email has stopped too. The error code under the message says which of four things broke: the domain, its DNS records, the hosting account, or the server. Each has a different fix, and two of them get harder to undo the longer they wait. Below is a rebuilt example (not a real client), how to read the code, and the fix for each.</p>
+
+<div class="switch" role="group" aria-label="Show the page">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What a customer sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar"></div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: is it down for everyone, or only for you?</h2>
+<ol>
+  <li><b>Open the site on your phone with Wi-Fi turned off.</b> If it loads on mobile data but not on your office Wi-Fi, the site is up: your own connection or address is blocked (last row of the table).</li>
+  <li><b>Try both addresses:</b> <code>yourbusiness.com</code> and <code>www.yourbusiness.com</code>. If only one fails, one DNS record is missing, not the whole site.</li>
+  <li><b>Read the small grey code</b> under the browser's message (Chrome and Edge show it; Firefox says "Hmm. We're having trouble finding that site" for the first kind). Then find it in the table below.</li>
+</ol>
+
+<h2>What the error code means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>You see</th><th>It means</th><th>Usual cause</th></tr>
+  <tr><td><code>DNS_PROBE_FINISHED_NXDOMAIN</code> or <code>ERR_NAME_NOT_RESOLVED</code></td><td>The internet has no address for your domain name</td><td>The domain expired, or its nameservers or DNS records were changed or deleted</td></tr>
+  <tr><td>A "This domain has expired", "Renew now" or "This domain may be for sale" page</td><td>The registrar parked the name after it expired</td><td>Renewal failed: an old card, an old email address that never got the reminders</td></tr>
+  <tr><td>"Account Suspended" or a hosting company's page</td><td>The domain works; the hosting company switched the account off</td><td>An unpaid invoice, or the host found malware or heavy use</td></tr>
+  <tr><td><code>ERR_CONNECTION_TIMED_OUT</code></td><td>The address exists but nothing answers</td><td>The server is down or overloaded, the DNS points at an old server, or a firewall is blocking you</td></tr>
+  <tr><td><code>ERR_CONNECTION_REFUSED</code></td><td>A machine answered and refused</td><td>The DNS points at the wrong server, or the web server on it is stopped</td></tr>
+  <tr><td>"Your connection is not private"</td><td>The site is up; its security certificate is not</td><td>See <a href="not-secure-fix.html">the not-secure guide</a></td></tr>
+</table>
+</div>
+
+<h2>The causes and their fixes</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>Cause</th><th>How to confirm it</th><th>What to do</th></tr>
+  <tr><td>The domain expired</td><td>Look the domain up at <code>lookup.icann.org</code>: an expiry date in the past, or a status of <code>clientHold</code>, <code>redemptionPeriod</code> or <code>pendingDelete</code>. It also names the registrar (GoDaddy, Namecheap, Squarespace Domains...)</td><td>Log in at that registrar and renew it, then turn on auto-renew and update the card and the contact email. Right after expiry a normal renewal usually brings it back within an hour or a few. Wait longer and many registrars move it to a redemption period with a much higher fee, and after that the name can be released for anyone to buy. Exact days vary by registrar and by ending (.com, .co.uk...), so act the same day</td></tr>
+  <tr><td>Nameservers or DNS records changed</td><td>The domain is paid, but the ICANN lookup shows nameservers you do not recognise, or <code>dnschecker.org</code> shows no A record, or an address that is not your host's. Common after a hosting move, a registrar transfer, or a "connect your domain" step in a site builder</td><td>Set the nameservers back to your host's (your host's help pages list them), or put back the A record and the <code>www</code> CNAME the host gives you. Copy the MX records too, or email stops. Changes take from minutes to a day to reach everyone</td></tr>
+  <tr><td>Hosting account suspended</td><td>"Account Suspended" on every page, and an email from the host. Check the host's billing page and inbox, including spam</td><td>Pay the open invoice or update the card; the host usually switches it back on the same day. If the reason was malware, the host wants it cleaned first: see <a href="hacked-redirect-fix.html">the hacked-redirect guide</a></td></tr>
+  <tr><td>The server is down or overloaded</td><td>Times out for everyone (phone on mobile data too); the host's status page reports an incident, or the site fails every afternoon when traffic peaks</td><td>Check the host's status page and open a ticket with the exact time and error. If it keeps happening, the plan has run out of room or something is hammering it: see <a href="gateway-error-fix.html">the 502/504 guide</a> and <a href="too-many-requests-fix.html">the 429 guide</a></td></tr>
+  <tr><td>Only you are blocked</td><td>Fails on your office Wi-Fi, loads on mobile data. Often right after several wrong passwords: a security plugin (Wordfence, iThemes) or the host's firewall blocked your internet address</td><td>Ask the host to unblock your address (search "what is my IP" and send it), or unblock it in the security plugin from another connection. If nothing was blocked, restart the router, or on Windows run <code>ipconfig /flushdns</code></td></tr>
+</table>
+</div>
+
+<h2>Things that also stop when the domain lapses</h2>
+<ul>
+  <li><b>Email at the domain.</b> If your address is <code>you@yourbusiness.com</code>, it stops receiving with the website. Customers' emails bounce. Renewing fixes both.</li>
+  <li><b>Your Google listing's website link.</b> Google keeps showing it, and every click lands on the error. Once it is back, open the link from the listing to check.</li>
+  <li><b>Payment and booking links</b> that live on the site, and the confirmation emails they send.</li>
+</ul>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not buy a "new" domain with a different ending and start over. Every link, review site and printed card uses the old one. Renew it, even late.</li>
+  <li>Do not pay anyone who emails offering to "recover" or "restore" your expired domain. Renew only by logging in to the registrar the ICANN lookup names.</li>
+  <li>Do not change nameservers to "test". If you do not know the old values, write them down before touching anything; a wrong change can take a day to undo.</li>
+  <li>Do not let a suspension sit. Some hosts delete a suspended account's files after a few weeks.</li>
+</ul>
+<p class="note">Most of the time this is an expired card on a renewal, ten minutes' work once you know which login it is. If you would rather hand it over, or the DNS is a tangle of old hosts, that is what the box below is for. Related: <a href="site-down-fix.html">a site that stopped loading, brought back</a>, <a href="database-connection-fix.html">"Error establishing a database connection"</a>, <a href="white-screen-fix.html">a blank white screen</a> and <a href="home-page-error-fix.html">a home page that says "Page not found"</a>.</p>
+</div>
+
+<script>
+(function () {
+  var bar = document.getElementById("site-bar"), body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="err-icon"></div><p class="err-title">This site can’t be reached</p>' +
+    '<div>Check if there is a typo in <b>riversideplumbing.example</b>.</div>' +
+    '<div class="err-code">DNS_PROBE_FINISHED_NXDOMAIN</div>';
+  var fixed = '<div class="mock-head">Riverside Plumbing</div><b>Leaks, drains, water heaters</b>' +
+    '<div class="mock-line"></div><div class="mock-line short"></div><span class="mock-btn">Call now</span>' +
+    '<div class="mock-line"></div><div class="mock-line short"></div>';
+  var logBefore = 'Site: plumber, WordPress on shared\n  hosting, email at the same domain\n\n' +
+    'Down on office Wi-Fi AND on mobile\n  data: down for everyone\n\nlookup.icann.org:\n  Expires 2026-09-30 (past)\n  Status: clientHold\n' +
+    '  Registrar: the one the owner\n  used in 2019\n\nCause: auto-renew failed on an\n  expired card; reminders went to\n  a former employee\'s address\n\n' +
+    '<span class="bad">Website down 9 days; email to\nthe shop bouncing the whole time.</span>';
+  var logAfter = 'Steps taken:\n1. Owner signed in at the registrar\n   the lookup named.\n' +
+    '2. Domain renewed for 2 years;\n   card and contact email updated;\n   auto-renew on.\n' +
+    '3. Status back to ok; site and\n   email answering within ~1 hour.\n' +
+    '4. Checked bare + www, the contact\n   form, a test email to the shop,\n   and the Google listing link.\n\n' +
+    '<span class="good">Site and email back; the renewal\nreminders now reach the owner.</span>';
+  function show(isFixed) {
+    bar.textContent = "riversideplumbing.example";
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does DNS_PROBE_FINISHED_NXDOMAIN mean for my website?","acceptedAnswer":{"@type":"Answer","text":"The internet has no address for your domain name. For a business site that used to work, the domain has usually expired or its nameservers or DNS records were changed. Look the domain up at lookup.icann.org: an expiry date in the past or a clientHold status means renew it at the registrar named there."}},
+{"@type":"Question","name":"My domain expired. Can I still get it back?","acceptedAnswer":{"@type":"Answer","text":"Usually yes, if you act quickly. Right after expiry most registrars let you renew normally and the site returns within hours. Later the domain may enter a redemption period with a higher fee, and after that it can be released for anyone to register. The exact days depend on the registrar and the domain ending, so renew the same day."}},
+{"@type":"Question","name":"Why does my website say Account Suspended?","acceptedAnswer":{"@type":"Answer","text":"Your hosting company switched the account off, most often for an unpaid invoice or an expired card, sometimes for malware or heavy resource use. Check the host's billing page and your email, including spam, pay or fix the stated reason, and ask them to reactivate it."}},
+{"@type":"Question","name":"Why does my site load on my phone but not on my office computer?","acceptedAnswer":{"@type":"Answer","text":"The site is up and your own connection is blocked or caching an old address. A security plugin or the host's firewall may have blocked your internet address after failed logins; ask the host or unblock it in the plugin. Otherwise restart the router or flush the DNS cache."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
