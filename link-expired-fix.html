@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress "The link you followed has expired": what it means and how it gets fixed</title>
+<meta name="description" content="WordPress says 'The link you followed has expired' on a theme, plugin or big upload: the file is over the host's size limit. How to raise it safely.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/link-expired-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:22px 16px; min-height:190px; background:#fff; }
+.srv h3 { font-family: "Times New Roman", serif; font-size:26px; margin:0 0 10px; }
+.srv p { font-family: "Times New Roman", serif; margin:0 0 10px; }
+.ok h3 { margin:0 0 6px; font-size:18px; }
+.ok p { margin:0 0 12px; color:var(--muted); }
+.ok .btn { display:inline-block; background:var(--brand); color:#fff; padding:8px 14px; border-radius:8px; font-weight:600; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress says "The link you followed has expired" when you upload something</h1>
+<p class="lede">You pick a theme or plugin zip, a video or a big PDF, press Install or Upload, and instead of a progress bar you get a white page: "The link you followed has expired. Please try again." Nothing expired. The file is bigger than your host lets one upload be, so the server throws the upload away before WordPress sees it, and WordPress, finding the form arrived empty, falls back to its generic "expired link" message. Raise the host's limit or put the file on the server another way. Below is a rebuilt example (not a real client), then the safe order of steps.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees after pressing Install Now</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">harborstreetbakery.example/wp-admin/update.php?action=upload-theme</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: is it the size, or a page left open too long?</h2>
+<p>Different things produce the same message, and one look tells them apart.</p>
+<ul>
+  <li><b>It happens every time you upload one particular file</b> (a theme or plugin zip, a video, a large PDF or image) and smaller files upload fine: it is the size limit. Go to Media, Add New and read the line under the upload box, "Maximum upload file size: 2 MB" (or 8, 32, 64). If your file is bigger than that number, that is the whole problem.</li>
+  <li><b>It happened once, on a settings or editor page you had left open for hours</b>, and the form had nothing large in it: the page's one-time security code really did run out (WordPress's codes last about a day). Reload the page, make the change again and save. Nothing needs fixing.</li>
+  <li><b>A visitor sees it on your contact or order form</b>: a caching plugin or host cache is serving an old copy of that page with an old security code inside it. Exclude that page from the cache (every caching plugin has an "exclude these URLs" box) and purge the cache.</li>
+</ul>
+
+<h2>The safe order of steps</h2>
+<ol>
+  <li><b>Back up the files and the database</b> (host's backup tool, or the file manager plus phpMyAdmin export) before changing server settings. Also download a copy of <code>.htaccess</code> and of any <code>php.ini</code> or <code>.user.ini</code> next to <code>wp-config.php</code>.</li>
+  <li><b>Raise the limits in the host's control panel first.</b> Four PHP settings decide it, and the first two must both be larger than your file:
+<pre>upload_max_filesize = 64M
+post_max_size       = 64M
+max_execution_time  = 300
+max_input_time      = 300</pre>
+  On cPanel hosts this is "MultiPHP INI Editor" or "Select PHP Version", then Options. Many managed hosts have a "PHP settings" page instead. Pick a number a little above your biggest file rather than the largest the box allows. Then reload Media, Add New: the "Maximum upload file size" line should show the new number.</li>
+  <li><b>If the panel has no such setting</b>, create a file named <code>.user.ini</code> (or <code>php.ini</code>, whichever your host's help pages name) next to <code>wp-config.php</code> containing the four lines above. These files are re-read on a timer, so allow 5 minutes before testing.</li>
+  <li><b>Only on hosts whose help pages say so</b>, the same values can go in <code>.htaccess</code> as <code>php_value upload_max_filesize 64M</code> and so on. On most modern hosts that line is not allowed and the whole site answers "500 Internal Server Error". If that happens, delete exactly the lines you added and the site comes straight back.</li>
+  <li><b>If you cannot raise the limit at all</b> (some cheap plans cap it), skip the upload form. Unzip the theme or plugin on your computer and copy its folder into <code>wp-content/themes/</code> or <code>wp-content/plugins/</code> with the host's file manager or SFTP, then activate it from the dashboard. For video, upload it to YouTube or Vimeo and paste the link into the page: a big video served from your own site is slow for every visitor anyway.</li>
+  <li><b>Test</b> the upload that failed, then the home page, the contact or order form and the login in a private window.</li>
+</ol>
+
+<h2>Common causes and what each one needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you find</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Theme or plugin zip bigger than "Maximum upload file size"</td><td>The upload is over <code>upload_max_filesize</code> / <code>post_max_size</code></td><td>Raise both in the control panel, or copy the unzipped folder by file manager</td></tr>
+  <tr><td>Limit already raised, big uploads still fail partway</td><td>The upload takes longer than the time limits</td><td>Raise <code>max_execution_time</code> and <code>max_input_time</code></td></tr>
+  <tr><td>"413 Request Entity Too Large" instead of the expired message</td><td>The web server (often nginx) refuses before PHP is asked</td><td>Host raises <code>client_max_body_size</code></td></tr>
+  <tr><td>Whole site shows "500 Internal Server Error" after an edit</td><td><code>php_value</code> lines in <code>.htaccess</code> are not allowed on this host</td><td>Remove the added lines; use the panel or <code>.user.ini</code> instead</td></tr>
+  <tr><td>Once, after a page sat open for hours</td><td>The page's security code expired</td><td>Reload and save again</td></tr>
+  <tr><td>Visitors see it on a front-end form</td><td>A cache is serving a stale copy of the form page</td><td>Exclude that page from caching, purge</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not install an "increase upload size" plugin from an unknown author. A plugin cannot lift a ceiling the server sets, and abandoned plugins are a common way sites get hacked.</li>
+  <li>Do not set the limits to huge numbers (2G, unlimited time). It lets one request tie up the server, and on shared hosting the host may suspend the account.</li>
+  <li>Do not edit <code>.htaccess</code> or <code>wp-config.php</code> without a copy you can put back. One wrong line takes the whole site down, not just the upload.</li>
+  <li>Do not upload a bought theme's whole download bundle. Marketplace downloads often hold documentation and child themes too; the installable theme zip is usually inside it.</li>
+</ul>
+<p class="note">If you can reach the control panel, the steps above are usually enough. If the site broke while you were trying, or you need the new theme or plugin in today, that is what the box below is for. Related: a <a href="critical-error-fix.html">"critical error on this website"</a> after the upload finally works means the new theme or plugin itself is the problem, and <a href="white-screen-fix.html">a blank white page</a> is the same thing with the message hidden.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="ok"><p style="color:#1b1b1b">The link you followed has expired.</p><p><a href="#" onclick="return false">Please try again.</a></p></div>';
+  var fixed = '<div class="ok"><h3>Installing theme from uploaded file: bakehouse.zip</h3><p>Unpacking the package... Installing the theme... Theme installed successfully.</p>' +
+    '<span class="btn">Activate</span></div>';
+  var logBroken = 'Bought a new theme (bakehouse.zip, 18 MB).\nAppearance > Themes > Upload > Install Now\nends on the "expired" page every time.\n\n' +
+    'Media > Add New:\n"Maximum upload file size: 2 MB."\n\n' +
+    'Host PHP settings (control panel):\n' +
+    'upload_max_filesize  2M\npost_max_size        8M\nmax_execution_time   30\n\n' +
+    '<span class="bad">The 18 MB upload is over both limits, so\nPHP drops the whole form before WordPress\nreads it, and WordPress reports the empty\nform as an expired link.</span>';
+  var logFixed = 'Steps taken:\n1. Backup of the files and the database.\n' +
+    '2. Control panel > PHP options:\n   upload_max_filesize 64M\n   post_max_size       64M\n   max_execution_time  300\n   max_input_time      300\n' +
+    '3. Media > Add New now reads\n   "Maximum upload file size: 64 MB."\n' +
+    '4. Uploaded the theme\'s own zip (not the\n   whole marketplace bundle) and installed.\n' +
+    '5. Home, menu, cake order form and the\n   login checked in a private window.\n\n' +
+    '<span class="good">Theme installed through the normal screen,\nno plugin added, no .htaccess edits,\nlimits set just above the biggest file.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does WordPress say 'The link you followed has expired' when I upload a theme or plugin?","acceptedAnswer":{"@type":"Answer","text":"The file is larger than the upload limits your host sets for PHP (upload_max_filesize and post_max_size). The server discards the upload before WordPress reads it, and WordPress reports the empty form as an expired link. Media, Add New shows the current maximum upload size."}},
+{"@type":"Question","name":"How do I fix 'The link you followed has expired' in WordPress?","acceptedAnswer":{"@type":"Answer","text":"Raise upload_max_filesize and post_max_size above your file's size, and max_execution_time and max_input_time to around 300, in the host's control panel (cPanel MultiPHP INI Editor or Select PHP Version) or in a .user.ini file next to wp-config.php. If the host will not allow it, unzip the theme or plugin and copy its folder into wp-content by file manager or SFTP."}},
+{"@type":"Question","name":"Can I raise the WordPress upload limit in .htaccess?","acceptedAnswer":{"@type":"Answer","text":"Only on hosts that run PHP as an Apache module and say so in their help pages. On most hosts php_value lines in .htaccess cause a 500 Internal Server Error for the whole site; remove them and use the control panel or .user.ini instead."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement("aside");d.id="hire-footer";d.className="hire-v4";d.style.cssText="max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box";var s=encodeURIComponent("Fix for my site: "+document.title);d.innerHTML="<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action=\"site-check.html\" method=\"get\" style=\"display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px\"><input name=\"url\" type=\"text\" inputmode=\"url\" placeholder=\"yourbusiness.com\" aria-label=\"Your website address\" required style=\"flex:1 1 180px;min-width:0;padding:8px;font:inherit\"><button style=\"padding:8px 14px;font:inherit\">Check my site free</button></form>Want it done for you? From $49 a fix, quoted before I start, no payment until you OK the quote: <a href=\"mailto:s.n.psaradellis@gmail.com?subject="+s+"\" style=\"display:inline-block;margin:4px 0;padding:6px 12px;border:1px solid #222;border-radius:6px;color:#222;text-decoration:none\">Email me your site address</a> (s.n.psaradellis@gmail.com). <br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered.</small>";document.body.appendChild(d);}catch(e){}})();</script>
+</body>
+</html>
