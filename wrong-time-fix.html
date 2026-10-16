@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress shows the wrong time: posts, bookings and orders an hour (or more) off</title>
+<meta name="description" content="Post dates, scheduled posts, booking times or order times on your WordPress site an hour or several hours off? The one-minute check in Settings, why a UTC offset breaks at daylight saving, and the fix for each cause.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/wrong-time-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.wpset { border:1px solid #c3c4c7; border-radius:6px; overflow:hidden; font-size:13.5px; min-width:0; }
+.wpset .row { padding:9px 12px; border-bottom:1px solid #e4e4e7; overflow-wrap:anywhere; }
+.wpset .row:last-child { border-bottom:0; }
+.wpset .k { color:var(--muted); font-size:12.5px; display:block; }
+.wpset .v { font-weight:600; }
+.wpset .v.badline { color:var(--bad); }
+.wpset .v.goodline { color:var(--good); }
+.sh { margin-top:12px; border:1px solid #c3c4c7; border-radius:6px; padding:10px 12px; font-size:13.5px; overflow-wrap:anywhere; }
+.sh b { display:block; margin-bottom:4px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:#ff8a80; font-weight:600; }
+.good { color:#8fd19e; font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Your WordPress site shows the wrong time</h1>
+<p class="lede">Post dates an hour off, a scheduled post that went out at 3 a.m., bookings that land an hour early, order emails stamped in the middle of the night. Almost always it is one setting, and the giveaway is how far off it is: exactly one hour usually means daylight saving, several whole hours usually means the site is on UTC. Below is a rebuilt example (not a real client), the one-minute check, and the fix for each cause.</p>
+
+<div class="switch" role="group" aria-label="Show the site before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the site owner sees</h2>
+    <div class="wpset" id="settings"></div>
+    <div class="sh" id="booking"></div>
+  </div>
+  <div class="panel">
+    <h2>What the check found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>The one-minute check</h2>
+<ol>
+  <li><b>Open Settings &gt; General</b> and look at <b>Timezone</b>. Under it WordPress prints "Universal time is ..." and "Local time is ...". If the local time there does not match the clock on your wall, this setting is the problem.</li>
+  <li><b>See what is chosen.</b> A city (for example <b>Denver</b> or <b>London</b>) is right. A plain offset such as <b>UTC-7</b> or <b>UTC+0</b> is the most common cause: an offset never moves for daylight saving, so the site is right for half the year and an hour off for the other half. <b>UTC+0</b> is what a fresh install often starts on.</li>
+  <li><b>Check the plugin that shows the wrong time.</b> Booking, event, form and shop plugins often keep a timezone setting of their own. Open that plugin's settings and look for "timezone" or "use site timezone".</li>
+  <li><b>Open Tools &gt; Site Health.</b> If it warns <b>"PHP default timezone is invalid"</b>, a plugin or theme is changing the timezone behind WordPress's back, which shifts times in some places and not others.</li>
+</ol>
+
+<h2>What causes it and the fix</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Why it happens</th><th>The fix</th></tr>
+  <tr><td>Times are <b>exactly one hour</b> off, and they were fine a few months ago (or will be in a few months)</td><td>The timezone is set to a fixed offset such as <b>UTC-5</b>. It was right when someone picked it; daylight saving started or ended and the offset did not move</td><td>In <b>Settings &gt; General &gt; Timezone</b>, choose the city you are in (or the nearest one in the list that shares your time), then <b>Save Changes</b>. WordPress then says whether daylight saving is in effect and when it next changes, and moves the clock itself</td></tr>
+  <tr><td>Times are <b>several whole hours</b> off (4, 5, 7, 8 ...)</td><td>The site is on <b>UTC+0</b>, the starting value on many installs, so every time is shown in London winter time</td><td>Choose your city as above. Posts already published keep their real moment; only the displayed time changes</td></tr>
+  <tr><td>Posts and the dashboard are right, but <b>bookings, events or form entries</b> are off</td><td>That plugin has its own timezone setting, or stores times in UTC and shows them without converting</td><td>Set the plugin to "use the site timezone" if it offers it, otherwise pick the same city in its settings. Check its calendar sync (Google Calendar, Outlook) too: each calendar has a timezone of its own</td></tr>
+  <tr><td>Some pages show the right time and others are off; Site Health warns <b>"PHP default timezone is invalid"</b></td><td>A plugin or theme calls <code>date_default_timezone_set()</code>, which WordPress expects to stay on UTC. Code that relies on it then shifts times twice or not at all</td><td>Turn plugins off one at a time on a staging copy until the warning goes away, then report it to that plugin's author or replace the plugin. Do not "fix" it by changing the site timezone to cancel out the shift</td></tr>
+  <tr><td>A <b>scheduled post</b> went out at the wrong hour, or says <b>Missed schedule</b></td><td>The wrong hour is the timezone (rows above). "Missed schedule" is a different cause: WordPress's scheduler only runs when someone visits</td><td>Fix the timezone first. For "Missed schedule", see <a href="scheduled-post-fix.html">scheduled posts not publishing</a></td></tr>
+  <tr><td>The time is right but shown the wrong way: <b>24-hour</b> instead of a.m./p.m., or the day before the month</td><td>The date and time formats are separate settings from the timezone</td><td>In <b>Settings &gt; General</b>, pick a <b>Date Format</b> and <b>Time Format</b> (<code>g:i a</code> gives 3:30 pm, <code>H:i</code> gives 15:30). Some themes hard-code their own format in the post template; that is a theme edit</td></tr>
+  <tr><td>You changed the setting and visitors <b>still see the old time</b></td><td>A page cache (plugin, host or Cloudflare) is still serving copies made before the change</td><td>Clear every cache once. See <a href="changes-not-showing-fix.html">changes not showing</a></td></tr>
+  <tr><td>Even <b>"Universal time is ..."</b> in Settings &gt; General is wrong</td><td>The server's own clock has drifted. Rare, and it can also break secure connections and scheduled jobs</td><td>Ask the host to sync the server clock (NTP). This is theirs to fix, not a WordPress setting</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not pick an offset that "looks right today". It will be an hour off at the next daylight saving change. Pick a city.</li>
+  <li>Do not shift the timezone by a few hours to make one plugin look right. You will break the times everywhere else.</li>
+  <li>Do not edit post dates one by one to correct them. Once the timezone is right, WordPress shows the right local time for posts that already exist.</li>
+</ul>
+<p class="note">The timezone itself takes a minute. Tracking down a booking plugin and its calendar sync that disagree, or a plugin that shifts the clock behind WordPress's back, is where most owners would rather have someone do it. If that is you, the box below is for that. Related: <a href="scheduled-post-fix.html">scheduled posts not publishing</a>, <a href="old-year-fix.html">an old year on the site</a> and <a href="changes-not-showing-fix.html">changes not showing</a>.</p>
+</div>
+
+<script>
+(function () {
+  var settings = document.getElementById("settings"), booking = document.getElementById("booking"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  function rows(r) {
+    return r.map(function (x) {
+      return '<div class="row"><span class="k">' + x[0] + '</span><span class="v ' + (x[2] || '') + '">' + x[1] + '</span></div>';
+    }).join("");
+  }
+  var logBefore = 'Site: hair studio in Denver, WordPress 6.x\n  wall clock: 12:00 pm (daylight time)\n\n' +
+    'Settings > General:\n  Timezone: UTC-7 (picked in January)\n  Local time shown: 11:00 am\n\n' +
+    'Booking plugin:\n  own timezone setting: UTC\n  9:00 am slot shows as 3:00 pm\n  in the confirmation email\n\n' +
+    'Site Health: no timezone warning.\n\n' +
+    '<span class="bad">Every time on the site has been an hour\nearly since March.</span>';
+  var logAfter = 'Steps taken:\n1. Timezone set to Denver\n   (a city, not an offset).\n2. Booking plugin switched to\n   "use site timezone".\n' +
+    '3. Google Calendar sync checked:\n   calendar set to Mountain Time.\n4. Page cache cleared.\n5. Test booking: 9:00 am slot,\n   email says 9:00 am.\n\n' +
+    '<span class="good">Right now, and right after the\nclocks change on November 1.</span>';
+  function show(isFixed) {
+    settings.innerHTML = isFixed
+      ? rows([['Timezone', 'Denver', 'goodline'], ['Local time is', '2026-10-16 12:00:00', 'goodline'], ['', 'This timezone is currently in daylight saving time. Standard time begins on: November 1, 2026 2:00 am']])
+      : rows([['Timezone', 'UTC-7', 'badline'], ['Universal time is', '2026-10-16 18:00:00'], ['Local time is', '2026-10-16 11:00:00', 'badline']]);
+    booking.innerHTML = isFixed
+      ? '<b style="color:#1e7a3c">Booking confirmed: Sat 9:00 am</b>Matches the slot the client picked. Rebuilt example, not a real client.'
+      : '<b style="color:#b3261e">Booking confirmed: Sat 3:00 pm</b>The client picked 9:00 am. Rebuilt example, not a real client.';
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is my WordPress site an hour off?","acceptedAnswer":{"@type":"Answer","text":"Usually the timezone in Settings > General is a fixed offset such as UTC-5. An offset does not change for daylight saving, so the site is an hour off for part of the year. Choose your city instead and WordPress follows daylight saving itself."}},
+{"@type":"Question","name":"Why are WordPress times several hours off?","acceptedAnswer":{"@type":"Answer","text":"The site is most likely on UTC+0, the starting value on many installs. Set Settings > General > Timezone to your city and save. Existing posts then show the right local time."}},
+{"@type":"Question","name":"My posts show the right time but bookings are wrong. Why?","acceptedAnswer":{"@type":"Answer","text":"Booking, event and form plugins often have their own timezone setting, and calendar sync adds another. Set the plugin to use the site timezone, or the same city, and check the timezone of the synced calendar."}},
+{"@type":"Question","name":"What does 'PHP default timezone is invalid' in Site Health mean?","acceptedAnswer":{"@type":"Answer","text":"A plugin or theme changed PHP's default timezone, which WordPress expects to stay on UTC, so some times shift and others do not. Find the plugin by turning plugins off one at a time on a staging copy, then report or replace it."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
