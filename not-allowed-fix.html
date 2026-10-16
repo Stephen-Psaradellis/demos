@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress "Sorry, you are not allowed to access this page": get your admin back</title>
+<meta name="description" content="WordPress login works but every admin page says &quot;Sorry, you are not allowed to access this page&quot;? Usually an old table prefix or a lost admin role. The fix.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/not-allowed-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.err { font-family: "Times New Roman", serif; font-size:15px; color:#000; }
+.err h3 { margin:0 0 10px; font-size:24px; }
+.err p { margin:0 0 10px; }
+.home h3 { margin:0 0 8px; font-size:20px; }
+.home p { margin:0 0 10px; color:#333; font-size:14.5px; }
+.cta { display:inline-block; background:#1d5fa8; color:#fff; padding:8px 14px; border-radius:6px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress says "Sorry, you are not allowed to access this page"</h1>
+<p class="lede">The password works and the login goes through, then the dashboard, or one page of it, answers "Sorry, you are not allowed to access this page." WordPress knows who you are but no longer believes you are an administrator. Where the message appears tells you why: on every admin page it is almost always a database detail left behind by a host move or a security tweak; on one page only it is usually a plugin page that no longer exists. Below is a rebuilt example (not a real client), then how to tell the cases apart and the fix for each.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees after logging in</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">brightloafbakery.example/wp-admin/</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Which case is yours (two minutes)</h2>
+<ol>
+  <li><b>Open <code>/wp-admin/</code> itself</b>, not a bookmark. If the dashboard loads and only a saved link fails, skip to fix 3: that page belonged to a plugin that is switched off, removed or renamed.</li>
+  <li><b>If every admin page refuses you</b>, think back: a host move, a "change the table prefix" security tip, a restore from backup, or a user-role plugin. Any of those can leave WordPress unable to read your role.</li>
+  <li><b>Check whether the front of the site still works.</b> If visitors see the site normally, your content is safe; this is only about your account's role.</li>
+  <li><b>Look at the error wording.</b> "Sorry, you are not allowed to install plugins on this site" or "...to edit templates" is a different, deliberate lock: see fix 4.</li>
+</ol>
+
+<h2>The fixes</h2>
+<ol>
+  <li><b>The table prefix changed (most common after a move).</b> WordPress stores your role in the database under names that start with the table prefix, for example <code>wp_capabilities</code>. If the tables were renamed to a new prefix (say <code>wpk3_</code>) and <code>$table_prefix</code> in <code>wp-config.php</code> was updated to match, those stored names still start with the old one, so WordPress finds no role for anybody. Take a database backup first. Then in phpMyAdmin (from the host's control panel):
+    <ul>
+      <li>in the new options table (<code>wpk3_options</code>), rename the row <code>wp_user_roles</code> to <code>wpk3_user_roles</code>;</li>
+      <li>in the new usermeta table (<code>wpk3_usermeta</code>), rename every <code>meta_key</code> that starts with the old prefix: at least <code>wp_capabilities</code> and <code>wp_user_level</code>, plus <code>wp_user-settings</code> and similar.</li>
+    </ul>
+    The same thing as one query, with your own two prefixes: <code>UPDATE wpk3_usermeta SET meta_key = CONCAT('wpk3_', SUBSTRING(meta_key, 4)) WHERE meta_key LIKE 'wp\_%';</code> (the 4 is the old prefix's length plus one). If only some tables were renamed, or <code>$table_prefix</code> does not match the tables, fix that first: <code>$table_prefix</code> must equal the prefix the tables actually carry.</li>
+  <li><b>Your account lost its administrator role.</b> If the prefix is fine, open <code>wp_usermeta</code> (your prefix), find the rows for your user ID (in <code>wp_users</code>), and check <code>wp_capabilities</code>. For an administrator it reads <code>a:1:{s:13:"administrator";b:1;}</code> and <code>wp_user_level</code> reads <code>10</code>. Set them, log out and in again. Then ask how it changed: a role-editor plugin, another admin, or someone who should not have had access. If you find administrators you do not know in Users, treat it as a <a href="hacked-spam-fix.html">hacked site</a>, not a settings slip.</li>
+  <li><b>Only one page refuses you.</b> Admin links such as <code>admin.php?page=some-plugin</code> belong to a plugin. If that plugin is deactivated, deleted or renamed its page, the old link gives this message. Open the dashboard and find the plugin's menu again; reactivate it in Plugins if you still need it. Nothing is broken.</li>
+  <li><b>"Not allowed to install plugins" or "edit templates".</b> A line in <code>wp-config.php</code> such as <code>define('DISALLOW_FILE_MODS', true);</code> or <code>define('DISALLOW_FILE_EDIT', true);</code> switches those screens off for everyone, often added by the host or a security checklist. That is a sensible lock; change it only if you mean to, and put it back afterwards.</li>
+  <li><b>Multisite networks.</b> Network screens (Network Admin, adding sites, installing plugins) need a super admin. A site administrator gets this message there by design. A super admin adds you in Network Admin, Users.</li>
+  <li><b>Test</b>: log out and in, open Dashboard, Posts, Plugins, Settings and Users, edit and save one draft, and check that the front of the site still looks right.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Usual cause</th><th>Usual fix</th></tr>
+  <tr><td>Every admin page refuses you, right after a host move or a "change the prefix" tip</td><td>Role stored under the old table prefix</td><td>Rename <code>user_roles</code> in options and the <code>capabilities</code> and <code>user_level</code> keys in usermeta to the new prefix</td></tr>
+  <tr><td>Every admin page refuses you, prefix unchanged</td><td>Your account has no administrator role</td><td>Set <code>capabilities</code> and <code>user_level</code> back to administrator and 10; find out why it changed</td></tr>
+  <tr><td>One bookmarked admin page refuses you, dashboard is fine</td><td>Plugin page no longer exists</td><td>Use the menu; reactivate the plugin if you need it</td></tr>
+  <tr><td>"Not allowed to install plugins" or "edit templates"</td><td><code>DISALLOW_FILE_MODS</code> or <code>DISALLOW_FILE_EDIT</code> in <code>wp-config.php</code></td><td>Deliberate lock: lift it only while you need it</td></tr>
+  <tr><td>Network screens refuse a site admin</td><td>Multisite needs a super admin there</td><td>A super admin grants it</td></tr>
+  <tr><td>Unknown administrators in Users</td><td>Someone else got in</td><td>Hacked-site clean-up, new passwords everywhere</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not edit the database without a backup. One wrong row name and nobody can log in.</li>
+  <li>Do not run a blanket find-and-replace of the old prefix across every table. Only the role and user-setting names carry the prefix; post content that happens to contain the same letters would be changed too.</li>
+  <li>Do not create a new administrator through a pasted code snippet to "get back in". It works around the cause, and a forgotten snippet is a door anyone can use.</li>
+  <li>Do not delete and reinstall WordPress. Your role lives in the database, so a fresh copy of the files changes nothing.</li>
+</ul>
+<p class="note">Fixes 1 and 2 are a few rows in the database and usually take minutes once the cause is clear. If the database is unfamiliar ground, that is what the box below is for. Related: <a href="login-loop-fix.html">a login page that keeps reloading</a> and <a href="forbidden-403-fix.html">"403 Forbidden"</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="err" style="font-family:system-ui,sans-serif;font-size:14px;color:#3c434a">' +
+    '<p style="margin:30px 0 0;padding:12px;border:1px solid #c3c4c7;background:#fff">Sorry, you are not allowed to access this page.</p></div>';
+  var fixed = '<div class="home"><h3>Dashboard</h3><p>Welcome back. 3 new orders, 1 draft post.</p>' +
+    '<span class="cta">Write a post</span></div>';
+  var logBroken = 'Host moved the site on Monday. Their\nmigration tool renamed every table\nfrom wp_ to wpk3_ and updated\n$table_prefix in wp-config.php.\n\n' +
+    'Front of the site: fine.\nLogin: accepted. Then every admin\npage: "not allowed to access".\n\n' +
+    'phpMyAdmin:\n  wpk3_options   has wp_user_roles\n  wpk3_usermeta  has wp_capabilities\n                 and wp_user_level\n' +
+    'WordPress now looks for wpk3_...\nnames and finds no role at all.\n\n' +
+    '<span class="bad">Every user is treated as having no\nrole: the names kept the old prefix.</span>';
+  var logFixed = 'Steps taken:\n1. Database exported as a backup.\n' +
+    '2. wpk3_options: wp_user_roles\n   renamed to wpk3_user_roles.\n' +
+    '3. wpk3_usermeta: every meta_key\n   starting wp_ renamed to wpk3_\n   (capabilities, user_level,\n   user-settings).\n' +
+    '4. Logged out and in; Dashboard,\n   Posts, Plugins, Users all open.\n   Draft saved, shop pages checked.\n\n' +
+    '<span class="good">Admin back, no new users created,\nno files reinstalled.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does WordPress say 'Sorry, you are not allowed to access this page' after I log in?","acceptedAnswer":{"@type":"Answer","text":"WordPress accepted your password but cannot find an administrator role for your account. After a host move or a table prefix change this is usually because the role names in the database (user_roles in the options table, capabilities and user_level in usermeta) still carry the old prefix."}},
+{"@type":"Question","name":"How do I fix 'not allowed to access this page' after changing the table prefix?","acceptedAnswer":{"@type":"Answer","text":"Back up the database, then in phpMyAdmin rename the old-prefix row user_roles in the options table and every old-prefix meta_key in the usermeta table (capabilities, user_level and the rest) to the new prefix. Make sure $table_prefix in wp-config.php matches the tables."}},
+{"@type":"Question","name":"Why does only one WordPress admin page say I am not allowed to access it?","acceptedAnswer":{"@type":"Answer","text":"That page belonged to a plugin that is deactivated, deleted or has moved its settings page. Open the dashboard and use the menu, or reactivate the plugin if you still need it."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
