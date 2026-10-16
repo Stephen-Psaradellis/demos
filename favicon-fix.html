@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Site icon (favicon) not showing in Google or the browser tab: how to fix it</title>
+<meta name="description" content="Google shows a grey globe next to your business, or the browser tab shows a blank page icon? Find which of six causes it is in two minutes, then fix it so the right icon appears.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/favicon-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.serp { min-width:0; overflow-wrap:anywhere; font-family: Arial, sans-serif; }
+.serp .row { display:flex; gap:10px; align-items:center; margin-bottom:4px; }
+.serp .ic { flex:0 0 28px; width:28px; height:28px; border-radius:50%; background:#f1f3f4; border:1px solid #dadce0; display:flex; align-items:center; justify-content:center; font-size:15px; color:#70757a; }
+.serp .ic.ok { background:#2d6a4f; border-color:#2d6a4f; color:#fff; font-weight:700; font-family: Georgia, serif; }
+.serp .nm { font-size:14px; color:#202124; line-height:1.2; }
+.serp .url { font-size:12px; color:#4d5156; }
+.serp .t { display:block; font-size:19px; color:#1a0dab; text-decoration:none; margin:2px 0 4px; line-height:1.3; }
+.serp .s { font-size:14px; color:#4d5156; margin:0; }
+.tab { display:flex; align-items:center; gap:8px; background:#dee1e6; border-radius:8px 8px 0 0; padding:7px 12px; font-size:13px; max-width:260px; margin-bottom:14px; }
+.tab .fi { flex:0 0 16px; width:16px; height:16px; border-radius:3px; border:1px solid #9aa0a6; background:#fff; }
+.tab .fi.ok { background:#2d6a4f; border-color:#2d6a4f; }
+.tab span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:#ff8a80; font-weight:600; }
+.good { color:#8fd19e; font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Your site icon does not show in Google or the browser tab</h1>
+<p class="lede">On Google, the small round picture next to your business name is a grey globe while your competitors show their logo. Or the browser tab shows a blank page icon, the WordPress "W" or your builder's logo instead of yours. That picture is the site icon (the favicon). Google only shows yours when it can find it on your home page, fetch the file, and the file is a proper square. One look at your home page's source tells you which of those fails. Below is a rebuilt example (not a real client), the two-minute check, and the fix for each cause.</p>
+
+<div class="switch" role="group" aria-label="Show the result before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What a visitor sees</h2>
+    <div id="tab" class="tab"><i class="fi" id="tabicon"></i><span>Oakline Bakery | Fresh bread daily</span></div>
+    <div class="serp" id="page"></div>
+  </div>
+  <div class="panel">
+    <h2>What the check found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>The two-minute check: where does it break?</h2>
+<ol>
+  <li><b>Look at your home page's source.</b> Open the home page (not an inner page), press Ctrl+U, then Ctrl+F for <code>icon</code>. You want a line like <code>&lt;link rel="icon" href="https://yoursite.com/.../icon-192x192.png"&gt;</code>. No such line means no icon is set, and browsers fall back to asking for <code>/favicon.ico</code>.</li>
+  <li><b>Open that icon address in a new tab.</b> You should see your picture. A "page not found", a login page, an old domain or an <code>http://</code> address is your answer in the table below. Note its size too: a long thin logo squeezed into a square, or a tiny 16-pixel file, is a problem for Google.</li>
+  <li><b>Open <code>yoursite.com/robots.txt</code>.</b> A <code>Disallow</code> line that covers the folder the icon lives in (for example <code>/wp-content/</code>) stops Google fetching it. So does a rule for <code>Googlebot-Image</code>.</li>
+  <li><b>Check what Google has.</b> In Google Search Console, paste your home page address into <b>URL Inspection</b>. If the live test sees the icon line but the search result still shows a globe, Google simply has not refetched it yet.</li>
+</ol>
+
+<h2>What causes it and the fix</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What the check shows</th><th>Why it happens</th><th>The fix</th></tr>
+  <tr><td><b>No <code>rel="icon"</code> line</b> in the home page source; the tab shows a blank page or the builder's logo</td><td>No site icon was ever set. Some themes show their own default, and Google shows a globe</td><td>WordPress: <b>Appearance &gt; Customize &gt; Site Identity &gt; Site Icon</b>, upload a square image of at least 512 x 512 pixels. Block themes (no Customize menu): in the editor, select the <b>Site Logo</b> block and switch on <b>Use as site icon</b>, or look for <b>Site Icon</b> under <b>Settings &gt; General</b> in recent versions. Shopify: <b>Online Store &gt; Themes &gt; Customize &gt; Theme settings &gt; Favicon</b>. Squarespace and Wix each have a <b>Browser icon</b> / <b>Favicon</b> setting (Wix needs a paid plan with your own domain)</td></tr>
+  <tr><td>The icon line is there and the file opens, but <b>Google still shows a globe or your old icon</b></td><td>Google refetches the home page and the icon on its own schedule. A new or changed icon can take several days to a few weeks to show</td><td>In Search Console, run <b>URL Inspection</b> on the home page and click <b>Request indexing</b>. Then leave it. Keep the icon at the same address while you wait: changing the file name again restarts the clock</td></tr>
+  <tr><td>Opening the icon address gives a <b>404</b>, an <b>old domain</b>, a staging address or <code>http://</code></td><td>The icon was set before a move or an https switch, and the saved address now points somewhere that no longer answers</td><td>Upload the icon again in the setting above so a fresh address is saved. If the site's own address is wrong everywhere (styles, images), fix that first: see <a href="unstyled-site-fix.html">site shows plain text</a> and <a href="images-not-showing-fix.html">images not showing</a></td></tr>
+  <tr><td><b>robots.txt</b> blocks the icon's folder, or has a <code>Googlebot-Image</code> rule</td><td>Google has to be allowed to fetch both the home page and the icon file. A broad <code>Disallow: /wp-content/</code> or an image-crawler block hides the icon</td><td>Remove that <code>Disallow</code> line, or add an <code>Allow</code> line for the icon's path. Then request indexing as above. See <a href="not-on-google-fix.html">not on Google</a> for the other robots.txt mistakes</td></tr>
+  <tr><td>The icon is <b>not square</b>, very small, or is the full wide logo with text</td><td>Google needs a square image (it recommends larger than 48 x 48 pixels) and may replace an icon it cannot use. Long text squeezed to 16 pixels is unreadable anyway</td><td>Make a square version: just the mark or the first letter on a solid background, 512 x 512 pixels PNG. Upload it as the site icon. Keep text out of it</td></tr>
+  <tr><td>The tab shows one icon on some pages and an <b>old icon</b> on others, or the old one never goes away</td><td>An old <code>favicon.ico</code> file from a past web person is still in the site's main folder. Browsers ask for it whenever a page does not name an icon, and they keep their own copy for a long time</td><td>Replace (or delete) <code>favicon.ico</code> in the main folder through the host's File Manager so both match. To see the new one yourself, open the site in a private window: your normal browser can hold the old icon for days</td></tr>
+  <tr><td>Fine in the browser, but <b>blank or a screenshot</b> when someone adds the site to a phone home screen</td><td>Phones look for a separate, larger <code>apple-touch-icon</code>. Some themes and hand-built sites never add it</td><td>WordPress's own Site Icon setting adds it for you (a 180 x 180 copy); a theme or plugin icon field may not. On other sites, add <code>&lt;link rel="apple-touch-icon" href="/apple-touch-icon.png"&gt;</code> with a 180 x 180 PNG</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not keep re-uploading the icon under new names to "make Google notice". Each new address starts the wait again; one stable address and one indexing request is faster.</li>
+  <li>Do not install a plugin just for the icon. WordPress has had the setting built in since version 4.3, and a second source of icon lines in the page is how sites end up with two different icons.</li>
+  <li>Do not use a photo or a busy logo. At 16 pixels it is a smudge; a single shape or letter in your brand colour reads at every size.</li>
+  <li>Do not block <code>/wp-content/</code> in robots.txt to "hide plugins". It hides your icon, images and styles from Google too.</li>
+</ul>
+<p class="note">Setting the icon takes a minute; finding an old <code>favicon.ico</code>, a robots.txt rule or a stale address after a move is where most people would rather have someone do it. If that is you, the box below is for that. Related: <a href="search-snippet-fix.html">wrong text under your Google result</a>, <a href="page-title-fix.html">home page has no title</a> and <a href="not-on-google-fix.html">site not on Google</a>.</p>
+</div>
+
+<script>
+(function () {
+  var page = document.getElementById("page"), log = document.getElementById("log");
+  var tabicon = document.getElementById("tabicon");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  function result(iconHtml, iconClass) {
+    return '<div class="row"><div class="ic ' + iconClass + '" aria-hidden="true">' + iconHtml + '</div>' +
+      '<div><div class="nm">Oakline Bakery</div><div class="url">https://oakline.example</div></div></div>' +
+      '<a class="t" href="#">Oakline Bakery | Fresh bread daily</a>' +
+      '<p class="s">Sourdough, pastries and custom cakes baked every morning. Open Tuesday to Sunday from 7am.</p>' +
+      '<p class="s" style="margin-top:10px;color:#999">Rebuilt example, not a real client.</p>';
+  }
+  var logBefore = 'Site: bakery, WordPress\n  icon set in a theme option in 2021,\n  moved to https last spring\n\n' +
+    'Home page source:\n  rel="icon" href="http://oakline\n    .example/wp-content/uploads/\n    2021/03/logo-wide.png"\n\n' +
+    'Icon address: redirects, then 404\n  (file lost in the move)\n' +
+    'Old logo was 600 x 140: not square\n\n' +
+    '<span class="bad">No usable icon, so Google shows\na globe and the tab a blank page.</span>';
+  var logAfter = 'Steps taken:\n1. Square 512 x 512 PNG made from\n   the logo\'s wheat mark.\n' +
+    '2. Set in Customize > Site Identity\n   > Site Icon; theme option cleared.\n' +
+    '3. Old favicon.ico in the main\n   folder replaced to match.\n' +
+    '4. Search Console: URL Inspection\n   on the home page, Request indexing.\n\n' +
+    'Tab icon: right away\nGoogle result: a few days later\n\n<span class="good">One icon everywhere.</span>';
+  function show(isFixed) {
+    page.innerHTML = isFixed ? result('O', 'ok') : result('&#127760;', '');
+    tabicon.className = "fi" + (isFixed ? " ok" : "");
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does Google show a grey globe instead of my site icon?","acceptedAnswer":{"@type":"Answer","text":"Google could not find or use an icon for your site. Either the home page has no rel=\"icon\" line, the icon file does not load (a 404, an old domain or http address after a move), robots.txt blocks it, or the image is not square. If everything checks out, Google simply has not refetched it yet: request indexing of the home page in Search Console and allow several days to a few weeks."}},
+{"@type":"Question","name":"How do I set a favicon in WordPress?","acceptedAnswer":{"@type":"Answer","text":"Go to Appearance > Customize > Site Identity > Site Icon and upload a square image of at least 512 x 512 pixels. In block themes without the Customize menu, select the Site Logo block in the editor and turn on Use as site icon, or use Site Icon under Settings > General in recent versions. WordPress then adds the browser, Google and phone home-screen sizes for you."}},
+{"@type":"Question","name":"What size should a favicon be for Google?","acceptedAnswer":{"@type":"Answer","text":"Square. Google recommends larger than 48 x 48 pixels; uploading a 512 x 512 PNG and letting the site make the smaller sizes is the simplest. Avoid wide logos with text: they are unreadable at tab size and may be replaced by Google."}},
+{"@type":"Question","name":"Why does my browser still show the old favicon?","acceptedAnswer":{"@type":"Answer","text":"Browsers keep their own copy of a site's icon for a long time, and an old favicon.ico file in the site's main folder is used whenever a page does not name an icon. Replace that file so it matches, then check in a private window."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
