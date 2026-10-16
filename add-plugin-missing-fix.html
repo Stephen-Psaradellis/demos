@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"Add New Plugin" button missing in WordPress: the check and the fix</title>
+<meta name="description" content="No 'Add New Plugin' button, or no Plugins menu at all, in your WordPress dashboard. The six reasons it disappears and how to get it back, in plain steps.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/add-plugin-missing-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.wpa { border:1px solid #dadce0; border-radius:8px; font-size:13.5px; overflow:hidden; display:flex; min-height:190px; overflow-wrap:anywhere; }
+.wpa .menu { background:#1d2327; color:#c3c4c7; width:38%; max-width:150px; padding:8px 0; flex:none; }
+.wpa .menu div { padding:6px 10px; }
+.wpa .menu .on { background:#2271b1; color:#fff; }
+.wpa .main { background:#f0f0f1; padding:12px; flex:1; min-width:0; }
+.wpa .title { font-size:17px; font-weight:600; margin:0 0 10px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.wpa .btn { border:1px solid #2271b1; color:#2271b1; border-radius:3px; padding:2px 8px; font-size:12.5px; font-weight:600; background:#f6f7f7; }
+.wpa .row { background:#fff; border:1px solid #c3c4c7; padding:6px 8px; margin-bottom:4px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:#ff8a80; font-weight:600; }
+.good { color:#8fd19e; font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+pre.cfg { background:#eef0f3; color:var(--ink); margin:8px 0; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>No "Add New Plugin" button in your WordPress dashboard</h1>
+<p class="lede">You open <b>Plugins</b> to install something and the <b>Add New Plugin</b> button is not there, or the Plugins menu is missing from the left side altogether. WordPress hides it on purpose in six situations, and each has its own fix. Below is a rebuilt example (not a real client), the two-minute check, and the fix for each cause.</p>
+
+<div class="switch" role="group" aria-label="Show the dashboard before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div id="screen"></div>
+  </div>
+  <div class="panel">
+    <h2>What the check found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>The two-minute check</h2>
+<ol>
+  <li><b>Look at your role.</b> Go to <b>Users &gt; Profile</b> (or hover your name at the top right and choose Edit Profile). If you have no <b>Users</b> menu at all, or an administrator lists you as Editor, Author or Shop Manager, that is the answer (row 1).</li>
+  <li><b>Look at the address bar.</b> If your dashboard lives at <code>wordpress.com/...</code> or the menu has an <b>Upgrades</b> item, your site is hosted by WordPress.com, where plugins depend on the plan (row 2).</li>
+  <li><b>Look at the top-left corner.</b> A <b>My Sites</b> menu with <b>Network Admin</b> in it means your site is one of several in a network (multisite), and plugins are added from there (row 3).</li>
+  <li><b>Open <code>wp-config.php</code></b> (hosting File Manager or SFTP, in the folder that holds <code>wp-admin</code>) and search for <code>DISALLOW_FILE_MODS</code>. If it is set to <code>true</code>, that alone hides the button (row 4).</li>
+  <li><b>On the Plugins page, look for a "Must-Use" tab</b> and for plugins named like Members, User Role Editor, Adminimize or a "white label" or "client dashboard" tool. Those can hide the button for everyone but their owner (rows 5 and 6).</li>
+</ol>
+
+<h2>What causes it and the fix</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Why it happens</th><th>The fix</th></tr>
+  <tr><td>No Plugins menu, or no Users menu either</td><td>Your account is not an <b>Administrator</b>. Only administrators can install plugins. Agencies often keep the admin account and give the owner an Editor login</td><td>Ask whoever holds the administrator account to change your role under <b>Users</b>, or to create an administrator account in your name. If nobody will, your host's support can add one for the account holder. It is your site: you should hold at least one administrator login yourself</td></tr>
+  <tr><td>Plugins leads to a page of offers, or says plugins need an upgrade</td><td>The site is on <b>WordPress.com</b>, and the plan it is on does not allow installing your own plugins</td><td>Check the plan under <b>Upgrades &gt; Plans</b>: installing any plugin needs one of the higher plans. The alternative is moving the site to ordinary hosting, where every plugin is allowed. Compare the yearly cost of each before choosing</td></tr>
+  <tr><td>Plugins shows a list but no Add New Plugin button, and there is a <b>My Sites</b> menu</td><td>The site is part of a <b>multisite network</b>. Only the network's Super Admin can add plugins; single-site admins can only turn on what is already installed</td><td>Go to <b>My Sites &gt; Network Admin &gt; Plugins &gt; Add New Plugin</b>, install it there, then activate it on your site. If you have no Network Admin menu, ask the network's Super Admin</td></tr>
+  <tr><td>You are an Administrator but there is no Add New Plugin button, and no update buttons anywhere either</td><td><code>wp-config.php</code> contains <code>define( 'DISALLOW_FILE_MODS', true );</code>. It blocks every install and update from the dashboard. A developer, a security plugin or the host may have set it on purpose</td><td>Ask whoever set it why first: some sites are updated another way (Git, the host's tools). If nobody owns updates, change the line to:<pre class="cfg">define( 'DISALLOW_FILE_MODS', false );</pre>Change the existing line; do not add a second copy. A site with this switched on and nobody updating it is falling behind on security fixes</td></tr>
+  <tr><td>The button is missing for your account but a colleague's account sees it</td><td>A role editor plugin (Members, User Role Editor, PublishPress Capabilities) removed the <code>install_plugins</code> permission from your role or your user</td><td>In that plugin's screen, open the Administrator role (and your user, if it has its own settings) and tick <code>install_plugins</code>, <code>activate_plugins</code> and <code>update_plugins</code> again</td></tr>
+  <tr><td>Whole menus are missing and the dashboard carries an agency's logo</td><td>A "client dashboard" or white-label plugin, often a must-use plugin you cannot deactivate, hides menus from every account except the agency's</td><td>Look under <b>Plugins &gt; Must-Use</b>. A must-use plugin is a file in <code>wp-content/mu-plugins</code>; rename that file to switch it off. If you no longer work with that agency, ask them to hand the site over properly rather than leaving their lock in place</td></tr>
+</table>
+</div>
+<p class="note">If the button is there but clicking Install asks for "Connection Information" (FTP host, username, password), or the install fails part way, that is a different problem: WordPress cannot write to its own files. See <a href="install-update-failed-fix.html">plugin install or update failed</a>.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not install a plugin from a "nulled" or free-download site through some other route to get around the block. Those files commonly carry malware (see <a href="hacked-spam-fix.html">hacked site</a>).</li>
+  <li>Do not delete a must-use plugin you do not recognise before you know what it does. Some hosts run their caching and backups that way. Rename it, check the site, and rename it back if something breaks.</li>
+  <li>Do not share the administrator password around the office. Give each person their own login with the lowest role that does their job.</li>
+</ul>
+<p class="note">Changing a role or one line of <code>wp-config.php</code> takes a minute. Getting an administrator login back from a former developer, moving off a locked plan, or unpicking an agency's dashboard lock without breaking the host's own tools is where most owners would rather have someone do it. If that is you, the box below is for that. Related: <a href="login-loop-fix.html">login keeps sending you back</a>, <a href="install-update-failed-fix.html">update failed</a> and <a href="wordpress-update-fix.html">WordPress needs updating</a>.</p>
+</div>
+
+<script>
+(function () {
+  var screen = document.getElementById("screen"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var logBefore = 'Business: landscaper in Raleigh\n  site built by an agency, 2021\n  agency contract ended 2024\n\n' +
+    'Owner login:\n  role Editor (agency kept\n  the only Administrator)\n\nwp-config.php:\n  DISALLOW_FILE_MODS true\n  nobody updating since 2024\n\n' +
+    '<span class="bad">No Add New Plugin button.\n31 plugin updates waiting,\nnone could be run.</span>';
+  var logAfter = 'Steps taken:\n1. Host support added an\n   Administrator for the\n   account holder.\n2. Agency login removed.\n3. DISALLOW_FILE_MODS false,\n   after a full backup.\n4. 31 updates run, site checked.\n\n' +
+    '<span class="good">Add New Plugin is back.\nUpdates run from the\ndashboard again.</span>';
+  var menu = '<div class="menu"><div>Dashboard</div><div>Posts</div><div>Pages</div><div class="on">Plugins</div>';
+  var before = '<div class="wpa">' + menu + '</div><div class="main"><p class="title">Plugins</p><div class="row">Contact Form 7</div><div class="row">Yoast SEO</div><div class="row">Old Slider</div><p style="color:#666;margin:8px 0 0">Rebuilt example, not a real client.</p></div></div>';
+  var after = '<div class="wpa">' + menu + '<div>Users</div><div>Settings</div></div><div class="main"><p class="title">Plugins <span class="btn">Add New Plugin</span></p><div class="row">Contact Form 7</div><div class="row">Yoast SEO</div><div class="row">Old Slider (update available)</div><p style="color:#666;margin:8px 0 0">Rebuilt example, not a real client.</p></div></div>';
+  function show(isFixed) {
+    screen.innerHTML = isFixed ? after : before;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is there no Add New Plugin button in my WordPress dashboard?","acceptedAnswer":{"@type":"Answer","text":"Usually because your account is not an Administrator, the site is on a WordPress.com plan that does not allow plugins, the site is part of a multisite network, or wp-config.php sets DISALLOW_FILE_MODS to true. A role editor or white-label plugin can also hide it."}},
+{"@type":"Question","name":"How do I add plugins on a WordPress multisite?","acceptedAnswer":{"@type":"Answer","text":"Only the network's Super Admin can install plugins: go to My Sites, Network Admin, Plugins, Add New Plugin, install it there, then activate it on the individual site."}},
+{"@type":"Question","name":"What does DISALLOW_FILE_MODS do?","acceptedAnswer":{"@type":"Answer","text":"Set to true in wp-config.php, it blocks installing and updating plugins and themes from the dashboard, which hides the Add New Plugin button. Ask who set it before changing it to false, because some sites are updated another way."}},
+{"@type":"Question","name":"Can I install plugins on WordPress.com?","acceptedAnswer":{"@type":"Answer","text":"Only on the higher WordPress.com plans. On lower plans the Plugins menu shows upgrade offers instead. Ordinary WordPress hosting allows any plugin."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
