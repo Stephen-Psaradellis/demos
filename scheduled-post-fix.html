@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress "Missed schedule": why scheduled posts do not publish, and the fix</title>
+<meta name="description" content="A post set to go out at 9am still says Missed schedule? WordPress only runs its scheduler when the site gets a visit it can see. Find which of six causes stopped it, and the fix.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/scheduled-post-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.admin { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; }
+.admin .top { background:#1d2327; color:#f0f0f1; padding:7px 10px; font-weight:600; }
+.admin .row { display:flex; justify-content:space-between; gap:10px; padding:9px 10px; border-top:1px solid var(--line); }
+.admin .row:nth-child(even) { background:#f6f7f7; }
+.admin .t { font-weight:600; color:#2271b1; min-width:0; overflow-wrap:anywhere; }
+.admin .s { white-space:nowrap; font-size:12px; color:var(--muted); text-align:right; }
+.admin .s.miss { color:var(--bad); font-weight:700; }
+.admin .s.pub { color:var(--good); font-weight:700; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress scheduled posts not publishing ("Missed schedule")</h1>
+<p class="lede">You set a post, an offer or an event page to go live at 9am. At noon it is still not on the site, and the Posts list says <b>Missed schedule</b> in red. WordPress has no clock of its own: it checks for due posts only when someone loads a page and the site can then call itself back. Anything that stops that call (a setting copied over in a host move, a security rule, a cache that answers every visit, a quiet site) leaves the post waiting. Below is a rebuilt example (not a real client), how to find which cause you have, and the fix for each.</p>
+
+<div class="switch" role="group" aria-label="Show the page">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Posts &gt; All Posts, Friday 11:40</h2>
+    <div class="admin" id="admin"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: get the post out, then find the cause</h2>
+<ol>
+  <li><b>Publish it by hand now.</b> Open the post, set the date to now (or click Publish), and save. The post is live; the cause is still there for the next one.</li>
+  <li><b>Read Site Health.</b> Tools &gt; Site Health. Two lines matter here: <code>A scheduled event has failed</code> or <code>A scheduled event is late</code>, and <code>Your site could not complete a loopback request</code>. The second one means the site cannot call itself, which is how the scheduler starts (the third and fourth rows below).</li>
+  <li><b>Look at the queue.</b> The free WP Crontrol plugin (Tools &gt; Cron Events) lists every waiting job. If <code>publish_future_post</code> entries sit there hours past their time, the scheduler is not running at all. A note at the top saying <code>DISABLE_WP_CRON</code> is set is the first row below.</li>
+</ol>
+
+<h2>The causes and their fixes</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>Cause</th><th>How to spot it</th><th>What to do</th></tr>
+  <tr><td>The built-in scheduler was switched off, and nothing replaced it</td><td><code>define('DISABLE_WP_CRON', true);</code> in <code>wp-config.php</code>. Common after a move to a new host or a speed-up guide: the line was copied, the server job it relies on was not. Every scheduled job stops, not just posts (backups, reminder emails, sitemap updates)</td><td>Either remove the line, or keep it and add a real server job (next section). The second is better on a busy or cached site</td></tr>
+  <tr><td>A quiet site</td><td>Posts go out late rather than never: they appear when the first visitor of the day arrives. Overnight and early-morning times are hit most</td><td>A server job that runs the scheduler every 5 to 15 minutes, whatever the traffic (next section)</td></tr>
+  <tr><td>The site cannot call itself (loopback blocked)</td><td>Site Health reports the loopback failure, often with a 401, 403 or timeout. Causes: a security plugin or host firewall blocking <code>wp-cron.php</code>, a password on the whole site (staging or "coming soon" protection), or the server unable to reach its own domain after a DNS or SSL change</td><td>Allow <code>wp-cron.php</code> in the security plugin's or host's firewall rules; take the site-wide password off a live site; ask the host to let the server reach its own domain. Or skip the loopback entirely with a server job</td></tr>
+  <tr><td>The cache answers every visit</td><td>Page cache or a CDN (Cloudflare "Cache Everything", a host's built-in cache) serves pages without running WordPress, so visits never start the scheduler. Posts go out only when someone logs in or the cache expires</td><td>A server job, so the scheduler no longer depends on visits. Also clear the cache after a scheduled post goes out, or the home page keeps showing the old list (see <a href="changes-not-showing-fix.html">changes not showing</a>)</td></tr>
+  <tr><td>The time zone is wrong</td><td>Settings &gt; General shows a "UTC+0" style offset or a city in another country. The post went out, just hours early or late, and summer-time changes shift it again</td><td>Pick your own city (not a UTC offset) in Settings &gt; General &gt; Timezone, so daylight-saving changes are handled for you, then re-save the waiting posts</td></tr>
+  <tr><td>A plugin conflict or a fatal error in a job</td><td>WP Crontrol shows jobs running, but one keeps failing; the PHP error log names a plugin. Social auto-share and backup plugins are the usual suspects, because the scheduler runs their jobs in the same pass</td><td>Run the waiting job by hand from WP Crontrol and read the error; update or replace the plugin it names. More in <a href="plugin-conflict-fix.html">the plugin conflict guide</a></td></tr>
+</table>
+</div>
+
+<h2>The real fix for most sites: a server job</h2>
+<p>Most hosts' control panels have a "Cron Jobs" page (cPanel, Plesk, SiteGround Site Tools, Hostinger hPanel). Add a job that runs every 5 to 15 minutes with this command, using your own address:</p>
+<pre>wget -q -O - "https://example.com/wp-cron.php?doing_wp_cron" &gt;/dev/null 2&gt;&amp;1</pre>
+<p>Then add (or keep) this line in <code>wp-config.php</code>, above the line that says "That's all, stop editing", so page visits stop starting the scheduler a second time:</p>
+<pre>define('DISABLE_WP_CRON', true);</pre>
+<p class="note">If the host has no cron page, a free external service that requests the same address every 10 minutes does the same job. Managed WordPress hosts (WP Engine, Kinsta and similar) usually run this for you; check their docs before adding your own.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not add <code>DISABLE_WP_CRON</code> on its own because a speed guide said so. Without the server job, nothing scheduled runs again.</li>
+  <li>Do not rely on a "missed schedule" plugin alone. Those plugins check on page visits too, so a fully cached or very quiet site defeats them the same way.</li>
+  <li>Do not keep re-scheduling the post a few minutes ahead. If the scheduler is not running, every new time is missed too.</li>
+</ul>
+<p class="note">For most sites this is one wp-config line and one cron job, about ten minutes' work once you know which cause it is. If you would rather hand it over, that is what the box below is for. Related: <a href="changes-not-showing-fix.html">changes not showing</a>, <a href="plugin-conflict-fix.html">a plugin conflict</a>, and <a href="emails-not-sending-fix.html">site emails not arriving</a>.</p>
+</div>
+
+<script>
+(function () {
+  var admin = document.getElementById("admin"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var posts = [
+    ["Weekend special: 2 loaves for $9", "Fri 07:00"],
+    ["Holiday pie orders now open", "Thu 18:00"],
+    ["New Saturday hours", "Wed 09:00"]
+  ];
+  function rows(fixed) {
+    var h = '<div class="top">Posts (Hearth Street Bakery)</div>';
+    posts.forEach(function (p) {
+      h += '<div class="row"><span class="t">' + p[0] + '</span><span class="s ' + (fixed ? 'pub">Published<br>' : 'miss">Missed schedule<br>') + p[1] + '</span></div>';
+    });
+    return h;
+  }
+  var logBefore = 'Site: bakery, WordPress, moved to\n  a new host three weeks ago\n\nSite Health:\n  A scheduled event is late\n  (publish_future_post, 4h)\n\n' +
+    'wp-config.php:\n  DISABLE_WP_CRON = true\n  (copied from the old host)\nNew host cron page: no jobs\n\n' +
+    '<span class="bad">Nothing scheduled has run since\nthe move: 3 posts, the nightly\nbackup and the order reminders.</span>';
+  var logAfter = 'Steps taken:\n1. The 3 waiting posts published\n   by hand, oldest first.\n' +
+    '2. Server job added in the host\n   panel: wp-cron.php every 10 min.\n3. DISABLE_WP_CRON kept, now with\n   the job behind it.\n' +
+    '4. Test post scheduled 15 min\n   ahead: went out on time, while\n   the site was fully cached.\n\n' +
+    '<span class="good">Posts, backups and reminders\nrun on time again.</span>';
+  function show(isFixed) {
+    admin.innerHTML = rows(isFixed);
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does WordPress say Missed schedule?","acceptedAnswer":{"@type":"Answer","text":"WordPress publishes scheduled posts through its built-in scheduler (WP-Cron), which only runs when a page load lets the site call itself. If the scheduler is switched off with DISABLE_WP_CRON and no server job replaces it, the site cannot call itself (a blocked loopback request), a cache answers every visit, or the site gets no visits, the post misses its time."}},
+{"@type":"Question","name":"How do I stop WordPress missing scheduled posts?","acceptedAnswer":{"@type":"Answer","text":"Add a server cron job in your host's control panel that requests wp-cron.php every 5 to 15 minutes, and set DISABLE_WP_CRON to true in wp-config.php so visits no longer start it. The scheduler then runs on time regardless of traffic or caching."}},
+{"@type":"Question","name":"Why did my scheduled post publish at the wrong time?","acceptedAnswer":{"@type":"Answer","text":"Usually the site's time zone. In Settings, General, choose your own city rather than a UTC offset so daylight-saving changes are handled, then re-save any waiting posts."}},
+{"@type":"Question","name":"What does 'Your site could not complete a loopback request' mean?","acceptedAnswer":{"@type":"Answer","text":"The site could not make a request to its own address, which is how WordPress starts its scheduler. A security plugin or firewall blocking wp-cron.php, a password on the whole site, or a server that cannot reach its own domain are the common causes. Allow wp-cron.php, or use a server cron job instead."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
