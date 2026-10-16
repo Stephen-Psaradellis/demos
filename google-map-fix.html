@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Google Map not showing on your website: "This page can't load Google Maps correctly" and the blank grey box</title>
+<meta name="description" content="Map on your contact page is grey, blank or says 'This page can't load Google Maps correctly'? Find which of six causes it is; often no API key is needed.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/google-map-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#f1f3f4; color:#202124; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; border-bottom:1px solid var(--line); }
+.site .body { padding:16px; min-height:190px; background:#fff; font-size:14px; }
+.map { position:relative; height:170px; border-radius:6px; overflow:hidden; background:#e5e3df; }
+.map.broken { display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:12px; color:#3c4043; }
+.map.broken b { display:block; margin-bottom:6px; }
+.map.broken .wm { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:13px; color:rgba(0,0,0,.28); transform:rotate(-12deg); pointer-events:none; }
+.map.ok { background:#e8f0e3; }
+.map.ok .road { position:absolute; background:#fff; }
+.map.ok .pin { position:absolute; left:50%; top:42%; width:22px; height:22px; margin:-22px 0 0 -11px; background:#d93025; border-radius:50% 50% 50% 0; transform:rotate(-45deg); }
+.map.ok .label { position:absolute; left:50%; top:46%; transform:translateX(-50%); background:#fff; border-radius:4px; padding:2px 8px; font-size:12.5px; font-weight:600; white-space:nowrap; box-shadow:0 1px 2px rgba(0,0,0,.2); }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Google Map not showing on your website</h1>
+<p class="lede">The map on a contact page tells a customer where to go, and it fails quietly: a grey box, a box that says "This page can't load Google Maps correctly", a dark map stamped "For development purposes only", or nothing at all. There are six usual causes, and the first question settles most of them: is the map a plain Google embed, or does it need an API key? A plain embed is free and needs no key, so it is often the quickest fix of all. Below is a rebuilt example (not a real client), how to tell which cause you have, and the fix for each.</p>
+
+<div class="switch" role="group" aria-label="Show the page">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>The contact page</h2>
+    <div class="site">
+      <div class="bar" id="site-bar"></div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: which kind of map is it?</h2>
+<ol>
+  <li><b>Look at what the box says.</b> "This page can't load Google Maps correctly. Do you own this website?" or a dark map with "For development purposes only" means the map uses Google's Maps JavaScript API and the API key behind it has a problem. A grey or empty box with no message is usually one of the other four causes below.</li>
+  <li><b>Read the exact reason.</b> In Chrome, right-click the page, choose Inspect, then the Console tab, and reload. A key problem prints a line such as <code>Google Maps JavaScript API error: BillingNotEnabledMapError</code>; the name after "error:" is in the table below.</li>
+  <li><b>Find where the map comes from.</b> A map plugin (WP Go Maps, MapPress, a store-locator plugin) or a theme's "Google Maps" setting usually asks for a key. Elementor's Google Maps widget, Divi's map module with an address only, and a pasted <code>&lt;iframe src="https://www.google.com/maps/embed?..."&gt;</code> are embeds and need no key.</li>
+</ol>
+
+<h2>The fastest fix for a single location: use the free embed</h2>
+<p>If all the map has to do is show where you are, you do not need an API key, a Google Cloud account or billing at all.</p>
+<ol>
+  <li>Open Google Maps, search for your business by name (so the pin shows your listing, reviews and directions button), click <b>Share</b>, then <b>Embed a map</b>, and <b>Copy HTML</b>.</li>
+  <li>In WordPress, add a <b>Custom HTML</b> block where the map goes and paste it there. Not into the Paragraph block or the Classic editor's Visual tab: those strip or mangle the <code>&lt;iframe&gt;</code>. In Elementor use the HTML widget, or the Google Maps widget with your address. Wix, Squarespace and Shopify each have an embed or map block that takes the same code.</li>
+  <li>To make it fit phones, change <code>width="600"</code> in the pasted code to <code>width="100%"</code> and keep the height.</li>
+</ol>
+
+<h2>If the map needs an API key: the errors and their fixes</h2>
+<p>Store locators, maps with many pins, and themes with a key field need the Maps JavaScript API. Every fix below is in the Google Cloud console (console.cloud.google.com) under the project that owns the key; if nobody remembers whose Google account that is, it is often quicker to make a new project and key under the business's own account.</p>
+<div class="tablewrap">
+<table>
+  <tr><th>Console error</th><th>What it means</th><th>What to do</th></tr>
+  <tr><td><code>MissingKeyMapError</code> / <code>InvalidKeyMapError</code></td><td>No key was sent, or the key was deleted or mistyped</td><td>Create a key (APIs &amp; Services &gt; Credentials &gt; Create credentials &gt; API key) and paste it into the plugin or theme setting</td></tr>
+  <tr><td><code>BillingNotEnabledMapError</code></td><td>The project has no billing account, so Google stops the map; this is also what puts "For development purposes only" on it</td><td>Link a billing account to the project (Billing in the console). Google gives a monthly free allowance that a small business's contact-page map normally stays inside; set a budget alert so you hear about any change</td></tr>
+  <tr><td><code>ApiNotActivatedMapError</code></td><td>The key exists but the Maps JavaScript API is not switched on for its project</td><td>APIs &amp; Services &gt; Library &gt; Maps JavaScript API &gt; Enable. A store locator or an address search box may also need the Geocoding API or Places API; the plugin's settings page says which</td></tr>
+  <tr><td><code>RefererNotAllowedMapError</code></td><td>The key is restricted to a list of websites and yours is not on it, very often after a domain change or a move from www to non-www</td><td>Edit the key's "Website restrictions" to include both <code>https://yourbusiness.com/*</code> and <code>https://www.yourbusiness.com/*</code> (and a staging address if you use one)</td></tr>
+  <tr><td><code>ApiTargetBlockedMapError</code></td><td>The key's "API restrictions" do not include the Maps JavaScript API</td><td>Edit the key and tick Maps JavaScript API (and the others the plugin needs) under API restrictions</td></tr>
+  <tr><td><code>ExpiredKeyMapError</code></td><td>The key was deleted or replaced</td><td>Make a new key and update the plugin setting</td></tr>
+</table>
+</div>
+<p class="note">Do keep the website restriction on. A key with no restriction can be copied out of your page source and used on other sites at your expense.</p>
+
+<h2>A grey or empty box with no error</h2>
+<ul>
+  <li><b>A cookie banner is holding the map back.</b> Complianz, CookieYes, Borlabs and similar plugins block Google Maps until the visitor accepts, and some show nothing in its place. Accept the banner and reload: if the map appears, that is it. Turn on the plugin's map placeholder ("click to load map") so visitors see a button instead of an empty box.</li>
+  <li><b>A speed plugin is delaying or combining the map's script.</b> "Delay JavaScript execution" (WP Rocket), "Aggregate JS" (Autoptimize) and similar settings in LiteSpeed Cache, Perfmatters or SiteGround Optimizer can break a map. Exclude <code>maps.googleapis.com</code> and the map plugin's script from those settings, then clear the cache.</li>
+  <li><b>The box has no height.</b> A map script draws into a box, and a box with height 0 shows nothing. Give the map block or widget a height (300 to 450 pixels suits most pages) in its own settings rather than leaving it on "auto".</li>
+  <li><b>The embed address starts with <code>http://</code>.</b> On an https site the browser blocks it as mixed content. Change it to <code>https://</code>. More in <a href="not-secure-fix.html">the "Not secure" guide</a>.</li>
+  <li><b>A security header blocks Google.</b> A Content-Security-Policy set by a security plugin or the host that does not allow <code>https://www.google.com</code> as a frame source (for embeds), or <code>maps.googleapis.com</code> and <code>maps.gstatic.com</code> as script and image sources (for the API), leaves the box empty. The console names the blocked address; add it to the policy.</li>
+</ul>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not paste a screenshot of the map in its place. It cannot give directions, and a phone visitor expects to tap it.</li>
+  <li>Do not remove the website restriction from a key to "make it work". Add your domain to it instead.</li>
+  <li>Do not keep an API key setup just for one pin. The free embed does that job with nothing to maintain.</li>
+</ul>
+<p class="note">For most small sites this is a five-minute swap to the free embed, or one setting in the Google Cloud console. If you would rather hand it over, or the map comes from a store locator with many locations, that is what the box below is for. Related: <a href="changes-not-showing-fix.html">changes not showing</a> (a cache serving the old page after the fix), <a href="phone-layout-fix.html">an older site that shrinks on phones</a>, and <a href="slow-site-fix.html">a slow site</a>.</p>
+</div>
+
+<script>
+(function () {
+  var bar = document.getElementById("site-bar"), body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var head = '<p style="margin:0 0 8px"><b>Find us</b><br>14 Mill Street, open Tue-Sun 7am-3pm</p>';
+  var before = head + '<div class="map broken"><b>This page can\'t load Google Maps correctly.</b>Do you own this website?<span class="wm">For development purposes only</span></div>';
+  var after = head + '<div class="map ok" role="img" aria-label="Map with a pin on Mill Street Bakery">' +
+    '<div class="road" style="left:0;right:0;top:58%;height:10px"></div>' +
+    '<div class="road" style="top:0;bottom:0;left:30%;width:8px"></div>' +
+    '<div class="road" style="top:0;bottom:0;left:72%;width:6px"></div>' +
+    '<div class="pin"></div><div class="label">Mill Street Bakery</div></div>';
+  var logBefore = 'Site: bakery, WordPress, theme\n  "Map" field with an API key\n\nConsole:\nGoogle Maps JavaScript API error:\n  BillingNotEnabledMapError\n\n' +
+    'Key: made in 2020 under a former\n  web designer\'s Google account;\n  card on that billing account\n  expired, project billing closed\n\n' +
+    '<span class="bad">Map broken on the contact page and\nthe footer of every page.</span>';
+  var logAfter = 'Steps taken:\n1. Theme map field emptied (no key).\n' +
+    '2. Google Maps > the bakery\'s own\n   listing > Share > Embed a map.\n3. Pasted in a Custom HTML block,\n   width set to 100%.\n' +
+    '4. Same embed in the footer widget.\n5. Old key deleted; the former\n   designer\'s project no longer used.\n6. Page cache cleared; checked on a\n   phone and a desktop.\n\n' +
+    '<span class="good">Map shows the listing with\nDirections; no key, no billing.</span>';
+  function show(isFixed) {
+    bar.textContent = "millstreetbakery.example/contact/";
+    body.innerHTML = isFixed ? after : before;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does my website say 'This page can't load Google Maps correctly'?","acceptedAnswer":{"@type":"Answer","text":"The map uses Google's Maps JavaScript API and its API key has a problem: no billing account on the key's project, the Maps JavaScript API not enabled, or the key restricted to a different website address. The browser console names the exact error, such as BillingNotEnabledMapError or RefererNotAllowedMapError. For a single location, replacing it with Google's free embed avoids the key altogether."}},
+{"@type":"Question","name":"Do I need an API key to put a Google Map on my website?","acceptedAnswer":{"@type":"Answer","text":"Not for a map of one location. In Google Maps, open your business listing, click Share, then Embed a map, copy the HTML and paste it into a Custom HTML block. That embed needs no key and no billing. Store locators, maps with many pins and some theme map fields use the Maps JavaScript API, which does need a key."}},
+{"@type":"Question","name":"Why is the Google Map on my WordPress site just a grey box?","acceptedAnswer":{"@type":"Answer","text":"Common causes are a cookie consent plugin blocking Google Maps until the visitor accepts, a speed plugin delaying or combining the map's script, a map box with no height, an embed address starting with http:// on an https site, or a Content-Security-Policy header that does not allow Google. Accept the cookie banner and check the browser console to see which one it is."}},
+{"@type":"Question","name":"What does 'For development purposes only' on a Google Map mean?","acceptedAnswer":{"@type":"Answer","text":"The map's API key belongs to a Google Cloud project with no billing account, or the key is missing. Link a billing account to the project in the Google Cloud console, or switch a single-location map to the free embed, which needs no key."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
