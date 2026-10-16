@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress not sending emails: form, order and password-reset mail that never arrives</title>
+<meta name="description" content="WordPress emails not arriving? Contact form, WooCommerce order and password-reset mail usually fails for one reason. How to find it, fix it and test it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/emails-not-sending-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.mailbox { font-family:system-ui,sans-serif; font-size:14px; color:#3c434a; }
+.mailbox h3 { margin:0 0 10px; font-size:18px; color:#1d2327; }
+.mailbox p { margin:0 0 8px; overflow-wrap:anywhere; }
+.row { border-top:1px solid var(--line); padding:8px 0; overflow-wrap:anywhere; }
+.row b { color:#1d2327; }
+.empty { color:var(--muted); font-style:italic; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress is not sending emails</h1>
+<p class="lede">The contact form says "Thank you, your message has been sent", a customer places an order, someone asks for a password reset, and no email arrives: not in the inbox, sometimes not even in spam. Nothing on the site looks broken, which is why this one can go unnoticed for months while enquiries are lost. In most cases it is one cause: WordPress hands the email to the web server, and the receiving mail provider does not trust mail from that server in your domain's name. Below is a rebuilt example (not a real client), then how to confirm the cause, the fix and the test.</p>
+
+<div class="switch" role="group" aria-label="Show the inbox">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>The owner's inbox after a test enquiry</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">orders@harborlinebakery.example</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Why it happens</h2>
+<p>Out of the box, WordPress sends every email (form notifications, WooCommerce orders, password resets, new-user mail) through the web server's own PHP mail function, from an address like <code>wordpress@yourdomain.com</code>. Three things then go wrong, alone or together:</p>
+<ul>
+  <li><b>The server is not allowed to send for your domain.</b> Your domain's SPF record lists who may send its mail (say Google Workspace or Microsoft 365). The web server is not on that list and the mail carries no DKIM signature, so the check fails. Since February 2024 Gmail and Yahoo require mail to pass SPF or DKIM, and they reject or bin mail that passes neither.</li>
+  <li><b>The host limits or switches off PHP mail.</b> Many hosts cap it at a few messages an hour or disable it, and some block outgoing mail ports on cheaper plans. WordPress is not told; the form still says "sent".</li>
+  <li><b>The form sends "from" the visitor.</b> A form set to use the customer's address (<code>jane@yahoo.com</code>) as the From line asks your server to send mail in Yahoo's name. Providers that publish a strict DMARC policy, Yahoo and AOL among them, tell receivers to reject exactly that.</li>
+</ul>
+
+<h2>First, five minutes of checks</h2>
+<ol>
+  <li><b>Send yourself a password reset</b> from the login page (Lost your password?) to an address at Gmail or Outlook, not to an address on your own domain. If it does not arrive within five minutes, the problem is the whole site's mail, not one form.</li>
+  <li><b>Look in spam</b>, then in Gmail open the message (if it arrived) and use the three-dot menu, Show original. The top lists <code>SPF</code>, <code>DKIM</code> and <code>DMARC</code> each as PASS or FAIL. Any FAIL is the cause.</li>
+  <li><b>Look up your domain's SPF record</b> with any free DNS lookup tool (a TXT record starting <code>v=spf1</code>). Note who it names. If it names your mailbox provider only, the web server is not allowed to send.</li>
+  <li><b>Open the form's notification settings</b> (Contact Form 7: the Mail tab; WPForms, Gravity Forms: Notifications) and read the From field. It should be an address on your own domain, not a merge tag for the visitor's email.</li>
+</ol>
+
+<h2>The fix</h2>
+<ol>
+  <li><b>Send through a real mail service, not the web server.</b> Install one SMTP plugin (WP Mail SMTP, FluentSMTP and Post SMTP are the common free ones) and connect it to the service that already sends your domain's mail: Google Workspace, Microsoft 365, or your host's mailbox. For a shop or a busy form, a transactional service (Brevo, Mailgun, Postmark, SendGrid, Amazon SES) is built for it and most have a free tier. If the host blocks mail ports, choose the plugin's API option for that service instead of plain SMTP.</li>
+  <li><b>Use one From address on your own domain</b>, the same one the service is set up to send as, for example <code>hello@yourdomain.com</code>. In the SMTP plugin, tick the option that forces this From address so every plugin uses it.</li>
+  <li><b>Put the service in your DNS.</b> Add its include to the one SPF record (never a second <code>v=spf1</code> record; two records make SPF fail outright), and add the DKIM record the service gives you. If you have no DMARC record yet, a starting one is a TXT record at <code>_dmarc</code> with <code>v=DMARC1; p=none; rua=mailto:you@yourdomain.com</code>. More on that in <a href="forged-email-fix.html">the DMARC guide</a>.</li>
+  <li><b>Fix the form's From line.</b> From: your domain address. Reply-To: the visitor's email field. Replying still goes straight to the customer, and nothing is sent in Yahoo's name.</li>
+  <li><b>WooCommerce only:</b> in WooCommerce, Settings, Emails, check that each email you rely on (New order, Processing order, Customer invoice) is enabled and that "New order" names the right recipient. A disabled email looks exactly like a delivery failure.</li>
+  <li><b>Test</b>: the SMTP plugin's own test email arrives in a Gmail inbox, not spam; Show original reads SPF PASS, DKIM PASS, DMARC PASS; a real enquiry through the live form arrives with the customer as Reply-To; a password reset arrives; a test order sends both the shop's and the customer's email. Keep an email log plugin on for a week to catch anything that still fails.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Usual cause</th><th>Usual fix</th></tr>
+  <tr><td>Form says "sent", nothing arrives anywhere</td><td>Host disabled or capped PHP mail, or the receiver rejected it</td><td>SMTP plugin through a real mail service</td></tr>
+  <tr><td>Mail arrives, but in spam</td><td>SPF or DKIM fails for your domain</td><td>Add the service to SPF, publish its DKIM key</td></tr>
+  <tr><td>Some enquiries arrive, Yahoo or AOL senders never do</td><td>Form sends From the visitor's address</td><td>From = your domain, Reply-To = visitor</td></tr>
+  <tr><td>Arrives at Gmail, not at the address on your own domain</td><td>Domain mail is hosted elsewhere, but the web server thinks it handles your domain's mail and delivers it to itself</td><td>Send through the mailbox provider; ask the host to set mail routing to "remote"</td></tr>
+  <tr><td>Worked for months, stopped suddenly</td><td>Host changed limits, the SMTP password or app password changed, or a second SPF record was added</td><td>Check the SMTP plugin's log; one SPF record only</td></tr>
+  <tr><td>WooCommerce order email missing, others fine</td><td>That email is disabled or has the wrong recipient</td><td>WooCommerce, Settings, Emails</td></tr>
+  <tr><td>"Could not instantiate mail function" or "SMTP connect() failed"</td><td>Mail function off, or the mail port is blocked</td><td>SMTP plugin, using the service's API option if ports are blocked</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not add a second SPF record for the new service. Merge it into the one you have; two records count as an error and every message fails SPF.</li>
+  <li>Do not set DMARC to <code>p=reject</code> before the test above passes. It tells receivers to throw away exactly the mail you are trying to fix.</li>
+  <li>Do not paste your main email password into the SMTP plugin. Use the provider's connect button, an app password, or an API key made for the site, so a site problem never exposes your mailbox.</li>
+  <li>Do not trust the form's "sent" message as proof. It only means WordPress handed the mail over, not that anyone received it.</li>
+</ul>
+<p class="note">Most of this is one plugin, two DNS records and a test, under an hour once the cause is clear. If you would rather hand it over, that is what the box below is for. Related: <a href="contact-form-fix.html">a contact form whose messages never arrive</a>, <a href="mailto-form-fix.html">a form that does nothing on phones</a> and <a href="forged-email-fix.html">email in your name can be forged</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="mailbox"><h3>Inbox</h3>' +
+    '<div class="row empty">No new mail. The test enquiry sent at 9:02 from the website form is not here, and not in spam.</div>' +
+    '<div class="row"><b>Website form</b> said: "Thank you for your message. It has been sent."</div></div>';
+  var fixed = '<div class="mailbox"><h3>Inbox</h3>' +
+    '<div class="row"><b>New enquiry: birthday cake for Saturday</b><br>From: Harborline Bakery website &lt;hello@harborlinebakery.example&gt;<br>Reply-To: jane.test@yahoo.example</div>' +
+    '<div class="row"><b>WP Mail SMTP: test email</b><br>Delivered 9:31, inbox</div></div>';
+  var logBroken = 'Password reset to a Gmail test\naddress: never arrives.\n\n' +
+    'Form notification settings:\n  From: [your-email]  (the visitor)\n\n' +
+    'Sent by: the web server, PHP mail,\nas wordpress@harborlinebakery.example\n\n' +
+    'Domain SPF record:\n  v=spf1 include:_spf.google.com ~all\n  (web server not listed)\n\n' +
+    'A copy that did reach a Gmail test\ninbox, Show original:\n  SPF: FAIL  DKIM: none  DMARC: FAIL\n\n' +
+    '<span class="bad">Receivers do not trust the server,\nso enquiries are dropped or binned.</span>';
+  var logFixed = 'Steps taken:\n1. FluentSMTP installed, connected\n   to the bakery\'s Google Workspace\n   as hello@harborlinebakery.example.\n' +
+    '2. "Force From email" on.\n3. Google DKIM key published in DNS;\n   SPF already named Google, so the\n   one record stays as it was.\n' +
+    '4. Form: From = hello@..., Reply-To =\n   the visitor\'s email field.\n' +
+    '5. Test to Gmail, Show original:\n   SPF: PASS  DKIM: PASS  DMARC: PASS\n' +
+    '6. Password reset and a live form\n   enquiry both arrive in the inbox.\n\n' +
+    '<span class="good">Every site email now leaves through\nthe bakery\'s own mailbox provider.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is WordPress not sending emails?","acceptedAnswer":{"@type":"Answer","text":"By default WordPress sends mail through the web server's PHP mail function. Many hosts limit or disable it, and receivers such as Gmail reject or bin mail from a server your domain's SPF record does not list and that carries no DKIM signature. Sending through a real mail service with an SMTP plugin fixes it."}},
+{"@type":"Question","name":"Why do my WordPress contact form emails go to spam?","acceptedAnswer":{"@type":"Answer","text":"The mail fails SPF or DKIM for your domain. Send it through your mailbox provider or a transactional mail service, add that service to your one SPF record and publish its DKIM key, then check Show original in Gmail for SPF, DKIM and DMARC PASS."}},
+{"@type":"Question","name":"Should the contact form send from the visitor's email address?","acceptedAnswer":{"@type":"Answer","text":"No. Set From to an address on your own domain and put the visitor's email in Reply-To. Sending in the visitor's name fails DMARC for providers with a strict policy, such as Yahoo and AOL, and those messages are rejected."}},
+{"@type":"Question","name":"Why are WooCommerce order emails not sending?","acceptedAnswer":{"@type":"Answer","text":"Either the whole site's mail is failing (test with a password reset) or that email is disabled or has the wrong recipient under WooCommerce, Settings, Emails. Fix the site's mail with an SMTP plugin, then check each order email is enabled."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
