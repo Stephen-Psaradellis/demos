@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"Redirected you too many times" (ERR_TOO_MANY_REDIRECTS): what it means and how it gets fixed</title>
+<meta name="description" content="Why a site says 'redirected you too many times': http/https or www settings that disagree, Cloudflare Flexible SSL, or a looping rule. How to fix it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/too-many-redirects-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:22px 16px; min-height:190px; }
+.crash h3 { font-weight:normal; font-size:21px; margin:0 0 10px; color:#333; }
+.crash p { margin:0 0 6px; color:#555; font-size:14px; }
+.crash .code { font-size:12px; color:#777; margin-top:12px; }
+.ok h3 { margin:0 0 6px; font-size:18px; }
+.ok p { margin:0 0 12px; color:var(--muted); }
+.ok .btn { display:inline-block; background:var(--brand); color:#fff; padding:8px 14px; border-radius:8px; font-weight:600; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>"This page isn't working: redirected you too many times"</h1>
+<p class="lede">Chrome calls it <code>ERR_TOO_MANY_REDIRECTS</code>; Firefox says "The page isn't redirecting properly". Either way the site keeps sending the browser to an address that sends it straight back, so the page never loads. Nothing is lost: it is a settings loop, not a crash. Most loops come from two settings that disagree about <b>http or https</b>, or <b>www or no www</b>. Below is a rebuilt example (not a real client), then how to find your loop and the safe order of steps.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What visitors see</h2>
+    <div class="site">
+      <div class="bar">yourbusiness.com</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: is it the site, or just your browser?</h2>
+<ul>
+  <li><b>Open the site in a private window</b>, or on your phone with Wi-Fi off. If it loads there, an old cookie in your normal browser is the problem: clear the cookies for that one site and you are done.</li>
+  <li><b>If it fails everywhere, follow the redirects.</b> A free "redirect checker" website, or <code>curl -sIL https://yourbusiness.com</code> in a terminal, lists every hop. A loop shows the same two addresses repeating, and the two addresses tell you which settings disagree: <code>http</code> versus <code>https</code>, or <code>www.</code> versus no <code>www.</code></li>
+  <li><b>Think back a day.</b> A new SSL certificate, switching on Cloudflare, an "SSL" or "redirect" plugin, a move to a new host or a change of domain are the usual triggers.</li>
+</ul>
+
+<h2>The safe order of steps</h2>
+<ol>
+  <li><b>Back up the files</b> (host's file manager or SFTP) before changing anything, and keep a copy of any file you edit.</li>
+  <li><b>Check the two WordPress addresses.</b> In Settings &gt; General, "WordPress Address" and "Site Address" must both start the same way your site really answers, for example both <code>https://www.yourbusiness.com</code>. If you cannot reach the dashboard, add <code>define('WP_HOME','https://www.yourbusiness.com');</code> and <code>define('WP_SITEURL','https://www.yourbusiness.com');</code> to <code>wp-config.php</code> with your real address.</li>
+  <li><b>If the site uses Cloudflare</b>, open SSL/TLS in the Cloudflare dashboard. "Flexible" means Cloudflare talks to your server over plain http; if the server or a plugin then forces https, every request bounces back. Set it to <b>Full (strict)</b> once the server has its own certificate (most hosts give one free), or turn the server-side https redirect off while you sort it.</li>
+  <li><b>Switch off redirect and SSL plugins</b> by renaming their folders in <code>wp-content/plugins</code> (for example add <code>-off</code> to the name). If the site loads, put them back one at a time to find the one that loops.</li>
+  <li><b>Check <code>.htaccess</code></b> (Apache hosts) for two rules that fight, such as one forcing <code>www</code> and another removing it. Rename the file, then save Settings &gt; Permalinks once to write a clean one, and re-add only the redirect you actually want.</li>
+  <li><b>Behind a proxy or load balancer?</b> WordPress may not see that the visitor used https. Hosts document a line for <code>wp-config.php</code> that reads the <code>X-Forwarded-Proto</code> header; use the one your host gives.</li>
+  <li><b>Then clear every cache</b> (caching plugin, host cache, Cloudflare "Purge everything") and test the home page, an inner page, the contact form and the dashboard login in a private window.</li>
+</ol>
+
+<h2>Common causes and what each one needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What the redirect checker shows</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td><code>https://</code> sends you to <code>https://</code> again, and the site is on Cloudflare</td><td>Cloudflare Flexible SSL plus an https redirect on the server</td><td>Cloudflare SSL/TLS mode Full (strict)</td></tr>
+  <tr><td><code>http://</code> and <code>https://</code> swap back and forth</td><td>WordPress Address says http while the host or a plugin forces https (or the reverse)</td><td>Make both WordPress addresses https; keep one https redirect, not two</td></tr>
+  <tr><td><code>www.</code> and no <code>www.</code> swap back and forth</td><td>The host, Cloudflare or <code>.htaccess</code> wants one form and WordPress wants the other</td><td>Pick one form and use it in all of them</td></tr>
+  <tr><td>Only <code>/wp-admin</code> or the login page loops</td><td>A security or login plugin, or <code>FORCE_SSL_ADMIN</code> without working https</td><td>Rename that plugin's folder; check the certificate</td></tr>
+  <tr><td>Started right after a move or a new domain</td><td>The old address is still stored in WordPress or in a redirect rule</td><td>Update both addresses, then a careful search-and-replace of the old address</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not stack more redirect plugins to "force" the right address. Each extra rule is another chance to loop.</li>
+  <li>Do not edit the addresses directly in the database unless you have a backup; a typo there takes the whole site down.</li>
+  <li>Do not switch https off for good. Browsers now mark plain-http sites "Not secure", and the loop can be fixed with https left on.</li>
+  <li>Do not judge the fix in your normal browser window: it remembers old redirects. Test in a private window.</li>
+</ul>
+<p class="note">If you can open the WordPress settings, the Cloudflare dashboard and a file manager, the steps above are usually enough. If the site earns you money every hour it is down, that is what the box below is for.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="crash"><h3>This page isn’t working</h3><p>yourbusiness.com redirected you too many times.</p>' +
+    '<p>Try deleting your cookies.</p><div class="code">ERR_TOO_MANY_REDIRECTS</div></div>';
+  var fixed = '<div class="ok"><h3>Riverside Auto Repair</h3><p>Brakes, tires and inspections. Same-week appointments.</p>' +
+    '<span class="btn">Request a service</span></div>';
+  var logBroken = 'Cloudflare switched on yesterday; an SSL plugin\nforces https on the server.\n\n' +
+    'curl -sIL https://riversideauto.example\n' +
+    '1  https://riversideauto.example/  301\n' +
+    '   Location: https://riversideauto.example/\n' +
+    '2  https://riversideauto.example/  301\n' +
+    '   Location: https://riversideauto.example/\n' +
+    '...  stops after 20 hops\n\n' +
+    'Cloudflare SSL/TLS mode: Flexible\n\n' +
+    '<span class="bad">Cloudflare reaches the server over plain http.\nThe server sees http and redirects to https.\nThe browser goes back to Cloudflare over https,\nwhich asks the server over http again. A loop.</span>';
+  var logFixed = 'Steps taken:\n1. Backup of the files.\n' +
+    '2. Checked the server has its own certificate\n   (the host\'s free one, valid).\n' +
+    '3. Cloudflare SSL/TLS mode: Flexible -> Full (strict).\n' +
+    '4. Purged the Cloudflare and plugin caches.\n' +
+    '5. Home page, an inner page, the service form and\n   the dashboard login checked in a private window.\n\n' +
+    'curl -sIL http://riversideauto.example\n' +
+    '1  http://...   301  -> https://riversideauto.example/\n' +
+    '2  https://...  200\n\n' +
+    '<span class="good">One redirect, then the page. https stays on;\nno plugin removed.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'redirected you too many times' mean?","acceptedAnswer":{"@type":"Answer","text":"The site keeps sending the browser to an address that sends it straight back, so the page never loads. It is a settings loop, usually two settings that disagree about http or https, or www or no www. Nothing on the site is lost."}},
+{"@type":"Question","name":"How do I fix ERR_TOO_MANY_REDIRECTS on a WordPress site?","acceptedAnswer":{"@type":"Answer","text":"First try a private window; if it loads there, clear that site's cookies. Otherwise make both WordPress addresses in Settings > General use the same https and www form, set Cloudflare SSL/TLS to Full (strict) if you use Cloudflare, switch off redirect or SSL plugins by renaming their folders, and check .htaccess for rules that fight. Then purge caches and test in a private window."}},
+{"@type":"Question","name":"Why does Cloudflare cause too many redirects?","acceptedAnswer":{"@type":"Answer","text":"In Flexible mode Cloudflare connects to your server over plain http. If the server or a plugin forces https, it redirects every request, and Cloudflare asks over http again, forming a loop. Full (strict) mode, with a certificate on the server, ends it."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement("aside");d.id="hire-footer";d.className="hire-v3";d.style.cssText="max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box";var s=encodeURIComponent("Fix for my site: "+document.title);d.innerHTML="<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action=\"site-check.html\" method=\"get\" style=\"display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px\"><input name=\"url\" type=\"text\" inputmode=\"url\" placeholder=\"yourbusiness.com\" aria-label=\"Your website address\" required style=\"flex:1 1 180px;min-width:0;padding:8px;font:inherit\"><button style=\"padding:8px 14px;font:inherit\">Check my site free</button></form>Want it done for you? From $49 a fix, quoted before I start: <a href=\"https://www.fiverr.com/s_psaradellis\">order on Fiverr</a> or <a href=\"mailto:s.n.psaradellis@gmail.com?subject="+s+"\">email s.n.psaradellis@gmail.com</a>. <br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered.</small>";document.body.appendChild(d);}catch(e){}})();</script>
+</body>
+</html>
