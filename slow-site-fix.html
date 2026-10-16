@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress site slow: find what is slowing it down and fix it</title>
+<meta name="description" content="Is your WordPress site slow to load? Tell a slow server from a heavy page in two minutes, then fix the usual causes: no caching, old PHP, heavy plugins, big photos and outside scripts.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/slow-site-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#f1f3f4; color:#202124; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; border-bottom:1px solid var(--line); }
+.site .body { padding:16px; min-height:190px; background:#fff; }
+.row { display:grid; grid-template-columns: 7.5em minmax(0,1fr) 4.2em; gap:8px; align-items:center; font-size:13px; margin-bottom:7px; }
+.row .lbl { color:#3c434a; overflow-wrap:anywhere; }
+.row .track { background:#eef0f3; border-radius:4px; height:12px; overflow:hidden; }
+.row .fill { height:12px; border-radius:4px; }
+.row .val { text-align:right; font-variant-numeric: tabular-nums; }
+.score { font-size:28px; font-weight:700; margin:0 0 10px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress site slow to load</h1>
+<p class="lede">Your WordPress site takes four, six, ten seconds to show anything, on a phone it is worse, and visitors leave before the page appears. "Slow" has two very different causes, and the fix for one does nothing for the other: either the server is slow to build the page, or the page it sends is too heavy. Below is a rebuilt example (not a real client), the two-minute test that tells the two apart, and the fixes for each, cheapest first.</p>
+
+<div class="switch" role="group" aria-label="Show the test result">
+  <button type="button" id="b-broken" aria-pressed="true">Slow</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Home page on a phone</h2>
+    <div class="site">
+      <div class="bar" id="site-bar"></div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: slow server, or heavy page? (two minutes)</h2>
+<p>Put your home page address into Google's free PageSpeed Insights (pagespeed.web.dev) and look at two numbers in the report, on the Mobile tab.</p>
+<ul>
+  <li><b>Server response time</b> (shown as "Reduce initial server response time" or "Time to First Byte", TTFB). This is how long the server takes before it sends the first byte. Under about 0.8 seconds is fine. Two or three seconds means the server is building every page from scratch, slowly, and nothing you do to the photos will fix that.</li>
+  <li><b>Total page size</b> ("Avoid enormous network payloads") and the number of requests. A small business home page should be well under 3 MB. 6, 8, 12 MB means the page itself is too heavy: usually photos, then scripts.</li>
+</ul>
+<p>Many slow sites have both. Fix the server side first: it affects every page, and it is often one setting.</p>
+
+<h2>If the server is slow</h2>
+<ol>
+  <li><b>Turn on page caching.</b> Without it, WordPress runs PHP and dozens of database queries for every visitor. With it, most visitors get a ready-made copy. Many hosts have caching built in (look in the host's control panel, often called "cache", "LiteSpeed Cache" or "performance"); otherwise one caching plugin such as WP Super Cache, W3 Total Cache or WP Rocket. Use one, not two: two caching plugins fight each other.</li>
+  <li><b>Update PHP.</b> In the host's control panel, check the PHP version. Sites still on PHP 7.x are slower and no longer get security fixes; WordPress recommends PHP 8.3 or newer. Take a backup and update plugins first, then switch, and check the site straight after; if a page breaks, switch back and see the <a href="critical-error-fix.html">critical error guide</a>.</li>
+  <li><b>Find the heavy plugin.</b> A plugin that runs on every page (some sliders, page builders, "related posts", statistics, security scanners that scan live) can add seconds. The free Query Monitor plugin shows which plugin is slow on a page; or deactivate plugins one at a time on a staging copy and re-test. Delete plugins you no longer use rather than leaving them active.</li>
+  <li><b>Clean the database.</b> Years of post revisions, spam comments, expired "transients" and leftover settings from deleted plugins slow down every query. A plugin such as WP-Optimize clears them; take a backup first.</li>
+  <li><b>Then look at the host.</b> If TTFB is still over two seconds with caching on and PHP current, the hosting plan itself is the limit (a crowded cheap shared server). Moving to a better plan or host is the fix; the site does not need rebuilding to move.</li>
+</ol>
+
+<h2>If the page is heavy</h2>
+<ol>
+  <li><b>Photos first.</b> Camera and stock photos are 2-8 MB each; a page needs them at 100-300 KB. Resize to the size they are shown and save as WebP. The <a href="slow-photos-fix.html">big photos guide</a> has the steps. Turn on lazy loading for images further down the page (WordPress does this by default since version 5.5; a builder may switch it off).</li>
+  <li><b>Outside scripts.</b> Chat widgets, booking embeds, review carousels, extra trackers, social feeds and video players each pull in their own scripts, often hundreds of KB. The PageSpeed report lists them under "Reduce the impact of third-party code". Keep the ones that bring customers in; remove the rest. A YouTube video can show a thumbnail and load the player only when tapped.</li>
+  <li><b>Fonts.</b> Five font families in four weights each is a lot of downloads before text shows. Two families, two or three weights, is plenty.</li>
+  <li><b>Sliders and animations on the home page.</b> A five-photo slider at the top loads five big photos before the visitor sees the first. One strong photo is faster and usually converts better.</li>
+  <li><b>Then minify and combine.</b> The caching plugin's options to minify CSS and JavaScript help a little. Do this last and test the site afterwards: it is the step most likely to break a menu or form.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Usual cause</th><th>Usual fix</th></tr>
+  <tr><td>Blank white screen for 2-4 seconds, then the page appears all at once</td><td>Slow server response, no page cache</td><td>Turn on caching; update PHP</td></tr>
+  <tr><td>Text shows fast, photos fill in slowly, page jumps around</td><td>Huge photos, no sizes set</td><td>Resize and WebP, lazy loading</td></tr>
+  <tr><td>Fast on Wi-Fi at the office, slow on phones</td><td>Heavy page: photos, scripts, fonts</td><td>Cut page weight below 3 MB</td></tr>
+  <tr><td>Admin dashboard very slow too</td><td>Heavy plugin, bloated database, or an overloaded host</td><td>Query Monitor, database clean-up, then the host</td></tr>
+  <tr><td>Got slow after installing a plugin or theme update</td><td>That plugin runs heavy code on every page</td><td>Deactivate it and re-test; replace if confirmed</td></tr>
+  <tr><td>Slow only at some times of day</td><td>Shared server busy, or scheduled tasks (backups, scans) running</td><td>Move backups to night, then a better plan</td></tr>
+  <tr><td>PageSpeed score high, but visitors still say it is slow</td><td>Tested a cached copy; the first visit or logged-in pages are not cached</td><td>Test in a private window from a phone network</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not install three "speed" plugins at once. Two caches or two minifiers conflict and can break the site or make it slower.</li>
+  <li>Do not chase a PageSpeed score of 100. A home page that shows its main content in under about 2.5 seconds on a phone is the goal; the last points rarely change how many people call.</li>
+  <li>Do not rebuild the whole site because it is slow. Caching, current PHP, smaller photos and fewer outside scripts fix most slow sites in an afternoon.</li>
+</ul>
+<p class="note">Most of these fixes are an hour or two once the cause is known. If you would rather hand it over, that is what the box below is for. Related: <a href="slow-photos-fix.html">slow because of big photos</a>, <a href="phone-view-fix.html">a site that looks wrong on phones</a> and <a href="plugin-conflict-fix.html">a plugin that broke the site</a>.</p>
+</div>
+
+<script>
+(function () {
+  var bar = document.getElementById("site-bar"), body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  function rows(items) {
+    return items.map(function (r) {
+      return '<div class="row"><span class="lbl">' + r[0] + '</span><span class="track"><span class="fill" style="display:block;width:' + r[1] + '%;background:' + r[2] + '"></span></span><span class="val">' + r[3] + '</span></div>';
+    }).join("");
+  }
+  var red = "#b3261e", green = "#1e7a3c";
+  var broken = '<p class="score bad">Score 27</p>' + rows([
+    ["Server reply", 72, red, "2.9 s"],
+    ["Main photo", 100, red, "7.8 s"],
+    ["Page size", 100, red, "8.4 MB"],
+    ["Requests", 90, red, "112"]
+  ]);
+  var fixed = '<p class="score good">Score 91</p>' + rows([
+    ["Server reply", 9, green, "0.35 s"],
+    ["Main photo", 22, green, "1.7 s"],
+    ["Page size", 16, green, "1.3 MB"],
+    ["Requests", 35, green, "44"]
+  ]);
+  var logBroken = 'PageSpeed Insights, Mobile:\n  Server response (TTFB): 2.9 s\n  Page size: 8.4 MB, 112 requests\n\n' +
+    'Host panel:\n  PHP 7.4, no page cache.\n\n' +
+    'Query Monitor:\n  "Related posts" plugin: 1.6 s\n  of queries on every page.\n\n' +
+    'Home page:\n  5-photo slider, 1.6 MB per photo.\n  Chat widget + 2 review feeds\n  + 3 trackers = 1.9 MB of scripts.\n\n' +
+    '<span class="bad">Slow server AND a heavy page.\nA phone waits ~8 s for the main photo.</span>';
+  var logFixed = 'Steps taken:\n1. Host page cache turned on.\n2. PHP 7.4 -> 8.3 (backup first,\n   plugins updated, site checked).\n' +
+    '3. "Related posts" plugin removed.\n4. Slider -> one photo, 180 KB WebP.\n5. One review feed and one tracker\n   kept; the rest removed.\n\n' +
+    'TTFB 2.9 s -> 0.35 s\nPage 8.4 MB -> 1.3 MB\n\n' +
+    '<span class="good">The main photo shows in under 2 s\non a phone.</span>';
+  function show(isFixed) {
+    bar.textContent = "pagespeed.web.dev - lakesidedental.example (Mobile)";
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is my WordPress site so slow?","acceptedAnswer":{"@type":"Answer","text":"Either the server is slow to build each page (no page caching, an old PHP version, a heavy plugin, a bloated database or an overloaded host) or the page it sends is too heavy (camera-size photos, many outside scripts, fonts and sliders). Google PageSpeed Insights shows which: a server response over about 0.8 seconds points to the server, a page over 3 MB points to the page."}},
+{"@type":"Question","name":"What is the quickest way to speed up a WordPress site?","acceptedAnswer":{"@type":"Answer","text":"Turn on page caching (the host's built-in cache or one caching plugin), update to a current PHP version after a backup, and resize the home page photos to WebP at a few hundred KB each. Those three fix most slow small-business sites."}},
+{"@type":"Question","name":"Do too many plugins slow down WordPress?","acceptedAnswer":{"@type":"Answer","text":"The number matters less than what each one does. One plugin that runs heavy queries on every page can add seconds, while ten small ones add almost nothing. The free Query Monitor plugin shows which plugin is slow, or deactivate them one at a time on a staging copy and re-test."}},
+{"@type":"Question","name":"Is my hosting the reason my WordPress site is slow?","acceptedAnswer":{"@type":"Answer","text":"Only if the server response time stays over about two seconds after page caching is on, PHP is current and heavy plugins are removed. Then the hosting plan is the limit, and moving to a better plan or host is the fix; the site itself does not need rebuilding."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
