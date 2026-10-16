@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"Error establishing a database connection": what it means and how it gets fixed</title>
+<meta name="description" content="WordPress shows 'Error establishing a database connection' when it cannot reach its database: wrong login details after a move or password reset, a database server that is down or overloaded, or damaged tables. How to tell which, the safe order of steps, and a rebuilt before/after.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/database-connection-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:22px 16px; min-height:190px; }
+.crash h3 { font-family: Georgia, "Times New Roman", serif; font-weight:normal; font-size:22px; margin:0; color:#333; }
+.ok h3 { margin:0 0 6px; font-size:18px; }
+.ok p { margin:0 0 12px; color:var(--muted); }
+.ok .btn { display:inline-block; background:var(--brand); color:#fff; padding:8px 14px; border-radius:8px; font-weight:600; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>"Error establishing a database connection"</h1>
+<p class="lede">Every WordPress page is built from a database: your pages, posts, orders and settings all live there. This message means WordPress could not log in to that database, so it has nothing to show. Your content is almost always still there. The cause is usually one of three things: the login details changed, the database server is down or overloaded, or some tables are damaged. Below is a rebuilt example (not a real client), then how to tell which cause you have and the safe order of steps.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What visitors see</h2>
+    <div class="site">
+      <div class="bar">yourbusiness.com</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: which of the three is it?</h2>
+<ul>
+  <li><b>Did anything change in the last day?</b> A move to a new host, a new hosting plan, or a password reset on the hosting account all point to the <b>login details</b>.</li>
+  <li><b>Open <code>yourbusiness.com/wp-admin</code>.</b> If it says <b>"One or more database tables are unavailable. The database may need to be repaired"</b>, the login works and some <b>tables are damaged</b>. If it shows the same connection error, keep going.</li>
+  <li><b>Look at your host's status page</b> and its database tool (usually phpMyAdmin in the control panel). If the host reports a database outage, or the database tool itself will not open, the <b>server is down or overloaded</b> and the fix is on their side. If other sites on the same account are down too, it is almost certainly this.</li>
+</ul>
+
+<h2>The safe order of steps</h2>
+<ol>
+  <li><b>Back up the files</b> through the host's file manager or SFTP before changing anything. Most hosts also keep their own daily database backups; note the newest one, but do not restore it yet.</li>
+  <li><b>Compare the four login lines.</b> Open <code>wp-config.php</code> and read <code>DB_NAME</code>, <code>DB_USER</code>, <code>DB_PASSWORD</code> and <code>DB_HOST</code>. Compare them with the database and user listed in the host's control panel. A move to a new host very often leaves an old <code>DB_HOST</code> or database name behind; some hosts use a server name rather than <code>localhost</code>.</li>
+  <li><b>Reset the database user's password</b> in the control panel if you are unsure of it, and paste the new one into <code>DB_PASSWORD</code>. Check that the user is still attached to the database with all privileges; a move can drop that link.</li>
+  <li><b>Repair only if WordPress asks for it.</b> Add <code>define('WP_ALLOW_REPAIR', true);</code> to <code>wp-config.php</code>, open <code>/wp-admin/maint/repair.php</code>, run Repair Database, then remove that line again: the repair page works without a login while it is on.</li>
+  <li><b>If the server is overloaded</b> (the error comes and goes, often at busy times), ask the host for the database error log and the account's resource limits. A traffic spike, a bot hammering the site or a runaway plugin query is the usual reason; caching or a bigger plan fixes it, a reinstall does not.</li>
+  <li><b>Then test the parts that write to the database:</b> a contact form, a booking or a test order, and log in to the dashboard once.</li>
+</ol>
+
+<h2>Common causes and what each one needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Error started right after a move to a new host</td><td><code>wp-config.php</code> still names the old database, user or server</td><td>Copy the new host's database name, user, password and server into the four lines</td></tr>
+  <tr><td>Error started after a hosting password or security reset</td><td>The database user's password changed and WordPress still uses the old one</td><td>Reset the database user's password and update <code>DB_PASSWORD</code></td></tr>
+  <tr><td><code>/wp-admin</code> says tables are unavailable or need repair</td><td>The login works; one or more tables are damaged, often after a crash or a full disk</td><td><code>WP_ALLOW_REPAIR</code>, run the repair, remove the line</td></tr>
+  <tr><td>Error comes and goes; other sites on the account also fail</td><td>The database server is down or hitting its limits</td><td>Host's status page and support; then caching, bot blocking or a bigger plan</td></tr>
+  <tr><td>Control panel warns the disk is full or the account is suspended</td><td>The database cannot write, or the host stopped it</td><td>Clear old backups and logs, or settle the account with the host</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not reinstall WordPress. The database is the site; a fresh install does not bring it back and can overwrite <code>wp-config.php</code>.</li>
+  <li>Do not restore an old database backup until the login details are ruled out. You would lose every order, booking and form entry since that backup, and the error often stays.</li>
+  <li>Do not create a new empty database to "get the site back". WordPress will offer to install itself into it, and the site will look brand new.</li>
+  <li>Do not leave <code>WP_ALLOW_REPAIR</code> switched on afterwards.</li>
+</ul>
+<p class="note">If you can open your host's control panel and a file manager, the steps above are usually enough. If the site earns you money every hour it is down, that is what the box below is for.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="crash"><h3>Error establishing a database connection</h3></div>';
+  var fixed = '<div class="ok"><h3>Harbor Dental Care</h3><p>New patients welcome. Book a cleaning online or call the front desk.</p>' +
+    '<span class="btn">Book an appointment</span></div>';
+  var logBroken = 'Site moved to a new hosting plan yesterday.\n\n' +
+    'wp-config.php                 Host control panel\n' +
+    "DB_NAME     harbor_wp        harbor_wp2\n" +
+    "DB_USER     harbor_admin     harbor_admin\n" +
+    "DB_HOST     localhost        localhost\n\n" +
+    '/wp-admin: same connection error (not a repair prompt).\n' +
+    'Host status page: no database outage.\n\n' +
+    '<span class="bad">The move created the database under a new name;\nwp-config.php still points at the old one, which\nno longer exists on this server.</span>';
+  var logFixed = 'Steps taken:\n1. Backup of the files; host\'s nightly database\n   backup noted, not restored.\n' +
+    '2. DB_NAME changed to harbor_wp2 in wp-config.php.\n' +
+    '3. Checked in the panel: harbor_admin is attached to\n   harbor_wp2 with all privileges.\n' +
+    '4. Home page, dashboard login, booking form and a\n   test booking all checked.\n\n' +
+    '<span class="good">Site back. Nothing restored, so no bookings lost:\nthe content was in the new database all along.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'Error establishing a database connection' mean?","acceptedAnswer":{"@type":"Answer","text":"WordPress could not log in to its database, so it cannot build any page. The content is almost always still there. The usual causes are changed login details after a move or password reset, a database server that is down or overloaded, or damaged tables."}},
+{"@type":"Question","name":"How do I fix 'Error establishing a database connection' in WordPress?","acceptedAnswer":{"@type":"Answer","text":"Back up the files, then compare DB_NAME, DB_USER, DB_PASSWORD and DB_HOST in wp-config.php with the database listed in your host's control panel and correct any that differ. If /wp-admin says the tables need repair, use WP_ALLOW_REPAIR and /wp-admin/maint/repair.php, then remove the line. If the host reports a database outage, the fix is on their side."}},
+{"@type":"Question","name":"Should I reinstall WordPress or restore a backup?","acceptedAnswer":{"@type":"Answer","text":"No, not first. The database is the site, so a reinstall does not bring it back, and restoring an old backup loses everything since then. Rule out the login details and the host's server first."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement("aside");d.id="hire-footer";d.className="hire-v3";d.style.cssText="max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box";var s=encodeURIComponent("Fix for my site: "+document.title);d.innerHTML="<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action=\"site-check.html\" method=\"get\" style=\"display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px\"><input name=\"url\" type=\"text\" inputmode=\"url\" placeholder=\"yourbusiness.com\" aria-label=\"Your website address\" required style=\"flex:1 1 180px;min-width:0;padding:8px;font:inherit\"><button style=\"padding:8px 14px;font:inherit\">Check my site free</button></form>Want it done for you? From $49 a fix, quoted before I start: <a href=\"https://www.fiverr.com/s_psaradellis\">order on Fiverr</a> or <a href=\"mailto:s.n.psaradellis@gmail.com?subject="+s+"\">email s.n.psaradellis@gmail.com</a>. <br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered.</small>";document.body.appendChild(d);}catch(e){}})();</script>
+</body>
+</html>
