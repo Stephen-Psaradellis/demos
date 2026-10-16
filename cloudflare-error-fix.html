@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cloudflare error 520, 521, 522, 523, 524, 525 or 526: which side is broken and how to fix it</title>
+<meta name="description" content="Cloudflare error 521, 522, 524 or 526 on your site? Read the Browser / Cloudflare / Host row, then fix what the number means: firewall, IP, slow job or SSL.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/cloudflare-error-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.errpage { font-size:13.5px; min-width:0; }
+.errpage .code { font-size:22px; font-weight:700; margin:0 0 2px; overflow-wrap:anywhere; }
+.errpage .sub { color:var(--muted); margin:0 0 12px; overflow-wrap:anywhere; }
+.hops { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:8px; text-align:center; margin-bottom:10px; }
+.hop { border:1px solid var(--line); border-radius:8px; padding:8px 4px; min-width:0; }
+.hop b { display:block; font-size:12.5px; overflow-wrap:anywhere; }
+.hop span { font-size:12px; font-weight:600; }
+.ok { color:var(--good); }
+.err { color:var(--bad); }
+.ray { color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Cloudflare error 520 to 526 on your site</h1>
+<p class="lede">Instead of your website, visitors get a plain page with a big number (521, 522, 524...), a short line such as "Web server is down", and a row of three pictures: Browser, Cloudflare, Host. Cloudflare sits in front of your site, so this page means Cloudflare is working but could not get a proper answer from the server your site really lives on. The number tells you which kind of failure it was. Below is a rebuilt example (not a real client), how to read the page, and the fix for each number.</p>
+
+<div class="switch" role="group" aria-label="Show the error page or the site after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What a visitor sees</h2>
+    <div class="errpage" id="page"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: read the error page</h2>
+<ol>
+  <li><b>Look at the three pictures.</b> Under Browser, Cloudflare and Host each says "Working" or "Error". For every 52x number, Host is the one marked Error: the problem is at your web host or in your settings, not at Cloudflare. If Cloudflare itself is marked Error, check <code>cloudflarestatus.com</code> and wait.</li>
+  <li><b>Write down the number and the Ray ID</b> (the code at the bottom of the page). The host's support and Cloudflare's both ask for it.</li>
+  <li><b>Is it every page or one action?</b> A whole-site 521 or 522 is a server or firewall problem. A 524 that only appears on an import, a backup or a big report is one slow job.</li>
+  <li><b>Did something change today?</b> A host move, a new security plugin, a renewed certificate or a changed SSL setting in Cloudflare explains most of these within a minute.</li>
+</ol>
+
+<h2>What each number means and the fix</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>Error</th><th>What happened</th><th>The fix</th></tr>
+  <tr><td><b>521</b> Web server is down</td><td>Your server refused Cloudflare's connection. Either the web server is stopped, or a firewall is turning Cloudflare away</td><td>Ask the host whether the server and the web service (Apache, Nginx, LiteSpeed) are running. If they are, something is blocking Cloudflare: a host firewall, a security plugin's IP blocking or rate limiting. Allow Cloudflare's addresses, listed at <code>cloudflare.com/ips</code>, in the host firewall and the plugin</td></tr>
+  <tr><td><b>522</b> Connection timed out</td><td>Cloudflare knocked and nobody answered in time</td><td>The server is overloaded, a firewall is quietly dropping Cloudflare, or the address in Cloudflare is wrong. In Cloudflare open <b>DNS &gt; Records</b> and compare the IP on your site's A record (and <code>www</code>) with the server IP in your hosting account. After a host move this is the usual cause. If the IP is right, ask the host about load and blocked Cloudflare addresses</td></tr>
+  <tr><td><b>523</b> Origin is unreachable</td><td>Cloudflare could not find a route to the server at all</td><td>Almost always a wrong or old IP address in <b>DNS &gt; Records</b>, or a server that was switched off or given a new address. Put in the current IP from the hosting account</td></tr>
+  <tr><td><b>524</b> A timeout occurred</td><td>The server accepted the connection but took too long to send the page (Cloudflare waits 100 seconds on most plans)</td><td>Find the slow thing, do not just wait longer: a big import, a backup or a report running during the visit, a plugin calling a service that is not answering, or a slow database query. Move long jobs to the command line or a scheduled task, and see <a href="slow-site-fix.html">slow site</a> and <a href="gateway-error-fix.html">502 / 504</a></td></tr>
+  <tr><td><b>525</b> SSL handshake failed</td><td>Cloudflare is set to talk to your server securely (SSL mode Full or Full strict), but the server could not set up a secure connection</td><td>Install or renew the certificate on the server (most hosts give a free one in the control panel), or install a free Cloudflare Origin Certificate from <b>SSL/TLS &gt; Origin Server</b>. Check that port 443 is open on the server</td></tr>
+  <tr><td><b>526</b> Invalid SSL certificate</td><td>SSL mode is Full (strict) and the server's certificate is expired, self-signed or made for a different name</td><td>Renew the certificate on the server, or replace it with a Cloudflare Origin Certificate, which Full (strict) accepts. Make sure it covers both <code>yourdomain.com</code> and <code>www.yourdomain.com</code></td></tr>
+  <tr><td><b>520</b> Web server returned an unknown error</td><td>The server sent back something empty or broken instead of a page</td><td>Usually the site's own code crashed mid-page (look in the host's error log at the time of the Ray ID; see <a href="critical-error-fix.html">critical error</a> and <a href="white-screen-fix.html">white screen</a>), a firewall cut the connection, or the reply was too big, often from too many cookies. Try a private window: if the page loads there, the cookies are the cause</td></tr>
+</table>
+</div>
+
+<h2>A quick test: is the server fine without Cloudflare?</h2>
+<p>In Cloudflare, <b>Overview</b> has a <b>Pause Cloudflare on Site</b> link near the bottom. Pausing sends visitors straight to your server for a few minutes. If the site loads paused, the server is fine and the problem is between the two: a firewall blocking Cloudflare (521, 522), the SSL mode (525, 526) or the DNS record (523). If it still fails paused, the server itself is down or crashing, and that is a question for the host. Turn Cloudflare back on afterwards; pausing also turns off its protection.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not switch SSL mode to Flexible to make a 525 or 526 go away. The page between Cloudflare and your server then travels unencrypted, and on WordPress it often causes <a href="too-many-redirects-fix.html">too many redirects</a>. Fix the certificate instead.</li>
+  <li>Do not keep purging the Cloudflare cache. These errors come from the server, and a purge sends more traffic to a server that is already struggling.</li>
+  <li>Do not move the domain away from Cloudflare in a panic. Changing name servers takes hours to settle and the server problem is still there afterwards.</li>
+  <li>Do not post your server's IP address in public forums while asking for help. Cloudflare hides it for a reason.</li>
+</ul>
+<p class="note">Reading the page and checking the DNS record takes a few minutes; firewall rules, certificates and slow jobs are where most people would rather have someone do it. If that is you, the box below is for that. Related: <a href="site-unreachable-fix.html">site can't be reached</a>, <a href="site-down-fix.html">site down</a> and <a href="not-secure-fix.html">"Not secure" warning</a>.</p>
+</div>
+
+<script>
+(function () {
+  var page = document.getElementById("page"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  function hop(name, ok) { return '<div class="hop"><b>' + name + '</b><span class="' + (ok ? 'ok' : 'err') + '">' + (ok ? 'Working' : 'Error') + '</span></div>'; }
+  var broken = '<p class="code">Error 521</p><p class="sub">Web server is down</p>' +
+    '<div class="hops">' + hop('You (browser)', true) + hop('Cloudflare', true) + hop('hilltopauto.example (host)', false) + '</div>' +
+    '<p class="ray">Rebuilt example. Ray ID: 8c1f2a9e7b3d4e05</p>';
+  var fixed = '<p class="code" style="color:var(--good)">Hilltop Auto Repair</p><p class="sub">Brakes, tires and state inspections. Book a slot online.</p>' +
+    '<div class="hops">' + hop('You (browser)', true) + hop('Cloudflare', true) + hop('hilltopauto.example (host)', true) + '</div>' +
+    '<p class="ray">The booking page loads again.</p>';
+  var logBefore = 'Site: car repair shop, WordPress,\n  behind Cloudflare (free plan)\n\n' +
+    'Every page: Error 521, Host = Error\n' +
+    'Paused Cloudflare: site loads\n  -> server fine, Cloudflare blocked\n' +
+    'Security plugin log: 214 blocks\n  on 172.68.x.x and 162.158.x.x\n  ("too many requests")\n\n' +
+    '<span class="bad">The plugin saw every visitor as\nthe same few busy addresses and\nlocked Cloudflare out.</span>';
+  var logAfter = 'Steps taken:\n1. Cloudflare ranges from\n   cloudflare.com/ips added to the\n   plugin\'s allow list.\n' +
+    '2. Plugin set to read the real\n   visitor address (CF-Connecting-IP)\n   so its rate limit counts people,\n   not Cloudflare.\n' +
+    '3. Cloudflare resumed; DNS A record\n   checked against the host IP.\n\n' +
+    '<span class="good">Site back in 20 minutes; no\n521 since.</span>';
+  function show(isFixed) {
+    page.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Is a Cloudflare 521 or 522 error Cloudflare's fault?","acceptedAnswer":{"@type":"Answer","text":"Almost never. The error page shows Browser, Cloudflare and Host; for 52x errors Host is marked Error, meaning Cloudflare is working but your web server did not answer properly. The fix is at your host or in your firewall, SSL or DNS settings."}},
+{"@type":"Question","name":"What is the difference between error 521 and 522?","acceptedAnswer":{"@type":"Answer","text":"521 means the server refused Cloudflare's connection: the web server is stopped or a firewall rejects Cloudflare. 522 means the connection timed out: the server is overloaded, a firewall silently drops Cloudflare, or the IP address in Cloudflare's DNS record is wrong, common after a host move."}},
+{"@type":"Question","name":"How do I fix Cloudflare error 526 invalid SSL certificate?","acceptedAnswer":{"@type":"Answer","text":"With SSL mode Full (strict), Cloudflare rejects an expired, self-signed or mismatched certificate on your server. Renew the server's certificate or install a free Cloudflare Origin Certificate from SSL/TLS > Origin Server. Do not switch to Flexible to hide it."}},
+{"@type":"Question","name":"Why do I get error 524 only on some pages?","acceptedAnswer":{"@type":"Answer","text":"524 means the server took longer than Cloudflare's limit, 100 seconds on most plans, to send the page. It usually comes from one slow job such as an import, backup, report or a plugin waiting on an outside service. Run long jobs outside a web request and fix the slow part."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
