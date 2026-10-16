@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress plugin or theme won't install or update: what each error means</title>
+<meta name="description" content="WordPress install or update failed? Destination folder already exists, could not create directory, another update in progress, FTP prompt: the fix for each.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/install-update-failed-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.wpbox { font-family:system-ui,sans-serif; font-size:14px; color:#3c434a; }
+.wpbox h3 { margin:0 0 10px; font-size:18px; color:#1d2327; }
+.wpbox p { margin:0 0 8px; overflow-wrap:anywhere; }
+.home h3 { margin:0 0 8px; font-size:20px; }
+.home p { margin:0 0 10px; color:#333; font-size:14.5px; }
+.cta { display:inline-block; background:#1d5fa8; color:#fff; padding:8px 14px; border-radius:6px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>A WordPress plugin or theme won't install or update</h1>
+<p class="lede">You click Install or Update and WordPress answers with a short line: "Destination folder already exists", "Could not create directory", "Another update is currently in progress", a form asking for FTP details, or "The package could not be installed". Each line points at one cause, and none of them means your site's content is in danger: posts, pages and settings live in the database, not in the plugin's folder. Below is a rebuilt example (not a real client), then what each message means and the fix for it.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees in Plugins, Add New, Upload</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">petalandstem.example/wp-admin/update.php?action=upload-plugin</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First, two minutes of checks</h2>
+<ol>
+  <li><b>Copy the exact message</b>, including any folder path it prints. The table below is sorted by that wording.</li>
+  <li><b>Look at Plugins (or Appearance, Themes).</b> Is the plugin still listed? A plugin that vanished from the list after a failed update, often with "has been deactivated due to an error: Plugin file does not exist", left a half-copied folder behind.</li>
+  <li><b>Check the disk space</b> in the host's control panel. A full hosting account produces "Could not create directory" and "Could not copy file" with nothing else wrong.</li>
+  <li><b>Wait 15 minutes</b> if the message is "Another update is currently in progress" and nobody else is updating. That lock clears itself.</li>
+</ol>
+
+<h2>The fixes</h2>
+<ol>
+  <li><b>"Destination folder already exists."</b> WordPress will not copy a plugin or theme over a folder of the same name. If the plugin is listed and working, you are installing a newer copy by upload: recent WordPress versions show "Replace current with uploaded" after the upload, so use that. If it is not listed, the folder is a leftover from a failed install or update. In the host's file manager, open <code>wp-content/plugins/</code> (themes: <code>wp-content/themes/</code>), rename the folder named in the message, say <code>booking-pro</code> to <code>booking-pro-old</code>, then install again. Its settings come back on activation because they were in the database all along. Delete the <code>-old</code> folder once everything works.</li>
+  <li><b>"Could not create directory." or "Could not copy file." or "Could not remove the old plugin."</b> WordPress cannot write to its own folders. In order of likelihood: the hosting account is out of disk space or file count (clear old backups, which are often the culprit); folder permissions are wrong (folders are normally <code>755</code> and files <code>644</code>); or the files belong to a different system user than the one the site runs as, common after a move or after files were uploaded by another account. Permissions you can set in the file manager; ownership the host fixes in a minute if you ask for it in those words. The folder <code>wp-content/upgrade</code> must be writable too, since every update unpacks there first.</li>
+  <li><b>A form asking for "Connection Information" or FTP credentials.</b> This is the same ownership problem as fix 2, seen from the other side: WordPress checks whether it can write files as itself, and when it cannot, it asks for FTP details instead. The lasting fix is correct ownership (ask the host). Adding <code>define('FS_METHOD', 'direct');</code> to <code>wp-config.php</code> only hides the form; if the ownership is still wrong, the next install fails with "Could not create directory" instead.</li>
+  <li><b>"Another update is currently in progress."</b> A core update leaves a lock while it runs, stored in the options table as a row named <code>core_updater.lock</code>, and it expires after 15 minutes. If an update was interrupted (a closed tab, a timeout) and you cannot wait, take a database backup and delete that one row in phpMyAdmin, or run <code>wp option delete core_updater.lock</code> if the host has WP-CLI. Then run the update once, and let it finish.</li>
+  <li><b>"The package could not be installed. No valid plugins were found."</b> (themes: "...The theme is missing the style.css stylesheet.") The zip you uploaded is not the plugin itself. Paid plugins and themes from marketplaces often arrive as a bundle with documentation, licences and the real zip inside. Unzip it on your computer, find the inner zip named after the product, and upload that one. A theme uploaded under Plugins (or the reverse) gives the same message.</li>
+  <li><b>"Download failed." with "cURL error 28" or "Could not resolve host".</b> Your server could not reach the download address in time. Tools, Site Health shows whether it can reach WordPress.org at all. A one-off timeout passes on the next try; a repeating one is the host's firewall or DNS, which only the host can change. A paid plugin with no licence key entered, or an expired one, usually also fails at the download step; the vendor's message varies, and the fix is the key in that plugin's own settings page.</li>
+  <li><b>"Update failed" on a big plugin or theme you upload by hand</b>, with "exceeds the upload_max_filesize directive" or "The link you followed has expired": the zip is larger than the host allows. That has its own guide: <a href="link-expired-fix.html">"The link you followed has expired"</a>.</li>
+  <li><b>Test</b>: the plugin is listed and active, its settings screen opens with your settings in it, the page that uses it (bookings, forms, shop) works from a private window, and Plugins shows no update stuck half-way.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Usual cause</th><th>Usual fix</th></tr>
+  <tr><td>"Destination folder already exists."</td><td>A folder of that name is already there: a working copy, or a leftover from a failed install</td><td>"Replace current with uploaded", or rename the leftover folder and install again</td></tr>
+  <tr><td>Plugin vanished, "Plugin file does not exist"</td><td>An update stopped half-way and left a partial folder</td><td>Rename the folder, install a fresh copy, activate</td></tr>
+  <tr><td>"Could not create directory." / "Could not copy file."</td><td>Disk full, wrong permissions, or wrong file owner</td><td>Free space, 755/644, ask the host to fix ownership</td></tr>
+  <tr><td>A form asking for FTP details</td><td>WordPress cannot write files as itself</td><td>Correct ownership; <code>FS_METHOD</code> alone only hides it</td></tr>
+  <tr><td>"Another update is currently in progress."</td><td>Core update lock, set by a running or interrupted update</td><td>Wait 15 minutes, or delete the <code>core_updater.lock</code> row after a backup</td></tr>
+  <tr><td>"No valid plugins were found." / "missing the style.css stylesheet"</td><td>Uploaded a bundle zip, or a theme as a plugin</td><td>Upload the inner product zip in the right screen</td></tr>
+  <tr><td>"Download failed." cURL error 28 or 6</td><td>Server cannot reach the download address</td><td>Retry once; repeating = host firewall or DNS</td></tr>
+  <tr><td>"exceeds the upload_max_filesize directive"</td><td>Zip larger than the host's upload limit</td><td>Raise the limit or install through the file manager</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not delete a plugin's folder to "start clean" before you know its settings are in the database. Most keep them there, but some keep files (uploads, generated forms, licence files) inside their own folder. Rename first, delete after the test.</li>
+  <li>Do not set folders to <code>777</code> to make an error go away. It lets any process on the server write into your site, which is how many sites get <a href="hacked-spam-fix.html">spam injected</a>.</li>
+  <li>Do not click Update again and again on a stuck update. Each try can leave another partial copy; find the message's cause first.</li>
+  <li>Do not install a "nulled" copy of a paid plugin because the download failed. Those copies are the commonest way malware gets into small business sites.</li>
+</ul>
+<p class="note">Most of these take minutes once the message is read correctly; ownership needs one message to the host. If you would rather hand it over, that is what the box below is for. Related: <a href="plugin-conflict-fix.html">a plugin that breaks the site after it installs</a>, <a href="maintenance-mode-fix.html">"Briefly unavailable for scheduled maintenance"</a> and <a href="critical-error-fix.html">"There has been a critical error"</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="wpbox"><h3>Installing plugin from uploaded file: booking-pro.zip</h3>' +
+    '<p>Unpacking the package&hellip;</p><p>Installing the plugin&hellip;</p>' +
+    '<p>Destination folder already exists. /home/petal/public_html/wp-content/plugins/booking-pro/</p>' +
+    '<p><b>Plugin installation failed.</b></p></div>';
+  var fixed = '<div class="home"><h3>Plugin installed successfully.</h3><p>Booking Pro is active. Your 14 upcoming bookings and opening times are still there.</p>' +
+    '<span class="cta">Go to Bookings</span></div>';
+  var logBroken = 'Last night an automatic update of\nBooking Pro timed out half-way.\n\n' +
+    'Plugins screen today:\n  "The plugin booking-pro/booking-pro.php\n   has been deactivated due to an\n   error: Plugin file does not exist."\n\n' +
+    'Owner downloads a fresh copy and\nuploads it: "Destination folder\nalready exists."\n\n' +
+    'File manager, wp-content/plugins/:\n  booking-pro/  12 of 140 files,\n  no booking-pro.php\n\n' +
+    '<span class="bad">A partial folder from the failed\nupdate blocks every new install.</span>';
+  var logFixed = 'Steps taken:\n1. Database exported as a backup.\n' +
+    '2. File manager: booking-pro/\n   renamed to booking-pro-old/.\n' +
+    '3. Plugins, Add New, Upload:\n   booking-pro.zip installs.\n' +
+    '4. Activated. Settings and the 14\n   bookings read back from the\n   database, unchanged.\n' +
+    '5. Booking form tested from a\n   private window; then\n   booking-pro-old/ deleted.\n\n' +
+    '<span class="good">Plugin back, no settings lost,\nno permissions loosened.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"How do I fix 'Destination folder already exists' in WordPress?","acceptedAnswer":{"@type":"Answer","text":"If the plugin or theme is installed and working, use 'Replace current with uploaded' after the upload. If it is not listed, the folder is a leftover from a failed install: rename it in wp-content/plugins (or wp-content/themes) with the host's file manager, install again, and delete the renamed folder once everything works."}},
+{"@type":"Question","name":"Why does WordPress say 'Could not create directory' when installing a plugin?","acceptedAnswer":{"@type":"Answer","text":"WordPress cannot write to its own folders. The usual causes are a full hosting account, wrong permissions (folders are normally 755, files 644) or files owned by a different system user than the site runs as, which the host can correct."}},
+{"@type":"Question","name":"How do I clear 'Another update is currently in progress' in WordPress?","acceptedAnswer":{"@type":"Answer","text":"The core update lock expires after 15 minutes. If an interrupted update left it and you cannot wait, back up the database and delete the core_updater.lock row from the options table, or run wp option delete core_updater.lock with WP-CLI."}},
+{"@type":"Question","name":"Why does WordPress ask for FTP credentials to install a plugin?","acceptedAnswer":{"@type":"Answer","text":"WordPress found it cannot write files as itself, usually because the files are owned by another system user. Ask the host to correct the ownership; setting FS_METHOD to direct only hides the form."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
