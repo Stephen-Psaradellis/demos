@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress will not upload a photo: "exceeds the maximum upload size", "HTTP error" and the rest</title>
+<meta name="description" content="WordPress upload failing? Exceeds the maximum upload size, HTTP error, file type not permitted or uploads folder not writable: what each means and the fix.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/upload-error-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.err { font-family: "Times New Roman", serif; font-size:15px; color:#000; }
+.err h3 { margin:0 0 10px; font-size:24px; }
+.err p { margin:0 0 10px; }
+.home h3 { margin:0 0 8px; font-size:20px; }
+.home p { margin:0 0 10px; color:#333; font-size:14.5px; }
+.cta { display:inline-block; background:#1d5fa8; color:#fff; padding:8px 14px; border-radius:6px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress will not upload a photo or file</h1>
+<p class="lede">You drag a photo into the Media Library and get one of these instead: "exceeds the maximum upload size for this site", "The uploaded file exceeds the upload_max_filesize directive in php.ini", a bare "HTTP error.", "Post-processing of the image failed", "Sorry, you are not allowed to upload this file type", or "Unable to create directory wp-content/uploads/... Is its parent directory writable by the server?". They look alike but each one names a different limit: the size the host allows, the server's memory for resizing photos, the file types WordPress accepts, or the uploads folder itself. Below is a rebuilt example (not a real client), then which message means what and how each gets fixed.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees in Media, Add New</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">rosascornerbakery.example/wp-admin/media-new.php</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Find out which kind it is (two minutes)</h2>
+<ol>
+  <li><b>Read the exact words.</b> Each message below points at one limit. Copy it down before you retry, because a retry often shows a different, vaguer one.</li>
+  <li><b>Look at the limit WordPress states.</b> Media, Add New shows "Maximum upload file size: 2 MB" (or similar) under the drop box. Compare it with the file's size: right-click the file, Properties on Windows or Get Info on a Mac.</li>
+  <li><b>Try a small file.</b> Upload a tiny JPEG, such as a screenshot. If that works, the problem is this file's size, dimensions or type. If even that fails, the problem is the uploads folder, the disk space or the server.</li>
+  <li><b>Note the file type.</b> iPhone photos are often HEIC, design files are often SVG, and some cameras save WebP or TIFF. Not every site accepts all of them.</li>
+</ol>
+
+<h2>The fixes, by message</h2>
+<ol>
+  <li><b>"exceeds the maximum upload size for this site" or "exceeds the upload_max_filesize directive in php.ini".</b> The file is bigger than the host allows. For photos the better fix is a smaller file: a phone photo is 4,000 to 6,000 pixels wide and 3 to 12 MB, while a website needs about 2,000 pixels and 200 to 600 KB (see the <a href="slow-photos-fix.html">slow photos guide</a>). For PDFs, videos or a theme zip, raise the limit in the host's PHP settings (cPanel: Select PHP Version, Options, or MultiPHP INI Editor): set <code>upload_max_filesize</code> to a little above your biggest file and <code>post_max_size</code> to the same or higher. Do not paste <code>php_value</code> lines into <code>.htaccess</code> from a tutorial: on many servers that takes the whole site down with a <a href="internal-server-error-fix.html">500 error</a>. On a multisite network there is a second cap in Network Admin, Settings, "Max upload file size".</li>
+  <li><b>"HTTP error." or "Post-processing of the image failed".</b> The file arrived, but the server ran out of memory or time while WordPress made the smaller copies of it. Reload the page and look in the Media Library first: the photo is often already there. Then resize big photos to about 2,000 pixels wide before uploading (WordPress itself suggests 2,500 at most). If small photos fail too, raise <code>memory_limit</code> as in the <a href="memory-exhausted-fix.html">memory guide</a>, switch off a security or image-compression plugin for one test upload, and, if it still fails, send the host the time of the upload: a server firewall rule (mod_security) can block uploads and only the host can see that.</li>
+  <li><b>"Sorry, you are not allowed to upload this file type".</b> WordPress refuses some types on purpose. HEIC from an iPhone: export or share it as JPEG, or set the phone to save JPEG (Settings, Camera, Formats, Most Compatible); recent WordPress versions accept HEIC only when the host's image library can read it. SVG: WordPress blocks it because an SVG can carry code; use PNG, or a plugin that cleans SVGs, never a snippet that simply allows them. A file renamed by hand, such as <code>photo.png</code> that is really a JPEG, is refused too: save it again in the right format.</li>
+  <li><b>"Unable to create directory wp-content/uploads/... Is its parent directory writable by the server?" or "The uploaded file could not be moved".</b> WordPress cannot write into the uploads folder. Check, in this order: disk space in the host panel (a full plan refuses every write); the folder permissions, with <code>wp-content/uploads</code> and the folders in it at 755 (not 777); after a site move, Settings, Media showing a "Store uploads in this folder" box with the old server's path, which should be emptied; and the folder's owner, which only the host can fix if files were copied in as the wrong user.</li>
+  <li><b>"Missing a temporary folder".</b> PHP has nowhere to put the file while it arrives. That folder belongs to the server, not to WordPress: send the host the message, it is theirs to fix.</li>
+  <li><b>Test</b>: upload one large phone photo, one PDF and one small image, check each shows in the Media Library and on a page, and look at the page on your phone.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>"exceeds the maximum upload size for this site"</td><td>File bigger than the host's upload limit</td><td>Resize the photo; for other files raise <code>upload_max_filesize</code> and <code>post_max_size</code> in the host panel</td></tr>
+  <tr><td>"HTTP error." on a large photo</td><td>Server ran out of memory or time making the resized copies</td><td>Check the Library, then upload it at about 2,000 px wide</td></tr>
+  <tr><td>"Post-processing of the image failed"</td><td>Same, said more plainly (WordPress 5.3 and later)</td><td>Upload a smaller version; raise memory if small ones fail too</td></tr>
+  <tr><td>"not allowed to upload this file type"</td><td>HEIC, SVG or a mislabelled file</td><td>Save as JPEG or PNG; SVG only through a cleaning plugin</td></tr>
+  <tr><td>"Unable to create directory ... writable"</td><td>Uploads folder not writable, disk full, or an old folder path</td><td>Disk space, 755 permissions, empty the old path in Settings, Media</td></tr>
+  <tr><td>"Missing a temporary folder"</td><td>Server's temporary folder missing</td><td>The host fixes it</td></tr>
+  <tr><td>Theme or plugin zip: "The link you followed has expired"</td><td>The zip is over the upload limit</td><td>See the <a href="link-expired-fix.html">link expired guide</a></td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not set the uploads folder to 777. It lets anything on the server write into your site, and some hosts then refuse to serve the files.</li>
+  <li>Do not paste <code>php_value upload_max_filesize</code> into <code>.htaccess</code> unless the host says that is the way on your plan. Use the host's PHP settings.</li>
+  <li>Do not raise the limit to 1 GB so phone photos fit. Full-size photos make every page slow; resizing fixes the upload and the speed at once.</li>
+  <li>Do not install a plugin just to "allow all file types". The types WordPress blocks are the ones that can carry code.</li>
+</ul>
+<p class="note">Most upload errors are the first two rows of the table and are gone once photos are resized before upload. If small files fail too, or the host and WordPress each say the other is the problem, that is what the box below is for. Related: <a href="memory-exhausted-fix.html">"allowed memory size exhausted"</a> and <a href="slow-photos-fix.html">photos that slow the site down</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="home"><h3>Upload New Media</h3><p style="border:2px dashed #ccc;padding:14px;text-align:center">Drop files to upload</p>' +
+    '<p style="color:#b3261e">&ldquo;IMG_2041.jpg&rdquo; has failed to upload.<br>IMG_2041.jpg exceeds the maximum upload size for this site.</p>' +
+    '<p style="font-size:13px;color:#666">Maximum upload file size: 2 MB.</p></div>';
+  var fixed = '<div class="home"><h3>Media Library</h3><p>IMG_2041.jpg &middot; 2000 &times; 1500 &middot; 410 KB &middot; uploaded</p>' +
+    '<p>fall-menu-2026.pdf &middot; 9 MB &middot; uploaded</p><p style="font-size:13px;color:#666">Maximum upload file size: 32 MB.</p></div>';
+  var logBroken = 'Owner wants the new pie photos and the\nfall menu PDF on the site.\n\n' +
+    'Photo: 5,712 x 4,284 px, 6.1 MB, from\nthe phone, already sent as JPEG.\nMenu PDF: 9 MB.\n\n' +
+    'Media > Add New says: Maximum upload\nfile size: 2 MB. Host default, never\nchanged. A tiny screenshot uploads fine,\nso the folder and disk are OK.\n\n' +
+    '<span class="bad">Both files are over the host\'s 2 MB\nlimit; WordPress itself is fine.</span>';
+  var logFixed = 'Steps taken:\n1. Photos resized to 2,000 px wide\n   before upload: 6.1 MB -> 410 KB each.\n' +
+    '2. Host panel, MultiPHP INI Editor:\n   upload_max_filesize 32M,\n   post_max_size 32M (for the PDF).\n' +
+    '3. Nothing pasted into .htaccess.\n' +
+    '4. Photo, PDF and a small image\n   uploaded; each shows on its page,\n   checked on a phone.\n\n' +
+    '<span class="good">Uploads work, pages load faster than\nwith full-size photos, nothing installed.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does WordPress say a file exceeds the maximum upload size for this site?","acceptedAnswer":{"@type":"Answer","text":"The file is bigger than the upload limit the host sets, shown under the drop box in Media, Add New. Resize photos to about 2,000 pixels wide before uploading; for PDFs or zips, raise upload_max_filesize and post_max_size in the host's PHP settings."}},
+{"@type":"Question","name":"What does HTTP error mean when uploading an image to WordPress?","acceptedAnswer":{"@type":"Answer","text":"The file usually arrived, but the server ran out of memory or time while WordPress made the resized copies. Check the Media Library first, then upload a smaller version of the photo. If small images fail too, raise the PHP memory limit or ask the host about a firewall rule blocking uploads."}},
+{"@type":"Question","name":"How do I fix Sorry, you are not allowed to upload this file type in WordPress?","acceptedAnswer":{"@type":"Answer","text":"WordPress refuses some file types on purpose. Save iPhone HEIC photos as JPEG, use PNG instead of SVG (or a plugin that cleans SVG files), and re-save any file whose name does not match its real format."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
