@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>502 Bad Gateway, 503 or 504 Gateway Timeout on a WordPress site: find the stuck part and fix it</title>
+<meta name="description" content="WordPress site showing 502 Bad Gateway, 503 Service Unavailable or 504 Gateway Timeout? The server in front is waiting on PHP behind it. Find which hop failed, then the crash, the busy workers or the slow job behind it - and fix that, not the timeout.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/gateway-error-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#f1f3f4; color:#202124; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; border-bottom:1px solid var(--line); }
+.site .body { padding:16px; min-height:190px; background:#fff; font-size:14px; }
+.err { text-align:center; padding:28px 8px; }
+.err b { display:block; font-size:22px; margin-bottom:6px; }
+.order { border:1px solid var(--line); border-radius:6px; padding:10px; margin-top:10px; font-size:13px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>502 Bad Gateway, 503 or 504 Gateway Timeout on a WordPress site</h1>
+<p class="lede">All three mean the same shape of problem. A server in front (your host's web server, a proxy, or Cloudflare) passed the visitor's request to PHP, which runs WordPress, and did not get a usable answer back. 502: PHP answered with nothing or crashed. 503: nothing was free to take the request, or the site said "not now" on purpose. 504: PHP took longer than the front server was willing to wait. The fix is to find which of those happened and why, not to raise the waiting time until the error goes quiet. Below is a rebuilt example (not a real client), how to find the stuck part, and the fix for each cause.</p>
+
+<div class="switch" role="group" aria-label="Show the page">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>The order page</h2>
+    <div class="site">
+      <div class="bar" id="site-bar"></div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: find which hop failed</h2>
+<ol>
+  <li><b>Read the error page.</b> A Cloudflare page draws three boxes - Browser, Cloudflare, Host - and marks the one that failed. "Host: Error" means your server, not Cloudflare. A plain page that says "nginx", "LiteSpeed" or "Apache", or carries your host's logo, comes from the host's front server. "Briefly unavailable for scheduled maintenance. Check back in a minute." is WordPress itself sending a 503 during an update.</li>
+  <li><b>Note when and where.</b> Every page, all the time, points at PHP crashing or the server being down. Only at busy times points at too few PHP workers. Only one action - checkout, an import, saving a long page, a report in the admin - points at one slow request. The same time every day points at a scheduled job.</li>
+  <li><b>Read the logs.</b> Your host's error log (cPanel: Metrics &gt; Errors, or the PHP error log in the file manager) and the WordPress debug log (<code>WP_DEBUG_LOG</code> in <code>wp-config.php</code>) name a fatal error or a crashed plugin. For "workers busy" ask the host's support for the PHP-FPM log: a line saying <code>max_children</code> was reached is the answer. Your host's status page tells you if the whole server is down, which is theirs to fix.</li>
+</ol>
+
+<h2>The causes, most common first</h2>
+<ol>
+  <li><b>PHP crashing (502, every page).</b> Often right after a plugin update or a PHP version change in the host panel: one plugin uses something the new PHP no longer has, and the PHP process dies instead of showing an error. Switch PHP back to the version that worked (host panel, one click), or rename the newest plugin's folder in <code>wp-content/plugins</code> to switch it off, then update that plugin or replace it before moving PHP forward again.</li>
+  <li><b>All PHP workers busy (503, or 502/504 at busy times).</b> The host gives each site a fixed number of PHP processes. Uncached pages, a slow plugin, or bots crawling every page use them all, and new visitors wait in line or are turned away. Some hosts call this "508 Resource Limit Reached". Turn on page caching so most visits never reach PHP, find the slow pages, and block the worst crawlers; buy a bigger plan only if real visitors still fill it.</li>
+  <li><b>One request too slow (504 at one action).</b> A product import of thousands of rows, a checkout waiting on a payment or shipping service that is not answering, a big report, or a database query on an unindexed table runs past the front server's limit (often 60 seconds; Cloudflare waits about 100 and then shows its own "Error 524 - a timeout occurred", which is the same problem). Run imports in small batches or from the command line (WP-CLI), set a short timeout on the outside service so checkout fails fast and clearly, and fix the slow query rather than the limit.</li>
+  <li><b>A scheduled job at the wrong time (502/504 at the same hour).</b> A backup plugin zipping gigabytes of uploads, an image optimiser working through the library, or a stuck WordPress cron task holds the workers and the disk. WP Crontrol lists every scheduled task and its next run. Move heavy jobs to the night, use the host's own backups instead of a plugin's, and leave old video or ZIP files out of the backup.</li>
+  <li><b>A leftover maintenance file (503 after an update).</b> An update that was interrupted leaves <code>.maintenance</code> in the site's main folder, and WordPress keeps answering 503 with "Briefly unavailable". Delete that one file and the site is back; then finish the update that stopped.</li>
+  <li><b>The server or the host is down (502/503/504 everywhere, nothing in your logs).</b> The host's status page or support confirms it. Nothing in WordPress will fix it; if it happens often, that is the reason to move host.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Usual cause</th><th>Usual fix</th></tr>
+  <tr><td>Cloudflare 502/504 page with "Host: Error"</td><td>Your server, not Cloudflare</td><td>Host error log and status page; then the rows below</td></tr>
+  <tr><td>502 on every page after a plugin or PHP update</td><td>PHP crashing on one plugin</td><td>PHP back one version, or rename that plugin's folder</td></tr>
+  <tr><td>503 or 508 when traffic is high, fine at night</td><td>All PHP workers busy</td><td>Page caching, slow pages fixed, bad bots blocked</td></tr>
+  <tr><td>504 on checkout, an import, or one admin report</td><td>One request past the timeout</td><td>Batches or WP-CLI; short timeout on the outside service; fix the query</td></tr>
+  <tr><td>502/504 at the same time every day</td><td>Backup, optimiser or a stuck cron job</td><td>WP Crontrol; move it to the night; host backups</td></tr>
+  <tr><td>"Briefly unavailable for scheduled maintenance"</td><td>Leftover <code>.maintenance</code> file</td><td>Delete the file, finish the update</td></tr>
+  <tr><td>Everything down, nothing in your logs</td><td>Host outage</td><td>Host status page and support</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not just raise the timeouts to five minutes. The slow job still holds a PHP worker the whole time, so the 504 turns into 503s for everyone else.</li>
+  <li>Do not keep pressing "update" or "import" again while the error shows. Each try starts another slow request on top of the one still running.</li>
+  <li>Do not reinstall WordPress or restore last month's backup first. A gateway error comes from a crash, a queue or a slow job, and a restore throws away this month's orders and posts without touching any of those.</li>
+</ul>
+<p class="note">Once you know which hop failed and what was stuck behind it, the fix is usually one setting, one plugin or one moved job. If you would rather hand it over, or the error keeps coming back, that is what the box below is for. Related: <a href="slow-site-fix.html">a WordPress site that is slow</a>, <a href="maintenance-mode-fix.html">stuck in maintenance mode</a>, <a href="too-many-requests-fix.html">429 Too Many Requests</a> and <a href="internal-server-error-fix.html">500 Internal Server Error</a>.</p>
+</div>
+
+<script>
+(function () {
+  var bar = document.getElementById("site-bar"), body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="err"><b>504 Gateway Timeout</b>The server did not answer in time.</div>' +
+    '<p class="note" style="margin:0">Customers placing lunch orders between 11:30 and noon, weekdays.</p>';
+  var fixed = '<b>Order for pickup - today</b><div class="order">2 x Sourdough loaf<br>1 x Almond croissant<br>Pickup 12:15</div>' +
+    '<p class="note" style="margin:12px 0 0">Checkout completes in about 2 seconds at 11:45.</p>';
+  var logBroken = 'Error page: plain "nginx", host\'s server\n  -> PHP behind it answered too late\n\n' +
+    'When: weekdays 11:30-12:10 only\n\n' +
+    'WP Crontrol: backup plugin job\n  "full backup" next run 16:30 UTC\n  = 11:30 at the bakery\n\n' +
+    'Backup size: 9.2 GB, of which\n  6.8 GB old promo videos in uploads\n\n' +
+    '<span class="bad">A daily backup set in the wrong time zone\nzips 9 GB over the lunch rush.</span>';
+  var logFixed = 'Steps taken:\n1. Plugin backup moved to 03:00\n   bakery time.\n' +
+    '2. Old promo videos left out of the\n   backup (kept on the host\'s\n   own nightly snapshot).\n3. Backup now 2.4 GB, 6 minutes.\n4. Timeouts left as they were.\n\n' +
+    '<span class="good">Next five lunch rushes: no 504s;\norders go through.</span>';
+  function show(isFixed) {
+    bar.textContent = "cornerbakery.example/order/";
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What is the difference between 502, 503 and 504 on a WordPress site?","acceptedAnswer":{"@type":"Answer","text":"In all three a front server (the host's web server, a proxy or Cloudflare) passed the request to PHP, which runs WordPress, and did not get a usable answer. 502 Bad Gateway: PHP crashed or answered with nothing. 503 Service Unavailable: no PHP worker was free, or WordPress is in maintenance mode. 504 Gateway Timeout: PHP took longer than the front server was willing to wait."}},
+{"@type":"Question","name":"How do I fix 502 Bad Gateway on WordPress?","acceptedAnswer":{"@type":"Answer","text":"If it started after a plugin update or a PHP version change, PHP is usually crashing on one plugin. Switch PHP back to the version that worked in the host panel, or rename the newest plugin's folder in wp-content/plugins, then read the host's error log to confirm. If a Cloudflare page shows Host: Error and nothing changed, check the host's status page."}},
+{"@type":"Question","name":"Why does my WordPress site show 504 Gateway Timeout only sometimes?","acceptedAnswer":{"@type":"Answer","text":"A request is running longer than the front server's limit, often 60 seconds. If it happens on one action, that action is slow: an import, a checkout waiting on an outside service, a big report. If it happens at the same time each day, a scheduled job such as a backup is holding the server; WP Crontrol shows when each one runs."}},
+{"@type":"Question","name":"Should I just increase the timeout to fix a 504?","acceptedAnswer":{"@type":"Answer","text":"No. The slow request still holds a PHP worker for the whole time, so a longer timeout turns one 504 into 503 errors for other visitors. Find the slow job or query and fix or move it; change the limit only for a known, rare task such as a one-off import."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
