@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Japanese text in your Google results: cleaning up the Japanese keyword hack</title>
+<meta name="description" content="Your site shows up on Google with Japanese titles you never wrote? That is the Japanese keyword hack: pages made for search engines only. How to find them, remove the hacker from Search Console, close the hole and get Google to drop the pages.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/japanese-spam-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.serp { font-size:13.5px; }
+.serp .q { border:1px solid var(--line); border-radius:999px; padding:6px 12px; margin-bottom:12px; color:var(--muted); overflow-wrap:anywhere; }
+.serp .r { margin-bottom:12px; min-width:0; }
+.serp .u { color:#4d5156; font-size:12px; overflow-wrap:anywhere; }
+.serp .t { color:#1a0dab; font-size:15px; overflow-wrap:anywhere; }
+.serp .d { color:#4d5156; overflow-wrap:anywhere; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Japanese text in your Google results</h1>
+<p class="lede">You search for your business and Google lists pages on your own domain with Japanese titles: cheap brand bags, watches, "free shipping". Click one and you may land on your normal home page, or on a page that is not there. Nobody on your side wrote them. This is a well-known attack Google itself calls the "Japanese keyword hack": someone got into the site, made thousands of pages for search engines only, and often added themselves as an owner of your site in Google Search Console so they could push those pages into Google. Below is a rebuilt example (not a real client), how to see the pages Google sees, and the cleanup in the order that keeps them from coming back.</p>
+
+<div class="switch" role="group" aria-label="Show the search results before or after the cleanup">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Google, searching your own site</h2>
+    <div class="serp" id="serp"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: see what Google sees</h2>
+<ol>
+  <li><b>Search Google for <code>site:yourdomain.com</code></b> (your own domain, no space after the colon). Scroll a few pages. Adding a word such as <code>site:yourdomain.com japan</code> or <code>site:yourdomain.com 激安</code> brings the planted pages to the top. Note two or three of their addresses; you will need them.</li>
+  <li><b>Open one of those addresses yourself.</b> If you see your normal site or a "not found" page, the hack is <i>cloaking</i>: it shows the Japanese page only to Google. That is why the owner is usually the last to notice.</li>
+  <li><b>In Google Search Console</b> (search.google.com/search-console), open <b>Security &amp; Manual Actions &gt; Security issues</b>. A "Hacked: content injection" or "URL injection" notice confirms it and lists sample pages. Then use <b>URL Inspection</b> on one planted address and press <b>Test live URL &gt; View tested page</b>: that is exactly what Googlebot is served right now.</li>
+</ol>
+<p>No Search Console account yet? Make one now and verify the site; it is free, and you cannot finish the cleanup without it.</p>
+
+<h2>The cleanup, in order</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>Step</th><th>Why</th><th>How</th></tr>
+  <tr><td>1. Remove the stranger from Search Console</td><td>The attacker often verifies themselves as an owner and submits their own sitemap, so Google keeps fetching the spam even after you delete it</td><td><b>Settings &gt; Users and permissions</b>: remove any owner you do not know. Then delete what verified them, or they simply re-verify: a file named like <code>google1a2b3c.html</code> in the site's top folder, a <code>google-site-verification</code> meta tag in the theme header, or a TXT record at your domain's DNS. Under <b>Sitemaps</b>, remove any sitemap you did not add</td></tr>
+  <tr><td>2. Lock the doors</td><td>Cleaning first and changing passwords later lets them walk back in</td><td>Change the passwords for hosting, SFTP/FTP, the database, and every WordPress administrator. In <b>Users</b>, delete administrators you do not recognise. Replace the security keys in <code>wp-config.php</code> with a fresh set from <code>https://api.wordpress.org/secret-key/1.1/salt/</code>; that signs everyone out</td></tr>
+  <tr><td>3. Find the planted files</td><td>The pages are made on the fly by a small script; deleting pages in the dashboard does nothing</td><td>In the host's file manager, sort by date modified and look at what changed around when the Japanese pages first appeared. Usual places: odd files in the top folder (random names, or a renamed <code>index.php</code>), new rules in <code>.htaccess</code> that mention Googlebot or send requests to a PHP file, and any <code>.php</code> file inside <code>wp-content/uploads</code> (there should be none). A scanner such as Wordfence or the host's malware scan lists most of them</td></tr>
+  <tr><td>4. Replace, don't patch</td><td>A file that was edited once may hide more than you can see</td><td>Reinstall WordPress itself (<b>Dashboard &gt; Updates &gt; Re-install version</b>; your content stays). Delete and reinstall each plugin and the theme from their official source. Remove anything you no longer use, and any "free" copy of a paid plugin: those are the most common way in</td></tr>
+  <tr><td>5. Close the hole</td><td>If the way in stays open, it happens again within weeks</td><td>Update everything, then check the plugin list against known holes (Wordfence and Patchstack both publish them). Old PHP is a door too: see <a href="outdated-php-fix.html">"PHP Update Recommended"</a>. Ask the host whether other sites in the same account were hit; one old site can infect its neighbours</td></tr>
+  <tr><td>6. Tell Google</td><td>The warning and the spam pages do not leave on their own quickly</td><td>Check that a planted address now returns "not found" (404) to Googlebot too (URL Inspection, Test live URL). Then in <b>Security issues</b> press <b>Request review</b> and say in two lines what you removed and how you closed the hole. For the worst pages, <b>Removals &gt; New request</b> hides them from results while Google recrawls</td></tr>
+</table>
+</div>
+
+<h2>How long until the Japanese results go away</h2>
+<p>A review usually comes back within days. The pages themselves drop out as Google revisits each one and gets "not found", which takes from a few weeks to a few months for a large batch. Watch <b>Pages</b> (Indexing) in Search Console: the count of indexed pages should fall back towards what you really have. If new Japanese pages keep appearing after the cleanup, something in step 3 was missed, usually a second script or a scheduled task the attacker added.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not block the spam pages in <code>robots.txt</code>. Google then cannot see that they are gone, and they can stay in the results longer.</li>
+  <li>Do not redirect the spam addresses to your home page. Let them return "not found", which is the signal Google needs to drop them.</li>
+  <li>Do not restore last month's backup and stop there. It brings back the same hole, and the backup may already hold the planted files.</li>
+  <li>Do not skip step 1. As long as the stranger owns your site in Search Console, they can keep feeding Google their sitemap.</li>
+</ul>
+<p class="note">The searches and step 1 take a few minutes; steps 3 to 5 are where most people would rather have someone do it. If that is you, the box below is for that. Related: <a href="hacked-spam-fix.html">hidden casino or pharmacy spam</a>, <a href="hacked-redirect-fix.html">site sends visitors to a spam page</a> and <a href="not-on-google-fix.html">site not showing up on Google</a>.</p>
+</div>
+
+<script>
+(function () {
+  var serp = document.getElementById("serp"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  function r(u, t, d) { return '<div class="r"><div class="u">' + u + '</div><div class="t">' + t + '</div><div class="d">' + d + '</div></div>'; }
+  var q = '<div class="q">site:oakfieldgarden.example</div>';
+  var broken = q +
+    r('oakfieldgarden.example &rsaquo; shop &rsaquo; 7f3k21', '激安 ブランド 財布 通販 送料無料', '人気ブランドの財布が最大80%オフ。即日発送、送料無料...') +
+    r('oakfieldgarden.example &rsaquo; item &rsaquo; b8822', '腕時計 メンズ 新作 2026 正規品', '新作の腕時計を特価でご案内。今だけのセール価格...') +
+    r('oakfieldgarden.example', 'Oakfield Garden Centre - plants, pots and advice', 'Family-run garden centre. Open seven days...');
+  var fixed = q +
+    r('oakfieldgarden.example', 'Oakfield Garden Centre - plants, pots and advice', 'Family-run garden centre. Open seven days...') +
+    r('oakfieldgarden.example &rsaquo; visit', 'Opening hours and directions - Oakfield Garden Centre', 'Find us off the ring road, free parking...') +
+    r('oakfieldgarden.example &rsaquo; workshops', 'Autumn planting workshops', 'Bulbs, hedges and winter pots. Book a place...');
+  var logBefore = 'Site: garden centre, WordPress,\n  31 plugins\n\n' +
+    'site: search: about 4,200 results\n  (the real site has 46 pages)\n' +
+    'Planted page, opened in a browser:\n  normal home page (cloaked)\n' +
+    'Search Console owners: 2\n  one unknown, verified by a\n  google*.html file\n\n' +
+    '<span class="bad">Customers searching the name\nsaw Japanese shop listings.</span>';
+  var logAfter = 'Steps taken:\n1. Unknown owner + file + sitemap\n   removed in Search Console.\n' +
+    '2. All passwords and wp-config\n   keys changed; 1 fake admin out.\n' +
+    '3. Loader file in the top folder,\n   .htaccess rule and 2 .php files\n   in uploads removed.\n' +
+    '4. WordPress, theme and plugins\n   reinstalled; a "free" copy of a\n   paid plugin (the way in) gone.\n' +
+    '5. Review requested; planted\n   pages now return 404.\n\n' +
+    '<span class="good">Review cleared in 3 days; the\nJapanese results faded out.</span>';
+  function show(isFixed) {
+    serp.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does my website show Japanese text in Google results?","acceptedAnswer":{"@type":"Answer","text":"Someone got into the site and planted a script that makes thousands of Japanese shop pages for search engines only, the Japanese keyword hack. They are often hidden from visitors (cloaking), so you only see them in Google. Search site:yourdomain.com to list them."}},
+{"@type":"Question","name":"Why can't I see the Japanese pages when I open them?","acceptedAnswer":{"@type":"Answer","text":"The planted script checks who is asking and shows the spam only to Google's crawler, so a visitor sees the normal site or a not-found page. Search Console's URL Inspection with Test live URL shows what Google is served."}},
+{"@type":"Question","name":"Do I need to remove anyone from Google Search Console?","acceptedAnswer":{"@type":"Answer","text":"Often yes. The attacker usually verifies themselves as an owner and submits their own sitemap. Remove unknown owners under Settings > Users and permissions, delete the verification file, meta tag or DNS record they used, and remove sitemaps you did not add."}},
+{"@type":"Question","name":"How long until the Japanese pages disappear from Google?","acceptedAnswer":{"@type":"Answer","text":"After the cleanup and a review request in Security issues, the warning usually clears within days. The pages drop out as Google revisits each one and gets not found, which takes weeks to a few months. Do not block them in robots.txt or redirect them; let them return 404."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
