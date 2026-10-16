@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress "Database Update Required" keeps coming back: the check and the fix</title>
+<meta name="description" content="You click Update WordPress Database, it says Update Complete, and the same screen comes back. Why WordPress loops on it (a stale object cache, database permissions, mixed core files) and the fix for each cause.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/database-update-loop-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.wpbox { background:#f0f0f1; border-radius:6px; padding:18px 14px; text-align:center; }
+.wpbox .logo { width:56px; height:56px; border-radius:50%; background:#3c434a; color:#fff; font:700 26px/56px Georgia, serif; margin:0 auto 12px; }
+.wpbox .card { background:#fff; border:1px solid #c3c4c7; padding:14px; text-align:left; font-size:14px; overflow-wrap:anywhere; }
+.wpbox .card b { display:block; font-size:16px; margin-bottom:6px; }
+.wpbox .btn { display:inline-block; margin-top:10px; background:#2271b1; color:#fff; border-radius:3px; padding:6px 12px; font-size:13px; }
+.wpbox .loop { color:var(--bad); font-weight:600; font-size:13px; margin-top:10px; }
+.wpbox .ok { color:var(--good); font-weight:600; font-size:13px; margin-top:10px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:#ff8a80; font-weight:600; }
+.good { color:#8fd19e; font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress keeps asking for a "Database Update" that never sticks</h1>
+<p class="lede">After an update, WordPress shows "Database Update Required". You click <b>Update WordPress Database</b>, it says <b>Update Complete</b>, you click Continue, and the same screen is back. You cannot reach the dashboard at all. The visitors' side of the site usually still works, which is why this can go unnoticed until someone needs to edit a page. Below is a rebuilt example (not a real client), the one-minute check, and the fix for each cause.</p>
+
+<div class="switch" role="group" aria-label="Show the site before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees at /wp-admin</h2>
+    <div class="wpbox" id="screen"></div>
+  </div>
+  <div class="panel">
+    <h2>What the check found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Why WordPress asks at all</h2>
+<p>Every WordPress release carries a database revision number in its files. The database keeps the number of the last update it ran, in the <code>db_version</code> setting. When you open the dashboard, WordPress compares the two. If they differ it sends you to the update screen, runs the changes, and writes the new number. A loop means that new number is either <b>never written</b> or <b>never read back</b>: WordPress keeps seeing the old one.</p>
+
+<h2>The one-minute check</h2>
+<ol>
+  <li><b>Take a backup first</b> (database and files), from your host's panel if you cannot get into the dashboard. Everything below is safe, but a backup makes it reversible.</li>
+  <li><b>Look for an object cache.</b> Over FTP or the host's file manager, open <code>wp-content</code>. A file called <code>object-cache.php</code> means Redis, Memcached or a cache plugin is storing settings outside the database. This is the most common cause of the loop.</li>
+  <li><b>Read the number in the database.</b> In phpMyAdmin, open the <code>wp_options</code> table (your prefix may differ) and find <code>db_version</code>. Click the update button, then look again. If the number changed, the update worked and something is serving an old copy (row 1). If it did not change, the update could not write (rows 2-4).</li>
+  <li><b>If your host gives you WP-CLI</b>, <code>wp core version --extra</code> shows the revision the files expect, and <code>wp option get db_version</code> shows what the database holds.</li>
+</ol>
+
+<h2>What causes it and the fix</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Why it happens</th><th>The fix</th></tr>
+  <tr><td>"Update Complete", then the screen comes straight back. The number in the database <b>did change</b></td><td>A persistent <b>object cache</b> (Redis, Memcached, or the host's own) still holds the old <code>db_version</code> and hands it to WordPress on every page load</td><td><b>Flush the object cache</b>: the Redis or cache plugin's Flush button, the host panel's purge, or <code>wp cache flush</code>. If you cannot reach any of those, rename <code>wp-content/object-cache.php</code> to <code>object-cache.php.off</code>, load the dashboard once, then rename it back and flush</td></tr>
+  <tr><td>The number in the database <b>never changes</b>, no error shown</td><td>The database user in <code>wp-config.php</code> may read but not change tables (no ALTER, CREATE or INDEX rights). Common after a host move where the new user was given limited rights</td><td>In the host's MySQL users page, give that user <b>all privileges</b> on the site's database, then run the update again. Your host's support can do this in a minute if the page is hidden</td></tr>
+  <tr><td>The update screen <b>spins, then a blank page or 500</b>, and it starts again next time</td><td>A large site (big shop, years of posts) runs out of time or memory before the update finishes, or the host's disk or database quota is full so nothing can be written</td><td>Run it from the command line: <code>wp core update-db</code>, which has no web time limit. Check the host's disk and database usage; free space or raise the quota first. See <a href="memory-exhausted-fix.html">memory exhausted</a> if the log names memory</td></tr>
+  <tr><td>Started after an update that <b>failed half way</b> or was copied by FTP</td><td>Some core files are from the new release and some from the old one, so the files keep announcing a revision the update code does not finish</td><td>Download the same WordPress version fresh from wordpress.org and upload <code>wp-admin</code>, <code>wp-includes</code> and the root files over the old ones. <b>Never</b> overwrite <code>wp-content</code> or <code>wp-config.php</code>. Then run the update once</td></tr>
+  <tr><td><b>Multisite</b>: the main site is fine, but each sub-site asks for the update</td><td>Every site in a network has its own tables and its own <code>db_version</code>. The network upgrade was never run, or stopped part way</td><td>As a Super Admin, go to <b>Network Admin &gt; Updates &gt; Upgrade Network</b> and let it finish all sites. On a large network, <code>wp core update-db --network</code></td></tr>
+  <tr><td>It appeared after <b>restoring a backup</b> or moving the site</td><td>The database came from an older or newer WordPress than the files it now sits under</td><td>If the database is older, running the update once is correct. If it came from a <b>newer</b> WordPress, update the files to that version (or newer) instead of running the update against older files</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not edit <code>db_version</code> by hand to "match". The screen goes away, but the table changes the release needs never run, and things break later in quieter ways.</li>
+  <li>Do not delete <code>object-cache.php</code> and forget about it. Rename it, fix the loop, and put it back, or the site loses the speed the cache was giving it.</li>
+  <li>Do not restore an old backup over and over. Each restore can bring back a different mismatch.</li>
+</ul>
+<p class="note">Flushing a cache takes a minute. Finding which cache layer holds the old number, fixing database rights at a host you did not set up, or untangling a half-finished update on a live shop is where most owners would rather have someone do it. If that is you, the box below is for that. Related: <a href="install-update-failed-fix.html">a plugin won't install or update</a>, <a href="maintenance-mode-fix.html">stuck in maintenance mode</a> and <a href="database-connection-fix.html">error establishing a database connection</a>.</p>
+</div>
+
+<script>
+(function () {
+  var screen = document.getElementById("screen"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var logBefore = 'Site: dental practice in Columbus\n  WordPress, auto-updated overnight\n  host Redis object cache on\n\n' +
+    'Click "Update WordPress Database":\n  "Update Complete"\n  db_version in the database:\n    changed to the new number\n\n' +
+    'Next page load:\n  object-cache.php answers first\n  db_version from Redis:\n    still the old number\n  -> back to the update screen\n\n' +
+    '<span class="bad">No dashboard for 2 days.\nThe new-patient form page\ncould not be edited.</span>';
+  var logAfter = 'Steps taken:\n1. Backup from the host panel.\n2. Read db_version in phpMyAdmin:\n   already the new number.\n3. Host panel: flush Redis.\n4. Load /wp-admin: dashboard\n   opens, no update screen.\n5. Redis left on; 3 more\n   page loads, no loop.\n\n' +
+    '<span class="good">Dashboard back in 10 minutes,\ncache kept, nothing restored.</span>';
+  var before = '<div class="logo">W</div><div class="card"><b>Database Update Required</b>WordPress has been updated! Next we must update your database to the newest version.<br><span class="btn">Update WordPress Database</span><div class="loop">Clicked 6 times. Same screen every time.</div><div class="loop" style="color:#666;font-weight:400">Rebuilt example, not a real client.</div></div>';
+  var after = '<div class="logo">W</div><div class="card"><b>Dashboard</b>Welcome to WordPress! Pages, Posts and Updates all open normally.<div class="ok">No update screen on the next page loads.</div><div style="color:#666;font-size:13px;margin-top:6px">Rebuilt example, not a real client.</div></div>';
+  function show(isFixed) {
+    screen.innerHTML = isFixed ? after : before;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does WordPress keep asking me to update the database?","acceptedAnswer":{"@type":"Answer","text":"WordPress compares the database revision in its files with the db_version setting in the database. A loop means the new number is never written (no database rights, a timeout, mixed core files) or never read back (a persistent object cache such as Redis still serves the old value)."}},
+{"@type":"Question","name":"How do I fix the Database Update Required loop caused by Redis or Memcached?","acceptedAnswer":{"@type":"Answer","text":"Flush the object cache from the cache plugin, the host panel, or with wp cache flush. If you cannot reach those, rename wp-content/object-cache.php, load the dashboard once, rename it back and flush."}},
+{"@type":"Question","name":"Can I run the WordPress database update without the browser?","acceptedAnswer":{"@type":"Answer","text":"Yes. With WP-CLI, wp core update-db runs it with no web time limit, which helps on large sites. On multisite, wp core update-db --network updates every site."}},
+{"@type":"Question","name":"Should I change db_version in phpMyAdmin to stop the loop?","acceptedAnswer":{"@type":"Answer","text":"No. That hides the screen but skips the table changes the release needs. Fix the cache, the database rights or the core files, then let the update run once."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
