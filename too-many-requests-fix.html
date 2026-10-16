@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>429 Too Many Requests on a WordPress site: find what is counting and fix it</title>
+<meta name="description" content="Visitors, your admin or Google getting '429 Too Many Requests' (or Cloudflare error 1015) on your WordPress site? Something is counting requests and cutting people off. Find which counter it is - host, security plugin, Cloudflare or a remote API - and fix the cause, not just the limit.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/too-many-requests-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#f1f3f4; color:#202124; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; border-bottom:1px solid var(--line); }
+.site .body { padding:16px; min-height:190px; background:#fff; font-size:14px; }
+.err { text-align:center; padding:28px 8px; }
+.err b { display:block; font-size:22px; margin-bottom:6px; }
+.slots { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:8px; margin-top:10px; }
+.slot { border:1px solid var(--line); border-radius:6px; padding:8px; font-size:13px; text-align:center; min-width:0; }
+.slot.open { background:#e9f5ee; border-color:#b9dcc6; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>429 Too Many Requests on a WordPress site</h1>
+<p class="lede">A 429 is not a crash. It means something between the visitor and your site is counting requests, decided this visitor (or this server) made too many, and is turning them away for a while. The fix is to find which counter it is and what is feeding it - usually a bot, a busy admin screen or a plugin calling out too often - rather than raising the limit until the problem goes quiet. Below is a rebuilt example (not a real client), how to find the counter, and the fix for each one.</p>
+
+<div class="switch" role="group" aria-label="Show the page">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>The booking page</h2>
+    <div class="site">
+      <div class="bar" id="site-bar"></div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: find out who is saying 429</h2>
+<ol>
+  <li><b>Look at the error page itself.</b> A Cloudflare page that says "Error 1015 - You are being rate limited" is Cloudflare. A plain white page with your host's logo, or the words "mod_security" or "Imunify", is the host. A page in your own theme, or a Wordfence or iThemes/Solid Security notice, is a plugin inside WordPress. A 429 that only shows inside the admin (an update that fails, a plugin's "API error 429") is a remote service turning your <i>server</i> away, not your visitors.</li>
+  <li><b>Check whether it is everyone or one place.</b> Try from your phone on mobile data, not the office Wi-Fi. If the site works there, the counter has blocked one address: yours, your office, or a shared connection many people use.</li>
+  <li><b>Read the logs for what is doing the counting.</b> Your host's raw access log (cPanel: Metrics &gt; Raw Access, or ask support) shows each request with its address and page. Sort by address: one address or one page (<code>wp-login.php</code>, <code>xmlrpc.php</code>, <code>wp-admin/admin-ajax.php</code>, <code>/wp-json/</code>, a search or calendar page) asking hundreds of times a minute is the feeder. Wordfence's Live Traffic and Cloudflare's Security &gt; Events show the same thing with the rule that fired.</li>
+</ol>
+
+<h2>The causes, most common first</h2>
+<ol>
+  <li><b>Bots hammering one page.</b> Scrapers, SEO crawlers and AI crawlers can ask for thousands of pages, and calendar or search pages with endless date and filter combinations give them a page that never runs out. The host or a plugin starts handing out 429s, and real visitors on the same shared limit get caught too. Block or slow the worst crawlers by name (Cloudflare's bot settings, or <code>robots.txt</code> for the polite ones), and add <code>noindex</code> plus a <code>robots.txt</code> Disallow to the endless calendar and filter addresses.</li>
+  <li><b>Login and XML-RPC attacks.</b> Password-guessing bots hit <code>wp-login.php</code> and <code>xmlrpc.php</code> all day. The host's protection answers with 429 (or 403) and sometimes blocks the whole site for a while. Turn off XML-RPC if nothing you use needs it (the Jetpack app and some publishing tools do), limit login attempts, and add two-factor login. The goal is that the attacks cost nothing, not that the limit gets higher.</li>
+  <li><b>Your own admin screen.</b> The WordPress Heartbeat, page builders that autosave, and plugins that poll <code>admin-ajax.php</code> every few seconds can make a busy editor look like a bot - especially with several tabs open, or several staff behind one office address. Close spare tabs, slow the Heartbeat (Heartbeat Control or your speed plugin's setting, 60 seconds instead of 15), and ask the host to raise the limit for your office address rather than for everyone.</li>
+  <li><b>A security rule set too tight.</b> Wordfence's Rate Limiting, Solid Security, or a Cloudflare rate-limiting rule may treat normal browsing as an attack: a gallery page loads 40 images, a shop page makes a dozen requests, and the rule counts every one. Open the rule that fired, raise it for human visitors, or exclude static files (images, CSS, JavaScript) from the count. Never switch the protection off for good to make the error go away.</li>
+  <li><b>A plugin calling a remote API too often.</b> Updates that fail with 429, an "Instagram feed error", "Google Maps quota", a shipping-rates or currency plugin that stops working: here the remote service is limiting <i>your server</i>. Usually a cron job or every page view is calling it instead of saving the answer for a while. Turn on the plugin's caching, lower its refresh rate, and check that one plugin is not installed twice. On cheap shared hosting many sites share one address, and a neighbour can use up the quota for everyone; then the host or a dedicated address is the fix.</li>
+  <li><b>Your host's resource limit dressed as a 429.</b> Some hosts send 429 (others send 503 or "508 Resource Limit Reached") when the account runs out of processes. That is a slow site under load, not a counter: fix the slow pages and add page caching, and the limit stops being reached.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Usual cause</th><th>Usual fix</th></tr>
+  <tr><td>Cloudflare "Error 1015 - You are being rate limited"</td><td>A Cloudflare rate-limiting rule</td><td>Security &gt; Events names the rule; raise it or exclude static files</td></tr>
+  <tr><td>429 for everyone, access log full of one crawler or one page</td><td>Bots on an endless page</td><td>Block the crawler; noindex and Disallow the calendar or filter addresses</td></tr>
+  <tr><td>429 on <code>wp-login.php</code> or <code>xmlrpc.php</code></td><td>Password-guessing bots</td><td>XML-RPC off if unused, login limits, two-factor login</td></tr>
+  <tr><td>Only you or your office get 429, phone data works</td><td>Admin polling, several staff on one address</td><td>Slow the Heartbeat, fewer tabs; ask the host to allow your address</td></tr>
+  <tr><td>Wordfence or Solid Security notice on a normal page</td><td>Plugin rate limit too tight</td><td>Raise the human limit; do not count images, CSS and scripts</td></tr>
+  <tr><td>Updates or a feed/maps/shipping plugin fail with 429</td><td>A remote API limiting your server</td><td>Plugin caching on, longer refresh, no duplicate plugin</td></tr>
+  <tr><td>429 or 508 when traffic is high, fine at night</td><td>Host process limit</td><td>Page caching and faster pages, then a bigger plan if still needed</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not just raise the limit, or switch the rule off, and walk away. The bot or the polling is still there, still using your server, and the next limit you hit is the host's - which takes the whole site down instead of one visitor.</li>
+  <li>Do not block Googlebot or Bingbot to stop the load. Check that a "Googlebot" in the log really is Google (a reverse lookup ends in <code>googlebot.com</code>); many scrapers use the name. Blocking the real one takes you out of search.</li>
+  <li>Do not clear or reinstall WordPress. A 429 comes from a counter, not from broken files, and a reinstall changes nothing it counts.</li>
+</ul>
+<p class="note">Once you know which counter is saying 429 and what is feeding it, the fix is usually one rule or one setting. If you would rather hand it over, or the error keeps coming back, that is what the box below is for. Related: <a href="slow-site-fix.html">a WordPress site that is slow</a>, <a href="forbidden-403-fix.html">403 Forbidden</a> (the same protections often answer with 403) and <a href="install-update-failed-fix.html">updates that fail to install</a>.</p>
+</div>
+
+<script>
+(function () {
+  var bar = document.getElementById("site-bar"), body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="err"><b>429 Too Many Requests</b>The server is busy with your requests.<br>Please try again later.</div>' +
+    '<p class="note" style="margin:0">Members trying to book Saturday classes from the studio Wi-Fi and from home.</p>';
+  var fixed = '<b>Book a class - Saturday</b><div class="slots"><div class="slot open">8:00 Flow<br>6 left</div>' +
+    '<div class="slot open">9:30 Gentle<br>3 left</div><div class="slot">11:00 Power<br>full</div></div>' +
+    '<p class="note" style="margin:12px 0 0">Loads on a phone, on the studio Wi-Fi and logged out.</p>';
+  var logBroken = 'Error page: host logo, no Cloudflare\n  -> the host\'s own rate limit\n\n' +
+    'Raw access log, last hour:\n  41,880 requests\n  38,212 from one crawler, all to\n  /schedule/?date=...&class=...\n  (every date to 2031, every filter)\n\n' +
+    'Host support: account limit is\n  per site, so members share it\n  with the crawler\n\n' +
+    '<span class="bad">A bot walking an endless calendar is\nusing up the limit the members need.</span>';
+  var logFixed = 'Steps taken:\n1. Crawler blocked by name at\n   Cloudflare (free plan rule).\n' +
+    '2. /schedule/?date= set to noindex,\n   Disallow added to robots.txt.\n3. Calendar shows 8 weeks ahead,\n   not to 2031.\n4. Host limit left as it was.\n\n' +
+    '<span class="good">Next hour: 2,140 requests, no 429s;\nbookings page loads for members.</span>';
+  function show(isFixed) {
+    bar.textContent = "harboryoga.example/schedule/";
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 429 Too Many Requests mean on my WordPress site?","acceptedAnswer":{"@type":"Answer","text":"Something between the visitor and the site is counting requests and has decided this visitor, or this server, made too many in a short time, so it turns them away for a while. The counter is usually the host's protection, a security plugin such as Wordfence, a Cloudflare rate-limiting rule (error 1015), or a remote API limiting your server. The error page and the access log tell you which."}},
+{"@type":"Question","name":"How do I fix a 429 error on WordPress?","acceptedAnswer":{"@type":"Answer","text":"Find what is feeding the counter before touching the limit: bots crawling an endless calendar or search page, password-guessing on wp-login.php or xmlrpc.php, admin-ajax polling from busy admin tabs, or a plugin calling an API on every page view. Block or slow that source, then adjust the rule only if real visitors are still caught."}},
+{"@type":"Question","name":"Why do only I get 429 Too Many Requests on my own site?","acceptedAnswer":{"@type":"Answer","text":"The limit has blocked your address, often because the WordPress Heartbeat and page-builder autosaves in several open admin tabs look like a bot, or because several staff share one office connection. Try the site on phone data to confirm, close spare tabs, slow the Heartbeat to 60 seconds, and ask the host to allow your office address."}},
+{"@type":"Question","name":"Why do WordPress updates fail with error 429?","acceptedAnswer":{"@type":"Answer","text":"The update server is limiting your server's address, not your visitors. On shared hosting many sites share one address and can use up the limit together. Wait and retry, make sure no plugin is checking for updates far too often, and if it keeps happening ask the host about the shared address."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
