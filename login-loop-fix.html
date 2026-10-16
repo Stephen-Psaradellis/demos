@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress login page keeps refreshing: why you are sent back to the login and how it gets fixed</title>
+<meta name="description" content="You type the right password, the WordPress login page just reloads. Usually the two site addresses disagree, or a cache or plugin is in the way.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/login-loop-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:22px 16px; min-height:190px; background:#fff; }
+.login { max-width:280px; margin:0 auto; }
+.login label { display:block; font-size:13px; margin:0 0 4px; }
+.login .field { border:1px solid #8c8f94; border-radius:4px; padding:7px 8px; margin:0 0 12px; font-size:14px; color:#1b1b1b; min-height:34px; }
+.login .btn { display:inline-block; background:#2271b1; color:#fff; padding:6px 14px; border-radius:4px; font-size:14px; }
+.ok h3 { margin:0 0 6px; font-size:18px; }
+.ok p { margin:0 0 12px; color:var(--muted); }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>The WordPress login page keeps refreshing and sends you back to the login</h1>
+<p class="lede">You type the right username and password, press Log In, and the same login page comes back: empty fields, no error, no dashboard. Your password is not the problem. WordPress did log you in, but the browser never got to keep the login cookie, or kept it for a different address than the one the dashboard lives on, so the dashboard sees a stranger and sends you back. Below is a rebuilt example (not a real client), then the order of steps that gets you back in without breaking anything.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees after pressing Log In</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">maplelanedental.example/wp-login.php</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: a loop, or a wrong password?</h2>
+<ul>
+  <li><b>The page reloads with no message at all</b>: it is the loop this page is about. Read on.</li>
+  <li><b>It says "The password you entered for the username ... is incorrect"</b>: the password really is wrong. Use "Lost your password?" on the login page. If the reset email never arrives, see the last step below.</li>
+  <li><b>It says "Cookies are blocked or not supported by your browser"</b>: either your browser is refusing the site's cookie (try a private window, or allow cookies for this site) or the site is printing something before WordPress can send the cookie. A blank line before <code>&lt;?php</code> at the top of <code>wp-config.php</code> or a theme's <code>functions.php</code> does exactly this; you would also see "Cannot modify header information - headers already sent by" in the host's error log.</li>
+  <li><b>The browser says "too many redirects"</b> instead of showing the login page: that is a different loop, fixed in the <a href="too-many-redirects-fix.html">too many redirects guide</a>.</li>
+</ul>
+
+<h2>The safe order of steps</h2>
+<ol>
+  <li><b>Rule out the browser in one minute.</b> Open a private window and log in there. If that works, delete this site's cookies in your normal browser (the padlock or site icon next to the address, then cookies or site data) and log in again. Done.</li>
+  <li><b>Back up before touching files.</b> In the host's control panel, take a backup, or at least download copies of <code>wp-config.php</code> and <code>.htaccess</code> with the file manager. Everything below is changed through the host's file manager or phpMyAdmin, because the dashboard is the thing you cannot reach.</li>
+  <li><b>Check the two site addresses.</b> This is the most common cause, usually after adding SSL (moving to <code>https://</code>) or moving hosts. In phpMyAdmin, open the <code>wp_options</code> table (the prefix may differ) and read the rows <code>siteurl</code> and <code>home</code>. They must match the address you actually use, exactly: same <code>https</code> or <code>http</code>, same <code>www</code> or no <code>www</code>. If they disagree with each other or with the address bar, the cookie is set for one address and the dashboard checks it on the other.</li>
+  <li><b>Fix them the reversible way:</b> add two lines to <code>wp-config.php</code>, just above the line that says <code>/* That's all, stop editing! */</code>:
+<pre>define( 'WP_HOME', 'https://www.example.com' );
+define( 'WP_SITEURL', 'https://www.example.com' );</pre>
+  using your real address, with no slash at the end. These override the database, and deleting them puts things back. Once you are in, set the same address under Settings, General (the two fields will be greyed out while the lines are there), then you can remove the lines. Do not change the address to one your SSL certificate does not cover.</li>
+  <li><b>Look for a stray cookie setting.</b> If <code>wp-config.php</code> has a line defining <code>COOKIE_DOMAIN</code> (often left behind by a move or an old multisite setup), put <code>//</code> in front of it and try again.</li>
+  <li><b>Take the cache out of the login.</b> A caching plugin, the host's cache or a CDN rule such as Cloudflare "Cache Everything" can serve a stored copy of the login page or the dashboard redirect. Purge every cache, and make sure <code>/wp-login.php</code> and <code>/wp-admin/</code> are excluded from caching.</li>
+  <li><b>Switch the plugins off without the dashboard.</b> Security, login-page, redirect and membership plugins are the usual suspects. In the file manager, rename <code>wp-content/plugins</code> to <code>plugins-off</code> and try to log in. If it works, rename it back, then rename the plugins' own folders one at a time to find the one causing it. If it does not, rename it back and do the same with the active theme's folder (WordPress falls back to a default theme).</li>
+  <li><b>Reset <code>.htaccess</code></b> if the site was moved or a plugin wrote rules into it: rename it to <code>.htaccess-old</code>, log in, then go to Settings, Permalinks and press Save to write a clean one. (On nginx hosts there is no <code>.htaccess</code>; skip this.)</li>
+  <li><b>If the password really is lost and the reset email never comes</b>: the host's control panel often has a "WordPress toolkit" with a reset button. Without one, it can be set in phpMyAdmin (<code>wp_users</code>, your row, <code>user_pass</code>, function MD5, a new password); WordPress accepts it once and re-stores it with its stronger hash at your next login. Then fix the email: a site that cannot send a password reset also loses its contact form mail.</li>
+  <li><b>Test</b> logging in from a private window and from your phone, then the home page and the contact form.</li>
+</ol>
+
+<h2>Common causes and what each one needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you find</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Works in a private window, not in your usual browser</td><td>An old or broken cookie in that browser</td><td>Delete the site's cookies, log in again</td></tr>
+  <tr><td><code>siteurl</code> and <code>home</code> differ (http vs https, www vs none)</td><td>The login cookie is set for one address, checked on another</td><td><code>WP_HOME</code> and <code>WP_SITEURL</code> in <code>wp-config.php</code>, then Settings, General</td></tr>
+  <tr><td><code>COOKIE_DOMAIN</code> defined in <code>wp-config.php</code></td><td>The cookie is issued for a domain the site no longer uses</td><td>Comment the line out</td></tr>
+  <tr><td>Started after turning on a cache, CDN or Cloudflare rule</td><td>A stored copy of the login or dashboard is being served</td><td>Purge; exclude <code>/wp-login.php</code> and <code>/wp-admin/</code></td></tr>
+  <tr><td>Logs in fine with the plugins folder renamed</td><td>A plugin (often security or redirect) is bouncing you</td><td>Find it folder by folder; update, reconfigure or replace it</td></tr>
+  <tr><td>"Cookies are blocked" plus "headers already sent" in the error log</td><td>Something prints output before WordPress sends the cookie</td><td>Remove the blank line or space before <code>&lt;?php</code> in the file the log names</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not create a new admin user through phpMyAdmin to get around it. The loop has nothing to do with which user you are, so the new account loops too, and a forgotten extra admin is a security hole.</li>
+  <li>Do not edit <code>siteurl</code> and <code>home</code> in the database by guesswork. A typo there takes the whole site down for visitors as well; the two <code>wp-config.php</code> lines are the reversible way.</li>
+  <li>Do not delete the plugins folder or a plugin's folder to test. Renaming switches them off and keeps every setting; deleting loses them.</li>
+  <li>Do not keep retrying the login dozens of times. Security plugins and hosts lock out an address after repeated attempts, which adds a second problem to the first.</li>
+</ul>
+<p class="note">If you can reach the host's file manager, the steps above usually get you back in within half an hour. If you are locked out of the host's panel too, or the site needs to be edited today, that is what the box below is for. Related: <a href="too-many-redirects-fix.html">"too many redirects"</a> is the same address mix-up taken one step further, and a <a href="critical-error-fix.html">"critical error on this website"</a> after you get in usually means a plugin or theme update failed.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="login"><label>Username or Email Address</label><div class="field"></div>' +
+    '<label>Password</label><div class="field"></div><span class="btn">Log In</span></div>';
+  var fixed = '<div class="ok"><h3>Dashboard</h3><p>Welcome to WordPress! Howdy, Dr. Lane.</p>' +
+    '<p>Posts &middot; Media &middot; Pages &middot; Settings</p></div>';
+  var logBroken = 'Owner added a free SSL certificate last week,\nthen typed the new address into\nSettings > General. Since then Log In\njust reloads the empty login page.\n\n' +
+    'phpMyAdmin > wp_options:\n' +
+    'siteurl  https://maplelanedental.example\nhome     https://www.maplelanedental.example\n\n' +
+    'Private window: same loop.\nPlugins folder renamed: same loop.\n\n' +
+    '<span class="bad">The login cookie is issued for the address\nwithout www, the dashboard is checked on\nthe www address, so every login looks\nlike a visitor who never logged in.</span>';
+  var logFixed = 'Steps taken:\n1. Backup; copies of wp-config.php and\n   .htaccess downloaded.\n' +
+    '2. wp-config.php, above "stop editing":\n   WP_HOME    https://www.maplelanedental.example\n   WP_SITEURL https://www.maplelanedental.example\n' +
+    '3. Old cookies for the site deleted,\n   logged in: dashboard opens.\n' +
+    '4. Settings > General set to the same\n   www address; the two lines removed.\n' +
+    '5. Cache purged; login from a phone, the\n   home page and the booking form checked.\n\n' +
+    '<span class="good">Back in without a new admin user, no\nplugin deleted, no database guesswork,\nboth addresses now the same.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    document.getElementById("site-bar").textContent = isFixed ? "www.maplelanedental.example/wp-admin/" : "maplelanedental.example/wp-login.php";
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does the WordPress login page keep refreshing when my password is right?","acceptedAnswer":{"@type":"Answer","text":"WordPress logs you in but the browser cannot keep the login cookie for the address the dashboard is on. The usual causes are the two site addresses (siteurl and home) disagreeing on https or www after adding SSL or moving hosts, an old cookie in the browser, a cache serving a stored login page, or a security or redirect plugin."}},
+{"@type":"Question","name":"How do I fix a WordPress login redirect loop without the dashboard?","acceptedAnswer":{"@type":"Answer","text":"Try a private window and clear the site's cookies first. Then, through the host's file manager, add define('WP_HOME', 'https://your-address') and define('WP_SITEURL', 'https://your-address') to wp-config.php with the exact address you use, purge any cache, and rename wp-content/plugins to switch all plugins off while you test."}},
+{"@type":"Question","name":"What does 'Cookies are blocked or not supported by your browser' mean on the WordPress login?","acceptedAnswer":{"@type":"Answer","text":"Either the browser is refusing the site's cookie, or the site prints output before WordPress can send it, often a blank line before <?php in wp-config.php or a theme's functions.php. The host's error log then shows 'Cannot modify header information - headers already sent by' with the file name."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement("aside");d.id="hire-footer";d.className="hire-v4";d.style.cssText="max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box";var s=encodeURIComponent("Fix for my site: "+document.title);d.innerHTML="<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action=\"site-check.html\" method=\"get\" style=\"display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px\"><input name=\"url\" type=\"text\" inputmode=\"url\" placeholder=\"yourbusiness.com\" aria-label=\"Your website address\" required style=\"flex:1 1 180px;min-width:0;padding:8px;font:inherit\"><button style=\"padding:8px 14px;font:inherit\">Check my site free</button></form>Want it done for you? From $49 a fix, quoted before I start, no payment until you OK the quote: <a href=\"mailto:s.n.psaradellis@gmail.com?subject="+s+"\" style=\"display:inline-block;margin:4px 0;padding:6px 12px;border:1px solid #222;border-radius:6px;color:#222;text-decoration:none\">Email me your site address</a> (s.n.psaradellis@gmail.com). <br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered.</small>";document.body.appendChild(d);}catch(e){}})();</script>
+</body>
+</html>
