@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"PHP Update Recommended" and Site Health warnings on WordPress: what to fix and what to leave</title>
+<meta name="description" content="WordPress dashboard says 'Your site is running on an outdated version of PHP' or Site Health shows 'Should be improved'? Here is how to move PHP up in your host panel without breaking the site, and which of the other Site Health warnings matter.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/outdated-php-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#f1f3f4; color:#202124; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; border-bottom:1px solid var(--line); }
+.site .body { padding:16px; min-height:190px; background:#f0f0f1; font-size:14px; }
+.widget { background:#fff; border:1px solid #c3c4c7; border-left:4px solid #d63638; padding:10px 12px; margin-bottom:10px; }
+.widget.ok { border-left-color:#00a32a; }
+.widget b { display:block; margin-bottom:4px; }
+.pill { display:inline-block; border-radius:999px; padding:1px 9px; font-size:12px; font-weight:600; background:#fcf0f1; color:#8a2424; }
+.widget.ok .pill { background:#edfaef; color:#1e7a3c; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>"PHP Update Recommended" and Site Health warnings on WordPress</h1>
+<p class="lede">PHP is the language your WordPress site runs on, and your host, not WordPress, decides which version. Each PHP version gets security fixes for a few years and then none, so a site set up in 2019 and never touched is often still on 7.4, which stopped getting fixes in November 2022. WordPress notices and puts a red box on the dashboard. Moving up is a setting in the host panel and takes a minute; the care goes into checking that your plugins are ready first. Below is a rebuilt example (not a real client), the safe order of steps, and what the other Site Health warnings mean.</p>
+
+<div class="switch" role="group" aria-label="Show the page">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>The WordPress dashboard</h2>
+    <div class="site">
+      <div class="bar" id="site-bar"></div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: find out which PHP you run and which you can move to</h2>
+<ol>
+  <li><b>Read the version WordPress sees.</b> Tools &gt; Site Health &gt; Info &gt; Server shows the PHP version. The dashboard box ("PHP Update Recommended", or "PHP Update Required" when it is very old) shows it too.</li>
+  <li><b>Check what is still supported.</b> php.net's "Supported Versions" page lists which versions get security fixes and until when; wordpress.org/about/requirements says which one WordPress recommends. Pick the newest version your host offers that is on both lists, not just the next one up, so you do not repeat this in a year.</li>
+  <li><b>Find the switch in your host panel.</b> On cPanel hosts it is "MultiPHP Manager" or "Select PHP Version"; on Plesk it is the domain's "PHP Settings"; managed WordPress hosts put it in the site's own dashboard. If you only see a version list with no buttons, the host manages it and a support ticket does it.</li>
+</ol>
+
+<h2>Then: the safe order of steps</h2>
+<ol>
+  <li><b>Take a full backup</b> (files and database) and download it. Most host panels have a one-click backup; a plugin such as UpdraftPlus works too.</li>
+  <li><b>Update WordPress, every plugin and the theme first, on the old PHP.</b> Current versions are what plugin authors test on new PHP. A plugin with no update in three or four years is the one most likely to break; its page on wordpress.org says "Tested up to" and often "Requires PHP".</li>
+  <li><b>Remove what you do not use.</b> Deactivated plugins and spare themes still sit on the server and still need to work with the new PHP. Delete them (keep one default theme such as Twenty Twenty-Four as a fallback).</li>
+  <li><b>Use a staging copy if your host has one.</b> Many do, one click. Switch the copy's PHP, click through it, then do the real site.</li>
+  <li><b>Switch the live site, then check it right away.</b> Load the home page, a contact form (send yourself a test), the shop's cart and checkout if there is one, and the admin. If anything breaks, switch the version back in the same panel: it is instant and nothing is lost. WordPress also emails the admin a recovery link that names the plugin that failed.</li>
+  <li><b>Fix the one plugin, not the whole plan.</b> If one plugin breaks, update it, swap it for a maintained one, or ask its author; then switch again. Do not stay on unsupported PHP for one plugin.</li>
+</ol>
+
+<h2>The other Site Health warnings, and which ones matter</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What Site Health says</th><th>What it means</th><th>What to do</th></tr>
+  <tr><td>"Your site is running an outdated version of PHP"</td><td>Your PHP no longer gets security fixes, or soon will not</td><td>Fix it: the steps above</td></tr>
+  <tr><td>"Your site does not use HTTPS"</td><td>Visitors see "Not secure"; forms send in the clear</td><td>Fix it: <a href="not-secure-fix.html">the "Not secure" guide</a></td></tr>
+  <tr><td>"You should remove inactive plugins" / "inactive themes"</td><td>Unused code that still needs updates</td><td>Delete them; keep one default theme</td></tr>
+  <tr><td>"Background updates are not working as expected"</td><td>Security releases may not install on their own</td><td>Usually a host setting or a leftover <code>.git</code> folder; ask the host or check <code>wp-config.php</code> for <code>AUTOMATIC_UPDATER_DISABLED</code></td></tr>
+  <tr><td>"A scheduled event has failed" or "is late"</td><td>WordPress's timer (WP-Cron) is not running jobs: backups, scheduled posts, emails</td><td>Often a security plugin or caching blocking it; a real server cron job fixes it for good</td></tr>
+  <tr><td>"Your site could not complete a loopback request" / "The REST API encountered an error"</td><td>The site cannot call itself; the block editor and scheduled jobs suffer</td><td>A firewall or security plugin rule, or basic-auth on the site; whitelist the site's own address</td></tr>
+  <tr><td>"One or more recommended modules are missing" (imagick, intl)</td><td>Optional PHP add-ons for image handling and languages</td><td>Tick them in the same PHP panel if offered; harmless if not</td></tr>
+  <tr><td>"Your site is set to log errors to a potentially public file"</td><td><code>WP_DEBUG_LOG</code> left on; the log can be downloaded by anyone</td><td>Turn debug off in <code>wp-config.php</code> and delete <code>wp-content/debug.log</code></td></tr>
+  <tr><td>"You should use a persistent object cache" / "Page cache is not detected"</td><td>Speed suggestions</td><td>Fine to leave on a small site that loads quickly; see <a href="slow-site-fix.html">a slow site</a> if it does not</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not ignore the red box because the site "works". Old PHP keeps working; it just stops getting fixes, and plugins drop support for it one by one, so updates start failing quietly.</li>
+  <li>Do not jump PHP before updating plugins. That order is what turns a one-minute switch into a broken site.</li>
+  <li>Do not install a plugin that hides the Site Health warnings. The warning is not the problem.</li>
+</ul>
+<p class="note">For most small sites this is a backup, a round of updates, one setting and ten minutes of clicking through pages. If you would rather hand it over, or a plugin breaks on the new version, that is what the box below is for. Related: <a href="wordpress-update-fix.html">WordPress years out of date</a>, <a href="syntax-error-fix.html">"Parse error: syntax error"</a> right after an update, and <a href="critical-error-fix.html">"There has been a critical error"</a>.</p>
+</div>
+
+<script>
+(function () {
+  var bar = document.getElementById("site-bar"), body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var before = '<div class="widget"><b>PHP Update Recommended</b>Your site is running on an outdated version of PHP (7.4.33), which does not receive security updates.</div>' +
+    '<div class="widget"><b>Site Health Status <span class="pill">Should be improved</span></b>3 critical issues: outdated PHP, a scheduled event has failed, inactive plugins.</div>';
+  var after = '<div class="widget ok"><b>Site Health Status <span class="pill">Good</span></b>No critical issues. PHP 8.3.</div>' +
+    '<p class="note" style="margin:8px 0 0">Booking form, contact form and admin all checked after the switch.</p>';
+  var logBefore = 'Site: dental practice, set up 2019\nPHP: 7.4.33 (no security fixes\n  since Nov 2022)\n\n' +
+    'Plugins: 14 installed, 3 inactive\n  - a slider, last updated 2019\n  - 2 old page builders\n' +
+    'Booking plugin: 2 versions behind\nScheduled backup: failed 9 days in a\n  row (WP-Cron blocked)\n\n' +
+    '<span class="bad">Switching PHP first would have broken\nthe old slider on the home page.</span>';
+  var logAfter = 'Steps taken:\n1. Full backup, downloaded.\n' +
+    '2. WordPress, theme and 11 plugins\n   updated on PHP 7.4.\n3. 3 inactive plugins deleted.\n' +
+    '4. Staging copy switched to PHP 8.3,\n   clicked through: no errors.\n5. Live site switched; home page,\n   booking and contact form tested.\n' +
+    '6. Real cron job set for WP-Cron;\n   backup ran that night.\n\n' +
+    '<span class="good">Site Health: Good. Nothing visible\nchanged for patients.</span>';
+  function show(isFixed) {
+    bar.textContent = "brightsmile.example/wp-admin/";
+    body.innerHTML = isFixed ? after : before;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"How do I fix 'Your site is running an outdated version of PHP' in WordPress?","acceptedAnswer":{"@type":"Answer","text":"PHP is set by your host, not by WordPress. Take a full backup, update WordPress, the theme and every plugin first, delete plugins you do not use, then pick a newer supported PHP version in your host panel (cPanel: MultiPHP Manager or Select PHP Version; Plesk: PHP Settings). Check the home page, forms, checkout and admin right after; if something breaks, switch back in the same panel."}},
+{"@type":"Question","name":"Will updating PHP break my WordPress site?","acceptedAnswer":{"@type":"Answer","text":"Usually not, if plugins and the theme are updated first. The ones that break are plugins with no update in years. Test on a staging copy if your host offers one. If a plugin does break, switching the PHP version back in the host panel restores the site at once, and WordPress emails the admin a recovery link that names the plugin."}},
+{"@type":"Question","name":"Which PHP version should my WordPress site use?","acceptedAnswer":{"@type":"Answer","text":"The newest version your host offers that php.net still lists as supported and that WordPress recommends on wordpress.org/about/requirements. Moving several versions at once is fine once plugins are current, and saves doing it again next year."}},
+{"@type":"Question","name":"Which Site Health warnings can I ignore?","acceptedAnswer":{"@type":"Answer","text":"Outdated PHP, no HTTPS, failed scheduled events, background updates not working and a public error log should be fixed. Missing optional modules and the object cache or page cache suggestions are speed or convenience items that a small, fast site can leave."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
