@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"There has been a critical error on this website": what it means and how it gets fixed</title>
+<meta name="description" content="WordPress shows 'There has been a critical error on this website' when one plugin, theme or PHP change crashes the site. What it means, the email WordPress sends you, the safe order of steps, and a rebuilt before/after.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/critical-error-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:22px 16px; min-height:190px; }
+.crash { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color:#444; }
+.crash p { margin:0 0 10px; }
+.crash a { color:#2271b1; }
+.ok h3 { margin:0 0 6px; font-size:18px; }
+.ok p { margin:0 0 12px; color:var(--muted); }
+.ok .btn { display:inline-block; background:var(--brand); color:#fff; padding:8px 14px; border-radius:8px; font-weight:600; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>"There has been a critical error on this website"</h1>
+<p class="lede">That one line is WordPress telling you the site crashed. It almost always comes from a single change: a plugin or theme that updated itself, or the host moving the site to a newer PHP version. The site is not deleted and the fix rarely means rebuilding anything. Below is a rebuilt example (not a real client) so you can see the broken page and the fixed one, then the safe order of steps.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What visitors see</h2>
+    <div class="site">
+      <div class="bar">yourbusiness.com</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the debug log says</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: check your email</h2>
+<p>Since WordPress 5.2, when the site crashes WordPress emails the site's admin address with the subject <b>"Your Site is Experiencing a Technical Issue"</b>. That email names the plugin or theme that crashed and contains a <b>recovery mode</b> link. The link lets you log in to the dashboard with the broken plugin paused for you, so you can switch it off or roll it back. Look in spam too; it often lands there, or goes to an old address nobody reads.</p>
+
+<h2>The safe order of steps</h2>
+<ol>
+  <li><b>Back up first</b> (files and database), even with the site down. Every step below can then be undone.</li>
+  <li><b>Use the recovery link</b> if you have the email. Deactivate the plugin it names, and the site comes back. Then decide: roll that plugin back one version, or replace it.</li>
+  <li><b>No email? Read the error.</b> Turn on WordPress's debug log (<code>WP_DEBUG</code> and <code>WP_DEBUG_LOG</code> in <code>wp-config.php</code>, display off so visitors see nothing) and reload the page once. The log in <code>wp-content/debug.log</code> names the file and line that crashed, as in the example above.</li>
+  <li><b>Switch off only what the log names.</b> In the host's file manager or over SFTP, rename that one plugin's folder (for example <code>wp-content/plugins/booking-calendar</code> to <code>booking-calendar.off</code>). WordPress deactivates it. Renaming the whole plugins folder works too, but it switches off everything at once, forms and caching included.</li>
+  <li><b>Check what changed on the host's side.</b> If nothing updated but the site still broke, the host may have moved you to a newer PHP version that an old plugin or theme cannot run on. Their control panel shows the PHP version; going back one version is a stopgap, updating or replacing the old code is the fix.</li>
+  <li><b>Fix it properly, then test.</b> Install the plugin's fixed version, or a maintained replacement, on a copy first. Then turn the debug log off again, and turn off automatic updates for anything that has broken the site before.</li>
+</ol>
+
+<h2>Common causes and what each one needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What the log says</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td><code>Fatal error: Uncaught Error: Call to undefined function</code> in a plugin file</td><td>A plugin updated and now calls code another plugin or WordPress itself no longer has</td><td>Roll that plugin back one version, or update the plugin it depends on</td></tr>
+  <tr><td><code>Fatal error ... syntax error, unexpected</code> or <code>... removed in PHP 8</code></td><td>The host moved the site to a newer PHP version and old code cannot run on it</td><td>Update or replace the old plugin/theme; PHP rollback only as a stopgap</td></tr>
+  <tr><td><code>Allowed memory size of ... bytes exhausted</code></td><td>A page needs more memory than the host allows</td><td>Raise <code>WP_MEMORY_LIMIT</code> if the plan allows it; find the heavy plugin</td></tr>
+  <tr><td>Error inside <code>wp-content/themes/...</code></td><td>The theme, or a code snippet pasted into it, crashed</td><td>Undo the snippet, or switch to a default theme while it is repaired</td></tr>
+  <tr><td>Error during an update, site stuck in maintenance</td><td>An update stopped halfway</td><td>Remove the <code>.maintenance</code> file, re-run the update cleanly</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not reinstall WordPress or restore a weeks-old backup before reading the log. You can lose every order, booking and form entry since then, and the crash usually comes back with the next update.</li>
+  <li>Do not delete plugins to find the culprit. Renaming the folder switches it off and keeps its settings.</li>
+  <li>Do not leave the debug log on afterwards. It can show file paths to anyone who finds it.</li>
+</ul>
+<p class="note">If you are comfortable with a file manager, the steps above are usually enough. If the site earns you money every hour it is down, that is what the box below is for.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="crash"><p>There has been a critical error on this website.</p>' +
+    '<p><a href="#" onclick="return false">Learn more about troubleshooting WordPress.</a></p></div>';
+  var fixed = '<div class="ok"><h3>Riverside Plumbing</h3><p>Same-day repairs across the county. Book online or call us.</p>' +
+    '<span class="btn">Book a visit</span></div>';
+  var logBroken = 'PHP Fatal error:  Uncaught Error: Call to undefined function\n' +
+    '  bc_get_slots() in /wp-content/plugins/booking-calendar-addon/\n  addon.php:41\n' +
+    'Stack trace:\n#0 /wp-includes/class-wp-hook.php(324): bca_render()\n' +
+    '#1 /wp-includes/plugin.php(205): WP_Hook->apply_filters()\n...\n\n' +
+    '<span class="bad">The add-on updated overnight; the main booking plugin it\nrelies on did not, so the function it calls is gone.</span>';
+  var logFixed = 'Steps taken:\n1. Backup of files + database.\n' +
+    '2. Renamed booking-calendar-addon -> booking-calendar-addon.off\n   (site back up, bookings off).\n' +
+    '3. On a copy: updated the main booking plugin to the version\n   the add-on expects; add-on back on; booking tested.\n' +
+    '4. Same two updates applied live, debug log off again.\n5. Auto-update off for the add-on; next update gets tested first.\n\n' +
+    '<span class="good">No errors in debug.log. Bookings from the outage\nwindow: none lost (the form was down, not the database).</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'There has been a critical error on this website' mean?","acceptedAnswer":{"@type":"Answer","text":"WordPress hit a fatal PHP error and stopped. It is almost always one plugin or theme that updated, or the host changing the PHP version. The content is not deleted."}},
+{"@type":"Question","name":"How do I fix a WordPress critical error?","acceptedAnswer":{"@type":"Answer","text":"Back up, then use the recovery mode link in the 'Your Site is Experiencing a Technical Issue' email to deactivate the plugin it names. Without the email, turn on WP_DEBUG_LOG, read wp-content/debug.log, and rename only the folder of the plugin it names."}},
+{"@type":"Question","name":"I did not get the technical issue email. What now?","acceptedAnswer":{"@type":"Answer","text":"Check spam and whether the site's admin email is an old address. Otherwise read the debug log through the host's file manager, which names the file and line that crashed."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement("aside");d.id="hire-footer";d.className="hire-v3";d.style.cssText="max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box";var s=encodeURIComponent("Fix for my site: "+document.title);d.innerHTML="<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action=\"site-check.html\" method=\"get\" style=\"display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px\"><input name=\"url\" type=\"text\" inputmode=\"url\" placeholder=\"yourbusiness.com\" aria-label=\"Your website address\" required style=\"flex:1 1 180px;min-width:0;padding:8px;font:inherit\"><button style=\"padding:8px 14px;font:inherit\">Check my site free</button></form>Want it done for you? From $49 a fix, quoted before I start: <a href=\"https://www.fiverr.com/s_psaradellis\">order on Fiverr</a> or <a href=\"mailto:s.n.psaradellis@gmail.com?subject="+s+"\">email s.n.psaradellis@gmail.com</a>. <br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered.</small>";document.body.appendChild(d);}catch(e){}})();</script>
+</body>
+</html>
