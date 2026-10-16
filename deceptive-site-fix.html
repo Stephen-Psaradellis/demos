@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"Deceptive site ahead" or "Dangerous site" warning on your website: how to remove it</title>
+<meta name="description" content="Visitors get a full red Chrome warning before your site loads? Find which pages Google flagged in five minutes, clean them, and get the warning lifted, usually within a few days of the review request.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/deceptive-site-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.screen { min-width:0; overflow-wrap:anywhere; border-radius:8px; padding:22px 18px; min-height:230px; }
+.screen.warn { background:#d93025; color:#fff; }
+.screen.warn .big { font-size:22px; font-weight:600; margin:10px 0 8px; }
+.screen.warn p { font-size:14px; margin:0 0 14px; }
+.screen.warn .btn { display:inline-block; background:#fff; color:#d93025; border-radius:4px; padding:8px 14px; font-size:14px; font-weight:600; }
+.screen.warn .det { display:block; margin-top:14px; font-size:13px; text-decoration:underline; opacity:.9; }
+.screen.site { background:#fbfaf6; color:#1b1b1b; border:1px solid var(--line); }
+.screen.site .hd { font-weight:700; font-size:18px; color:#2f5d34; }
+.screen.site .big { font-size:21px; font-weight:700; margin:14px 0 6px; }
+.screen.site p { font-size:14px; margin:0 0 12px; color:#444; }
+.screen.site .btn { display:inline-block; background:#2f5d34; color:#fff; border-radius:6px; padding:8px 14px; font-size:14px; font-weight:600; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:#ff8a80; font-weight:600; }
+.good { color:#8fd19e; font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Visitors see a red "Deceptive site ahead" warning before your site</h1>
+<p class="lede">Customers tell you Chrome shows a full red page saying "Deceptive site ahead", "Dangerous site" or "The site ahead contains malware", and most of them leave. Firefox and Safari show the same block, because they all read Google's Safe Browsing list. Edge may show its own "reported as unsafe" page. The warning means Google found specific pages on your domain that phish, carry malware or trick visitors, and it stays until those pages are gone and someone asks for a review. It does not lift by itself. Below is a rebuilt example (not a real client), the five-minute check that names the flagged pages, and the fix for each cause.</p>
+
+<div class="switch" role="group" aria-label="Show the result before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What a visitor sees</h2>
+    <div id="page"></div>
+  </div>
+  <div class="panel">
+    <h2>What the check found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>The five-minute check: what did Google flag?</h2>
+<ol>
+  <li><b>Look up your domain on Google's Safe Browsing status page.</b> Search for "Google Transparency Report safe browsing site status" and enter your domain. It says whether the site is currently flagged and roughly why (deceptive pages, harmful downloads, unwanted software).</li>
+  <li><b>Open Search Console's Security issues report.</b> In Google Search Console, go to <b>Security &amp; Manual Actions &gt; Security issues</b>. It names the type of problem and lists sample addresses. Those samples are the starting point: open them in a private window and note what they are. No Search Console yet? Add the site (a DNS or HTML-file check) first; the report and the review button only exist there.</li>
+  <li><b>Look for pages you never made.</b> Phishing kits usually sit in an odd folder (<code>/wp-includes/js/secure/</code>, <code>/.well-known/</code>, <code>/old/</code>, a random string) and copy a bank, Microsoft or a parcel company. Your host's File Manager sorted by "last modified", or the host's malware scan, finds them quickly.</li>
+  <li><b>Check Edge separately if it is Edge that warns.</b> Microsoft keeps its own list (SmartScreen). A site can be clear on Google and still flagged there, or the other way round.</li>
+</ol>
+
+<h2>What causes it and the fix</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What the check shows</th><th>Why it happens</th><th>The fix</th></tr>
+  <tr><td><b>"Deceptive pages"</b> or <b>social engineering</b>; sample addresses are login pages for a bank, Microsoft 365, a parcel firm</td><td>Someone got in (an old plugin, a reused password, an abandoned FTP account) and uploaded a phishing kit. Your real pages may be untouched, which is why you never saw it</td><td>Delete the kit's whole folder, not just the sample pages. Then close the way in: update or remove every plugin and theme you do not use, change every admin, hosting, FTP and database password, and remove admin users you do not recognise. Then request the review (below)</td></tr>
+  <tr><td><b>"Malware"</b> or <b>harmful downloads</b>; the site sends some visitors to another site, or a scan finds injected script</td><td>Code was added to your theme files, the database or <code>.htaccess</code> that loads a script from another domain, often only for phone visitors arriving from Google</td><td>Clean it the way <a href="hacked-redirect-fix.html">site sends visitors to a spam page</a> describes: replace core and plugin files from clean copies, search the database for the injected domain, check <code>.htaccess</code>. Restoring a backup from before the infection is faster if you have one, as long as you then close the way in</td></tr>
+  <tr><td>Flagged for a <b>file you offer for download</b> (a price list, a tool, a zip)</td><td>Safe Browsing flags the download itself. An old installer, a macro-enabled document or a file a past web person bundled with something can trip it</td><td>Remove the file or replace it with a plain PDF. If it is genuine software you make, sign it and host it on a well-known download service instead</td></tr>
+  <tr><td>Only one <b>embedded script, ad or widget</b> is named (a chat box, an old counter, an ad network)</td><td>The third party's domain was taken over or sold, and your pages still load it. To Google, your page now serves what that domain serves</td><td>Remove the snippet from the theme, the header-script plugin or the page builder's custom code box. An old visitor counter or a defunct widget is the usual one</td></tr>
+  <tr><td>Clean site, but you <b>bought the domain recently</b> or it lapsed and came back</td><td>The flag belongs to what the domain hosted before you. It stays until someone requests a review</td><td>Add the domain to Search Console, confirm Security issues lists nothing current, and request a review. If no review button appears, use Google's form for reporting an incorrect phishing warning</td></tr>
+  <tr><td><b>Only Edge</b> warns ("This site has been reported as unsafe")</td><td>Microsoft's SmartScreen list, separate from Google's</td><td>Clean the site first, then use Microsoft's "report an unsafe site" page and choose that you are the site owner asking for a review; it asks for the address and what you changed</td></tr>
+</table>
+</div>
+
+<h2>Requesting the review</h2>
+<ol>
+  <li>Confirm the sample addresses now answer "not found" and a host malware scan comes back clean. Asking too early fails the review.</li>
+  <li>In <b>Security issues</b>, tick that you fixed each issue and press <b>Request review</b>. In the box, say what you removed and how you closed the way in (for example: "deleted phishing folder /wp-includes/js/secure/, removed unused plugin X that was exploited, reset all passwords, removed unknown admin").</li>
+  <li>Wait. Deceptive-page reviews usually finish in a day or two, malware reviews in a few days. You get a message in Search Console either way. Visitors' browsers may keep the warning a little longer until their copy of the list refreshes.</li>
+</ol>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not request a review before the cause is fixed. If a site keeps going back to harmful after reviews, Google can treat it as a repeat offender and refuse new review requests for 30 days.</li>
+  <li>Do not just delete the sample pages Google listed. The kit is usually a whole folder plus a backdoor file that puts it back; the samples are only what Google happened to see.</li>
+  <li>Do not move to a new domain to escape it. The new domain gets flagged the moment the same hacked files are copied across, and you lose your Google ranking for nothing.</li>
+  <li>Do not tell customers to click "visit this unsafe site". Some will, and if the site is still serving phishing pages you are sending them to it.</li>
+</ul>
+<p class="note">Requesting the review is a few clicks; finding the kit's folder, the backdoor that reinstalls it and the old plugin that let it in is the part most owners would rather hand over, especially with the warning costing customers every day. If that is you, the box below is for that. Related: <a href="hacked-redirect-fix.html">site sends visitors to a spam page</a>, <a href="japanese-spam-fix.html">Japanese spam in Google results</a> and <a href="not-secure-fix.html">"Not secure" warning</a>.</p>
+</div>
+
+<script>
+(function () {
+  var page = document.getElementById("page"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var warn = '<div class="screen warn"><div style="font-size:30px" aria-hidden="true">&#9888;</div>' +
+    '<div class="big">Deceptive site ahead</div>' +
+    '<p>Attackers on fernhill-landscape.example may trick you into doing something dangerous like installing software or revealing your personal information.</p>' +
+    '<span class="btn">Back to safety</span><span class="det">Details</span></div>';
+  var site = '<div class="screen site"><div class="hd">Fernhill Landscape</div>' +
+    '<div class="big">Lawns, patios and planting</div>' +
+    '<p>Free estimates across the county. Family run since 2009.</p>' +
+    '<span class="btn">Get a quote</span>' +
+    '<p style="margin-top:14px;color:#999;font-size:13px">Rebuilt example, not a real client.</p></div>';
+  var logBefore = 'Site: landscaper, WordPress\n  last plugin update: 2023\n\n' +
+    'Safe Browsing status:\n  "Some pages on this site are\n   unsafe" (deceptive pages)\n\n' +
+    'Search Console > Security issues:\n  Social engineering, samples:\n  /wp-includes/js/secure/\n    o365-login.php\n\n' +
+    'File Manager: folder added 3 weeks\nago; old slider plugin exploited\n\n' +
+    '<span class="bad">Chrome, Firefox and Safari block\nthe whole domain.</span>';
+  var logAfter = 'Steps taken:\n1. Phishing folder + backdoor file\n   deleted; host scan clean.\n' +
+    '2. Unused slider plugin removed,\n   everything else updated.\n' +
+    '3. All passwords reset, one\n   unknown admin removed.\n' +
+    '4. Security issues: Request review\n   with what was removed and why.\n\n' +
+    'Review passed: next day\n\n<span class="good">Warning gone; site loads.</span>';
+  function show(isFixed) {
+    page.innerHTML = isFixed ? site : warn;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does Chrome say \"Deceptive site ahead\" on my website?","acceptedAnswer":{"@type":"Answer","text":"Google's Safe Browsing found pages on your domain that phish or trick visitors, most often a phishing kit uploaded after a break-in through an old plugin or a reused password. Chrome, Firefox and Safari all use that list, so all of them warn. Search Console's Security issues report lists sample addresses of the flagged pages."}},
+{"@type":"Question","name":"How do I remove the red warning from my site?","acceptedAnswer":{"@type":"Answer","text":"Delete the harmful pages and whatever let them in (outdated plugins, unknown admin users, old passwords), confirm a malware scan is clean, then in Google Search Console open Security & Manual Actions > Security issues, mark the issues fixed and press Request review with a note on what you removed. The warning does not lift without a review."}},
+{"@type":"Question","name":"How long does a Google security review take?","acceptedAnswer":{"@type":"Answer","text":"Reviews for deceptive or phishing pages usually finish in a day or two; malware reviews take a few days. Search Console sends a message with the result. Requesting a review before the problem is fixed can fail it, and sites that repeatedly go back to harmful can be blocked from new review requests for 30 days."}},
+{"@type":"Question","name":"Only Microsoft Edge says my site is unsafe. Why?","acceptedAnswer":{"@type":"Answer","text":"Edge uses Microsoft's SmartScreen list, which is separate from Google's. Clean the site, then use Microsoft's report-an-unsafe-site page to ask, as the site owner, for the listing to be reviewed."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
