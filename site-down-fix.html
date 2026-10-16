@@ -3,137 +3,161 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>A website that stopped loading: getting it back up</title>
-<meta name="description" content="Your business website stopped loading: suspended hosting, an expired domain or certificate. How to find which one it is and get the site back up.">
+<title>Website down, "This site can't be reached": what each error means and the fix</title>
+<meta name="description" content="DNS_PROBE_FINISHED_NXDOMAIN, ERR_CONNECTION_TIMED_OUT, 'Account Suspended' or a parked page instead of your business site? What each one means, how to tell which, and how it gets fixed.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/site-down-fix.html">
 <style>
-  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:#1b1b1b; background:#f6f4ef; }
-  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
-  h1 { font-size: clamp(22px, 4vw, 32px); margin: 0 0 8px; }
-  p, li { line-height: 1.5; }
-  .bad { color: #a33; } .good { color: #1f6f5f; }
-  .table-wrap { overflow-x: auto; margin: 20px 0; }
-  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e6e2d8; border-radius: 12px; font-size: 15px; }
-  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee9de; vertical-align: top; }
-  th { background: #efebe2; }
-  tr:last-child td { border-bottom: 0; }
-  ol li { margin-bottom: 10px; }
-  pre { background: #1b1b1b; color: #f2f2f2; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 14px; }
-  .check { background:#fff; border:1px solid #e6e2d8; border-left: 4px solid #1f6f5f; border-radius: 8px; padding: 12px 14px; }
-  .muted { color: #6b6b6b; font-size: 14px; }
-  a { color: #1f6f5f; }
-  .shots { display:flex; flex-wrap:wrap; gap:24px; justify-content:center; margin: 24px 0; }
-  figure { margin:0; text-align:center; }
-  figcaption { font-size:14px; margin-top:8px; }
-  .win { width:300px; height:200px; border:1px solid #cfcabd; border-radius:10px; background:#fff; overflow:hidden; text-align:left; }
-  .bar { background:#e9e6df; padding:6px 10px; font-size:11px; color:#555; border-bottom:1px solid #d8d3c7; }
-  .err { padding:22px 18px; font-size:13px; color:#444; }
-  .err b { display:block; font-size:16px; color:#222; margin-bottom:8px; }
-  .err code { font-size:11px; color:#777; }
-  .ok .hd { background:#7a4a2a; color:#fff; padding:10px 12px; font-size:13px; font-weight:600; }
-  .ok .ph { background:#e2cfae; height:70px; margin:8px; border-radius:6px; }
-  .ok .ln { background:#ddd; height:8px; margin:8px 10px; border-radius:3px; }
-  .ok .btn { display:inline-block; margin:6px 10px; background:#1f6f5f; color:#fff; border-radius:6px; padding:6px 10px; font-size:11px; font-weight:600; }
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#f1f3f4; color:#202124; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; border-bottom:1px solid var(--line); }
+.site .body { padding:14px; min-height:190px; background:#fff; font-size:13px; }
+.err-icon { width:28px; height:28px; border:3px solid #9aa0a6; border-radius:4px; margin-bottom:10px; }
+.err-title { font-size:17px; font-weight:600; color:#202124; margin:0 0 6px; }
+.err-code { color:#5f6368; font-size:11.5px; letter-spacing:.3px; margin-top:12px; }
+.mock-head { background:#1d4e89; color:#fff; font-weight:700; padding:8px 10px; border-radius:4px; margin-bottom:8px; }
+.mock-line { height:7px; background:#e3e3e3; border-radius:4px; margin:6px 0; }
+.mock-line.short { width:60%; }
+.mock-btn { display:inline-block; background:#e8590c; color:#fff; font-weight:600; border-radius:4px; padding:5px 10px; margin-top:6px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:#ff8a80; font-weight:600; }
+.good { color:#8fe0a6; font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
 </style>
 </head>
 <body>
-<main>
-  <h1>A website that stopped loading: getting it back up</h1>
-  <p>A family bakery's website had run quietly for six years. Then the card on
-  file with the hosting company expired, three renewal emails went to an old
-  address nobody checked, and the hosting plan was suspended. The domain name
-  was still paid for, so Google Maps, Yelp and the bakery's Instagram kept
-  sending people to it - and every one of them got a browser error instead of
-  the menu, the hours and the custom-cake order form. The owner only found out
-  when a customer mentioned it at the counter. Here is how the cause was found
-  from the outside, what was done, and how long it took.</p>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Website down: "This site can't be reached"</h1>
+<p class="lede">You type your business address and get a grey error page, a "this domain has expired" page full of ads, or a plain "Account Suspended". Customers see the same thing, and often your business email has stopped too. The error code under the message says which of four things broke: the domain, its DNS records, the hosting account, or the server. Each has a different fix, and two of them get harder to undo the longer they wait. Below is a rebuilt example (not a real client), how to read the code, and the fix for each.</p>
 
-  <div class="shots" aria-hidden="true">
-    <figure><div class="win">
-      <div class="bar">bakery-name.com</div>
-      <div class="err"><b>This site can't be reached</b>bakery-name.com took too long to respond.<br><br><code>ERR_CONNECTION_TIMED_OUT</code></div>
-    </div><figcaption class="bad">Before: what every visitor saw</figcaption></figure>
-    <figure><div class="win ok">
-      <div class="bar">https://bakery-name.com</div>
-      <div class="hd">Bakery name</div>
-      <div class="ph"></div><div class="ln"></div><div class="ln"></div>
-      <span class="btn">Order a cake</span><span class="btn">Hours</span>
-    </div><figcaption class="good">After: the same site, back up</figcaption></figure>
+<div class="switch" role="group" aria-label="Show the page">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What a customer sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar"></div>
+      <div class="body" id="site-body"></div>
+    </div>
   </div>
-
-  <div class="check"><b>Check yours in thirty seconds:</b> turn off Wi-Fi on
-  your phone and open your website on mobile data. Your own computer can show
-  you an old saved copy, so a phone on mobile data is the honest test. If it
-  shows an error, a blank page or a "this domain is for sale" page, your
-  customers see the same thing.</div>
-
-  <h2>What is usually wrong</h2>
-  <p>"The site does not load" has only a handful of causes, and each one
-  leaves a different trace that can be read from outside, without any login.
-  That is how I can tell you which one it probably is before you share
-  anything.</p>
-  <div class="table-wrap">
-  <table>
-    <tr><th>What you see</th><th>What it usually means</th><th>The fix</th></tr>
-    <tr><td>"Took too long to respond" or "refused to connect"</td><td>the name still points at a server, but the server does not answer: a suspended or lapsed hosting plan, or a crashed server</td><td>renew or reactivate the plan (you do this, it is a payment), then I check the site came back whole and fix anything that broke while it was down</td></tr>
-    <tr><td>"Server not found" / "DNS address could not be found"</td><td>the domain name expired, or its records were deleted or pointed nowhere during a move</td><td>renew the domain (you), then I restore the records so the name points at the site again</td></tr>
-    <tr><td>A blank white page, or "There has been a critical error"</td><td>the server answers but the site software crashed - often after an automatic update of WordPress or its add-ons</td><td>I find the one add-on or update that broke it, switch it off, and bring the site back without losing content</td></tr>
-    <tr><td>"Your connection is not private"</td><td>the security certificate expired and the browser blocks the page</td><td>renew the certificate and set it to renew itself from now on</td></tr>
-    <tr><td>A parking page or "this domain is for sale"</td><td>the domain lapsed and was taken by someone else, or is in the registrar's grace period</td><td>if it is in grace, renew it today; if not, point customers at a new address and update the map listings</td></tr>
-  </table>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
   </div>
-  <p>For the bakery the trace was the first row: the name answered (it
-  still pointed at the hosting company), but the server never did, on http or
-  https, at any hour - a suspended plan, not a broken site.</p>
-  <pre>What the outside checks showed (before):
-  name lookup       bakery-name.com -> 203.0.113.48   (still points at the host)
-  connect, port 443 timed out after 15 seconds
-  connect, port 80  timed out after 15 seconds
-  domain renewal    paid until next year              (the name was fine)
+</div>
 
-After the plan was reactivated:
-  connect, port 443 answers, page loads in 1.4 s
-  certificate       valid, set to renew automatically
-  pages checked     home, menu, cake order form, contact - all load</pre>
+<h2>First: is it down for everyone, or only for you?</h2>
+<ol>
+  <li><b>Open the site on your phone with Wi-Fi turned off.</b> If it loads on mobile data but not on your office Wi-Fi, the site is up: your own connection or address is blocked (last row of the table).</li>
+  <li><b>Try both addresses:</b> <code>yourbusiness.com</code> and <code>www.yourbusiness.com</code>. If only one fails, one DNS record is missing, not the whole site.</li>
+  <li><b>Read the small grey code</b> under the browser's message (Chrome and Edge show it; Firefox says "Hmm. We're having trouble finding that site" for the first kind). Then find it in the table below.</li>
+</ol>
 
-  <h2>How it was fixed</h2>
-  <ol>
-    <li><b>Diagnose from outside first:</b> does the name resolve, does the
-    server answer, is the domain paid up, is the certificate valid. That
-    pointed at the hosting plan, not the site.</li>
-    <li><b>The owner reactivated the plan</b> - a payment, so it is always
-    theirs to make - and moved the renewal emails to an address they read.</li>
-    <li><b>Check the site came back whole:</b> after a suspension the files
-    and database are usually intact, but the certificate had lapsed in the
-    meantime and the cake order form's email setting had been reset.
-    Both fixed.</li>
-    <li><b>Make it not happen again:</b> auto-renew on the plan, the domain
-    and the certificate, and a free uptime check that emails the owner within
-    five minutes if the site stops answering.</li>
-    <li><b>Re-check</b> every main page on a phone on mobile data, and that a
-    test cake order arrives in the owner's inbox.</li>
-  </ol>
-  <p>If the site is gone for good - the host deleted it, or you have since
-  moved to a new one - the old address can still forward to the new site, so
-  map listings and old links do not end on an error. That part is a few
-  minutes of setup at the place the domain is registered.</p>
+<h2>What the error code means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>You see</th><th>It means</th><th>Usual cause</th></tr>
+  <tr><td><code>DNS_PROBE_FINISHED_NXDOMAIN</code> or <code>ERR_NAME_NOT_RESOLVED</code></td><td>The internet has no address for your domain name</td><td>The domain expired, or its nameservers or DNS records were changed or deleted</td></tr>
+  <tr><td>A "This domain has expired", "Renew now" or "This domain may be for sale" page</td><td>The registrar parked the name after it expired</td><td>Renewal failed: an old card, an old email address that never got the reminders</td></tr>
+  <tr><td>"Account Suspended" or a hosting company's page</td><td>The domain works; the hosting company switched the account off</td><td>An unpaid invoice, or the host found malware or heavy use</td></tr>
+  <tr><td><code>ERR_CONNECTION_TIMED_OUT</code></td><td>The address exists but nothing answers</td><td>The server is down or overloaded, the DNS points at an old server, or a firewall is blocking you</td></tr>
+  <tr><td><code>ERR_CONNECTION_REFUSED</code></td><td>A machine answered and refused</td><td>The DNS points at the wrong server, or the web server on it is stopped</td></tr>
+  <tr><td>"Your connection is not private"</td><td>The site is up; its security certificate is not</td><td>See <a href="not-secure-fix.html">the not-secure guide</a></td></tr>
+</table>
+</div>
 
-  <h2>What it costs</h2>
-  <p>Tell me whether the site is still yours and I will send you what the
-  outside checks show for it, and which of the causes above it is, free. If
-  you would rather I bring it back, it is a fixed price quoted before any
-  work, paid only after it loads on your own phone. No password shared: your
-  host lets you add a helper account that you remove when we are done, and
-  anything that is a payment (a renewal, a plan) you make yourself.
-  Usually the same day once the plan or domain is active again.</p>
+<h2>The causes and their fixes</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>Cause</th><th>How to confirm it</th><th>What to do</th></tr>
+  <tr><td>The domain expired</td><td>Look the domain up at <code>lookup.icann.org</code>: an expiry date in the past, or a status of <code>clientHold</code>, <code>redemptionPeriod</code> or <code>pendingDelete</code>. It also names the registrar (GoDaddy, Namecheap, Squarespace Domains...)</td><td>Log in at that registrar and renew it, then turn on auto-renew and update the card and the contact email. Right after expiry a normal renewal usually brings it back within an hour or a few. Wait longer and many registrars move it to a redemption period with a much higher fee, and after that the name can be released for anyone to buy. Exact days vary by registrar and by ending (.com, .co.uk...), so act the same day</td></tr>
+  <tr><td>Nameservers or DNS records changed</td><td>The domain is paid, but the ICANN lookup shows nameservers you do not recognise, or <code>dnschecker.org</code> shows no A record, or an address that is not your host's. Common after a hosting move, a registrar transfer, or a "connect your domain" step in a site builder</td><td>Set the nameservers back to your host's (your host's help pages list them), or put back the A record and the <code>www</code> CNAME the host gives you. Copy the MX records too, or email stops. Changes take from minutes to a day to reach everyone</td></tr>
+  <tr><td>Hosting account suspended</td><td>"Account Suspended" on every page, and an email from the host. Check the host's billing page and inbox, including spam</td><td>Pay the open invoice or update the card; the host usually switches it back on the same day. If the reason was malware, the host wants it cleaned first: see <a href="hacked-redirect-fix.html">the hacked-redirect guide</a></td></tr>
+  <tr><td>The server is down or overloaded</td><td>Times out for everyone (phone on mobile data too); the host's status page reports an incident, or the site fails every afternoon when traffic peaks</td><td>Check the host's status page and open a ticket with the exact time and error. If it keeps happening, the plan has run out of room or something is hammering it: see <a href="gateway-error-fix.html">the 502/504 guide</a> and <a href="too-many-requests-fix.html">the 429 guide</a></td></tr>
+  <tr><td>Only you are blocked</td><td>Fails on your office Wi-Fi, loads on mobile data. Often right after several wrong passwords: a security plugin (Wordfence, iThemes) or the host's firewall blocked your internet address</td><td>Ask the host to unblock your address (search "what is my IP" and send it), or unblock it in the security plugin from another connection. If nothing was blocked, restart the router, or on Windows run <code>ipconfig /flushdns</code></td></tr>
+</table>
+</div>
 
-  <p class="muted">The bakery in this example is a composite built for this
-  demo, not a real business, and the address shown is a documentation
-  address; the causes and fixes are the ones found on real small-business
-  websites that stopped loading in October 2026.
-  More before/after examples, and who I am: <a href="./">all demos</a>.</p>
-</main>
+<h2>Things that also stop when the domain lapses</h2>
+<ul>
+  <li><b>Email at the domain.</b> If your address is <code>you@yourbusiness.com</code>, it stops receiving with the website. Customers' emails bounce. Renewing fixes both.</li>
+  <li><b>Your Google listing's website link.</b> Google keeps showing it, and every click lands on the error. Once it is back, open the link from the listing to check.</li>
+  <li><b>Payment and booking links</b> that live on the site, and the confirmation emails they send.</li>
+</ul>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not buy a "new" domain with a different ending and start over. Every link, review site and printed card uses the old one. Renew it, even late.</li>
+  <li>Do not pay anyone who emails offering to "recover" or "restore" your expired domain. Renew only by logging in to the registrar the ICANN lookup names.</li>
+  <li>Do not change nameservers to "test". If you do not know the old values, write them down before touching anything; a wrong change can take a day to undo.</li>
+  <li>Do not let a suspension sit. Some hosts delete a suspended account's files after a few weeks.</li>
+</ul>
+<p class="note">Most of the time this is an expired card on a renewal, ten minutes' work once you know which login it is. If you would rather hand it over, or the DNS is a tangle of old hosts, that is what the box below is for. Related: <a href="database-connection-fix.html">"Error establishing a database connection"</a>, <a href="white-screen-fix.html">a blank white screen</a> and <a href="home-page-error-fix.html">a home page that says "Page not found"</a>.</p>
+</div>
+
+<script>
+(function () {
+  var bar = document.getElementById("site-bar"), body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="err-icon"></div><p class="err-title">This site can’t be reached</p>' +
+    '<div>Check if there is a typo in <b>riversideplumbing.example</b>.</div>' +
+    '<div class="err-code">DNS_PROBE_FINISHED_NXDOMAIN</div>';
+  var fixed = '<div class="mock-head">Riverside Plumbing</div><b>Leaks, drains, water heaters</b>' +
+    '<div class="mock-line"></div><div class="mock-line short"></div><span class="mock-btn">Call now</span>' +
+    '<div class="mock-line"></div><div class="mock-line short"></div>';
+  var logBefore = 'Site: plumber, WordPress on shared\n  hosting, email at the same domain\n\n' +
+    'Down on office Wi-Fi AND on mobile\n  data: down for everyone\n\nlookup.icann.org:\n  Expires 2026-09-30 (past)\n  Status: clientHold\n' +
+    '  Registrar: the one the owner\n  used in 2019\n\nCause: auto-renew failed on an\n  expired card; reminders went to\n  a former employee\'s address\n\n' +
+    '<span class="bad">Website down 9 days; email to\nthe shop bouncing the whole time.</span>';
+  var logAfter = 'Steps taken:\n1. Owner signed in at the registrar\n   the lookup named.\n' +
+    '2. Domain renewed for 2 years;\n   card and contact email updated;\n   auto-renew on.\n' +
+    '3. Status back to ok; site and\n   email answering within ~1 hour.\n' +
+    '4. Checked bare + www, the contact\n   form, a test email to the shop,\n   and the Google listing link.\n\n' +
+    '<span class="good">Site and email back; the renewal\nreminders now reach the owner.</span>';
+  function show(isFixed) {
+    bar.textContent = "riversideplumbing.example";
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does DNS_PROBE_FINISHED_NXDOMAIN mean for my website?","acceptedAnswer":{"@type":"Answer","text":"The internet has no address for your domain name. For a business site that used to work, the domain has usually expired or its nameservers or DNS records were changed. Look the domain up at lookup.icann.org: an expiry date in the past or a clientHold status means renew it at the registrar named there."}},
+{"@type":"Question","name":"My domain expired. Can I still get it back?","acceptedAnswer":{"@type":"Answer","text":"Usually yes, if you act quickly. Right after expiry most registrars let you renew normally and the site returns within hours. Later the domain may enter a redemption period with a higher fee, and after that it can be released for anyone to register. The exact days depend on the registrar and the domain ending, so renew the same day."}},
+{"@type":"Question","name":"Why does my website say Account Suspended?","acceptedAnswer":{"@type":"Answer","text":"Your hosting company switched the account off, most often for an unpaid invoice or an expired card, sometimes for malware or heavy resource use. Check the host's billing page and your email, including spam, pay or fix the stated reason, and ask them to reactivate it."}},
+{"@type":"Question","name":"Why does my site load on my phone but not on my office computer?","acceptedAnswer":{"@type":"Answer","text":"The site is up and your own connection is blocked or caching an old address. A security plugin or the host's firewall may have blocked your internet address after failed logins; ask the host or unblock it in the plugin. Otherwise restart the router or flush the DNS cache."}}
+]}
+</script>
 <script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
 <script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
-<!-- related-fixes --><nav id="related-fixes" aria-label="Other fix guides" style="max-width:720px;margin:32px auto 0;padding:0 16px;font:15px/1.5 system-ui,sans-serif;box-sizing:border-box"><h2 style="font-size:18px;margin:0 0 8px">Other website problems, and how each gets fixed</h2><ul style="margin:0;padding-left:20px"><li><a href="database-connection-fix.html">&quot;Error establishing a database connection&quot;</a></li><li><a href="syntax-error-fix.html">&quot;Parse error: syntax error, unexpected&quot; on a WordPress site: find the line and undo it</a></li><li><a href="outdated-php-fix.html">&quot;PHP Update Recommended&quot; and Site Health warnings on WordPress: what to fix and what to leave</a></li><li><a href="too-many-redirects-fix.html">&quot;Redirected you too many times&quot; (ERR_TOO_MANY_REDIRECTS)</a></li><li><a href="critical-error-fix.html">&quot;There has been a critical error on this website&quot;</a></li><li><a href="too-many-requests-fix.html">429 Too Many Requests on a WordPress site: find what is counting and fix it</a></li><li><a href="gateway-error-fix.html">502 Bad Gateway, 503 or 504 Gateway Timeout on a WordPress site: find the stuck part and fix it</a></li><li><a href="phone-layout-fix.html">A website that shrinks on a phone: the layout fix</a></li><li><a href="mixed-content-fix.html">Browsers block part of your page: the http-file fix</a></li><li><a href="mailto-form-fix.html">Contact form that fails on phones</a></li><li><a href="contact-form-fix.html">Contact form: broken, then fixed</a></li><li><a href="forged-email-fix.html">Email in your name can be forged: the DMARC fix</a></li><li><a href="google-map-fix.html">Google Map not showing on your website: &quot;This page can&#x27;t load Google Maps correctly&quot; and the blank grey box</a></li><li><a href="search-snippet-fix.html">Google shows the wrong words under your business name</a></li><li><a href="hacked-spam-fix.html">Hidden casino or pharmacy spam on your website: the cleanup</a></li><li><a href="mobile-header-fix.html">Landing page header: broken on mobile, then fixed</a></li><li><a href="dead-links-fix.html">Links on your site that lead to &quot;Page not found&quot;: the fix</a></li><li><a href="tap-to-call-fix.html">Phone number on your site that cannot be tapped to call</a></li><li><a href="plugin-conflict-fix.html">Plugin conflict: broken, then fixed</a></li><li><a href="shopify-theme-fix.html">Shopify add to cart: broken, then fixed</a></li><li><a href="phone-view-fix.html">Website shrunk on phones: before and after one line</a></li><li><a href="slow-photos-fix.html">Website slow on phones because of big photos</a></li><li><a href="woocommerce-checkout-fix.html">WooCommerce checkout not working: find why orders fail and fix it</a></li><li><a href="forbidden-403-fix.html">WordPress &quot;403 Forbidden&quot;: who is refusing you, and the fix for each</a></li><li><a href="internal-server-error-fix.html">WordPress &quot;500 Internal Server Error&quot;</a></li><li><a href="memory-exhausted-fix.html">WordPress &quot;Allowed memory size exhausted&quot;</a></li><li><a href="maintenance-mode-fix.html">WordPress &quot;Briefly unavailable for scheduled maintenance&quot;</a></li><li><a href="not-allowed-fix.html">WordPress &quot;Sorry, you are not allowed to access this page&quot;: get your admin back</a></li><li><a href="link-expired-fix.html">WordPress &quot;The link you followed has expired&quot;</a></li><li><a href="json-response-fix.html">WordPress &quot;Updating failed. The response is not a valid JSON response&quot;</a></li><li><a href="changes-not-showing-fix.html">WordPress changes not showing on the live site: find the cache and clear it</a></li><li><a href="images-not-showing-fix.html">WordPress images not showing: find why each photo is broken and fix it</a></li><li><a href="login-loop-fix.html">WordPress login page keeps refreshing: why you are sent back to the login and how it gets fixed</a></li><li><a href="emails-not-sending-fix.html">WordPress not sending emails: form, order and password-reset mail that never arrives</a></li><li><a href="pages-404-fix.html">WordPress pages show 404 but the home page works</a></li><li><a href="install-update-failed-fix.html">WordPress plugin or theme won&#x27;t install or update: what each error means</a></li><li><a href="sidebar-below-fix.html">WordPress sidebar showing below the content (or under the post): the causes and the fix</a></li><li><a href="not-on-google-fix.html">WordPress site not showing up on Google: find the cause and fix it</a></li><li><a href="hacked-redirect-fix.html">WordPress site redirects to a spam site, or Google says &quot;This site may be hacked&quot;</a></li><li><a href="not-secure-fix.html">WordPress site says &quot;Not Secure&quot; or &quot;Your connection is not private&quot;: find which and fix it</a></li><li><a href="slow-site-fix.html">WordPress site slow: find what is slowing it down and fix it</a></li><li><a href="white-screen-fix.html">WordPress white screen (a blank page)</a></li><li><a href="upload-error-fix.html">WordPress will not upload a photo: &quot;exceeds the maximum upload size&quot;, &quot;HTTP error&quot; and the rest</a></li><li><a href="wordpress-update-fix.html">WordPress years behind: updated without breaking it</a></li><li><a href="apex-address-fix.html">Your address without the www fails: one DNS record</a></li><li><a href="old-year-fix.html">Your website footer still shows an old year</a></li><li><a href="page-title-fix.html">Your website home page has no title</a></li><li><a href="home-page-error-fix.html">Your website home page says &quot;Page not found&quot;</a></li><li><a href="photo-descriptions-fix.html">Your website photos have no descriptions</a></li><li><a href="wordpress-version-fix.html">Your website shows which WordPress version it runs</a></li></ul><p style="margin:8px 0 0"><a href="site-check.html">Check your own site free</a> &middot; <a href="index.html">All guides</a></p></nav><!-- /related-fixes -->
 </body>
 </html>
