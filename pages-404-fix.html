@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress pages show 404 but the home page works: what it means and how it gets fixed</title>
+<meta name="description" content="Every WordPress page but the home page says Not Found: the address rules (permalinks, .htaccess) are missing. How to tell which half broke and fix it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/pages-404-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:22px 16px; min-height:190px; background:#fff; }
+.srv h3 { font-family: "Times New Roman", serif; font-size:26px; margin:0 0 10px; }
+.srv p { font-family: "Times New Roman", serif; margin:0 0 10px; }
+.ok h3 { margin:0 0 6px; font-size:18px; }
+.ok p { margin:0 0 12px; color:var(--muted); }
+.ok .btn { display:inline-block; background:var(--brand); color:#fff; padding:8px 14px; border-radius:8px; font-weight:600; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Your WordPress home page works, but every other page says "Not Found"</h1>
+<p class="lede">When the home page loads and About, Contact, Services and every blog post give a 404, your pages are almost never gone. WordPress turns a pretty address like <code>/contact/</code> into "show page 14" using a short set of address rules (your permalinks). The home page needs no rule, so it is the only thing left working when those rules go missing. It typically happens right after a move to a new host, a restore, an SSL or security plugin change, or a server update. Below is a rebuilt example (not a real client), then the safe order of steps.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What visitors see on /menu/</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">harborstreetbakery.example/menu/</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: which "Not Found" do you get?</h2>
+<p>This one look tells you which half is broken, before you touch anything.</p>
+<ul>
+  <li><b>Your own theme's "page not found" page</b> (your logo, menu and colours around it): the request reached WordPress, but WordPress has no rule for that address. Saving the permalinks again (step 2 below) almost always fixes this. If only one kind of page fails (only products, only events), the plugin that adds that kind of page has rules WordPress never stored.</li>
+  <li><b>A plain page in a serif font</b> that says "Not Found. The requested URL was not found on this server", or a bare "404 Not Found" with "nginx" under it: the web server answered by itself and never asked WordPress. The rules file the server reads (<code>.htaccess</code>) is missing or broken, or the server is set to ignore it. This is the usual one after a host move.</li>
+  <li><b>Quick test</b>: open <code>yoursite.com/?page_id=2</code> (or any page's ID, shown in the address bar when you edit it). If that address shows the page while <code>/about/</code> does not, the page is fine and only the address rules are missing.</li>
+</ul>
+
+<h2>The safe order of steps</h2>
+<ol>
+  <li><b>Back up the files and the database</b> (host's backup tool, or the file manager plus phpMyAdmin export) before changing anything. Also download a copy of <code>.htaccess</code> if it exists: it can hold your https redirect, caching and security rules too.</li>
+  <li><b>Save the permalinks again.</b> In the dashboard go to Settings, Permalinks, change nothing, and press Save Changes. WordPress rebuilds its address rules and, if it is allowed to, rewrites the WordPress block of <code>.htaccess</code>. Test an inner page in a private window. This alone fixes most cases.</li>
+  <li><b>If the page says it could not write <code>.htaccess</code></b>, or the file is still missing (it starts with a dot, so file managers and migration tools often hide or skip it): in the host's file manager, turn on "show hidden files", open or create <code>.htaccess</code> next to <code>wp-config.php</code>, and make sure it contains WordPress's standard block, unchanged:
+<pre># BEGIN WordPress
+&lt;IfModule mod_rewrite.c&gt;
+RewriteEngine On
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+&lt;/IfModule&gt;
+# END WordPress</pre>
+  If WordPress lives in a subfolder (for example <code>/shop/</code>), both the <code>RewriteBase</code> and the last line use that folder: <code>RewriteBase /shop/</code> and <code>RewriteRule . /shop/index.php [L]</code>. Keep any other rules already in the file, above or below this block.</li>
+  <li><b>If the file is right and you still get the plain server 404</b>, the server is ignoring it. On Apache that means address rewriting (<code>mod_rewrite</code>) is off or the site's settings do not allow <code>.htaccess</code> (<code>AllowOverride</code>). On nginx, which never reads <code>.htaccess</code>, the site's server block needs <code>try_files $uri $uri/ /index.php?$args;</code>. On shared hosting you cannot change either yourself: send the host's support exactly that sentence and they fix it in minutes.</li>
+  <li><b>If only one kind of page fails</b> (products, events, listings), switch the plugin that adds them off and on again, then save the permalinks once more. Also check that no page or category uses the same address as that section (a page called "shop" and a shop base of <code>/shop/</code> fight over it).</li>
+  <li><b>Test</b> the home page, three inner pages, a blog post, the contact or order form and the dashboard login in a private window, then purge any caching plugin and CDN so no visitor is still served the stored 404.</li>
+</ol>
+
+<h2>Common causes and what each one needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you find</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Theme's own "not found" page on every inner page</td><td>WordPress's stored address rules were lost (often after a restore or a plugin change)</td><td>Settings, Permalinks, Save Changes</td></tr>
+  <tr><td>Plain server "Not Found" right after a host move</td><td><code>.htaccess</code> was not copied (hidden dotfile)</td><td>Save permalinks, or recreate the file with the standard block</td></tr>
+  <tr><td><code>.htaccess</code> is there but a security or SSL plugin rewrote it</td><td>The WordPress block was overwritten or cut off</td><td>Put the standard block back; keep the plugin's own lines</td></tr>
+  <tr><td>File is right, plain 404 continues</td><td>Server ignores <code>.htaccess</code>, or it runs nginx</td><td>Host turns on <code>mod_rewrite</code> / <code>AllowOverride</code>, or adds <code>try_files</code></td></tr>
+  <tr><td>Site moved into or out of a subfolder</td><td><code>RewriteBase</code> and the last rule point at the old folder</td><td>Match both to the new folder, then save permalinks</td></tr>
+  <tr><td>Only products, events or one section fail</td><td>That plugin's rules never got stored, or a page took its address</td><td>Re-activate the plugin, rename the clashing page, save permalinks</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not switch permalinks to "Plain" to make the pages load. It works, but every address Google, your Google Business Profile and other sites link to changes to <code>?p=123</code>, and all of those links break instead.</li>
+  <li>Do not delete <code>.htaccess</code> and start over without a copy. On many sites it also holds the https redirect, the www rule, caching and blocked bots; losing those causes the next problem.</li>
+  <li>Do not recreate the pages. They are still in the database, and new copies get addresses like <code>/contact-2/</code> while the originals sit unreachable.</li>
+  <li>Do not paper over it with a redirect plugin sending every 404 to the home page. Visitors and Google stop seeing errors, but they also stop seeing your pages.</li>
+</ul>
+<p class="note">If you can reach the dashboard or the host's file manager, the steps above are usually enough. If the site has been showing "Not Found" to customers since a move and you need it right today, that is what the box below is for. Related: <a href="home-page-error-fix.html">your home page says "Page not found"</a> is the opposite case, and <a href="too-many-redirects-fix.html">"redirected you too many times"</a> is the other address problem a host move often brings.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="srv"><h3>Not Found</h3><p>The requested URL was not found on this server.</p></div>';
+  var fixed = '<div class="ok"><h3>Harbor Street Bakery: Menu</h3><p>Sourdough, morning buns and custom cakes. Order by 2pm for next-day pickup.</p>' +
+    '<span class="btn">Order a cake</span></div>';
+  var logBroken = 'Site moved to a new host on Monday;\nonly the home page has worked since.\n\n' +
+    'curl -sI https://harborstreetbakery.example/\n' +
+    'HTTP/1.1 200 OK\n\n' +
+    'curl -sI https://harborstreetbakery.example/menu/\n' +
+    'HTTP/1.1 404 Not Found\n(server page, not the theme\'s)\n\n' +
+    'curl -sI https://harborstreetbakery.example/?page_id=12\n' +
+    'HTTP/1.1 200 OK\n\n' +
+    'ls -a public_html | grep htaccess\n(nothing)\n\n' +
+    '<span class="bad">The pages are all there. The migration tool\nskipped the hidden .htaccess file, so the\nserver has no rule sending /menu/ to WordPress.</span>';
+  var logFixed = 'Steps taken:\n1. Backup of the files and the database.\n' +
+    '2. Confirmed the cause: /?page_id=12 loads,\n   /menu/ gives the server\'s own 404.\n' +
+    '3. Settings > Permalinks > Save Changes:\n   WordPress wrote a fresh .htaccess.\n' +
+    '4. Re-added the https redirect the old\n   host\'s file had above the WordPress block.\n' +
+    '5. Caching plugin and CDN purged.\n' +
+    '6. Home, menu, about, a blog post, the cake\n   order form and the login checked in a\n   private window.\n\n' +
+    'curl -sI https://harborstreetbakery.example/menu/\n' +
+    'HTTP/1.1 200 OK\n\n' +
+    '<span class="good">Every page back at its old address,\nno content recreated, no links broken.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why do my WordPress pages show 404 when the home page works?","acceptedAnswer":{"@type":"Answer","text":"WordPress needs address rules (permalinks) to turn an address like /contact/ into a page. The home page needs no rule, so it keeps working when those rules or the .htaccess file are missing, typically after a host move, a restore or a plugin rewriting .htaccess. The pages themselves are still in the database."}},
+{"@type":"Question","name":"How do I fix WordPress 404 errors on every page except the home page?","acceptedAnswer":{"@type":"Answer","text":"Go to Settings, Permalinks and press Save Changes without changing anything. If WordPress cannot write .htaccess, add WordPress's standard rewrite block to the .htaccess file next to wp-config.php. If the file is right and the server's own 404 continues, ask the host to enable mod_rewrite and AllowOverride, or add try_files on nginx."}},
+{"@type":"Question","name":"Should I switch WordPress permalinks to Plain to fix 404 errors?","acceptedAnswer":{"@type":"Answer","text":"No. Plain permalinks make the pages load again but change every address to ?p=123, so links from Google, your business profile and other sites break. Restore the address rules instead and keep the same permalink setting."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement("aside");d.id="hire-footer";d.className="hire-v3";d.style.cssText="max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box";var s=encodeURIComponent("Fix for my site: "+document.title);d.innerHTML="<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action=\"site-check.html\" method=\"get\" style=\"display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px\"><input name=\"url\" type=\"text\" inputmode=\"url\" placeholder=\"yourbusiness.com\" aria-label=\"Your website address\" required style=\"flex:1 1 180px;min-width:0;padding:8px;font:inherit\"><button style=\"padding:8px 14px;font:inherit\">Check my site free</button></form>Want it done for you? From $49 a fix, quoted before I start: <a href=\"https://www.fiverr.com/s_psaradellis\">order on Fiverr</a> or <a href=\"mailto:s.n.psaradellis@gmail.com?subject="+s+"\">email s.n.psaradellis@gmail.com</a>. <br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered.</small>";document.body.appendChild(d);}catch(e){}})();</script>
+</body>
+</html>
