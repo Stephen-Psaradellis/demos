@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress search returns nothing (or the wrong results): the check and the fix</title>
+<meta name="description" content="Your own site search says 'Nothing found' for a word that is on the page, or returns junk? The one-minute check, what WordPress search actually looks at, and the fix for each cause, WooCommerce included.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/site-search-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.sbox { display:flex; gap:8px; margin-bottom:12px; }
+.sbox span { flex:1 1 auto; min-width:0; border:1px solid #c3c4c7; border-radius:6px; padding:8px 10px; font-size:14px; overflow-wrap:anywhere; }
+.sbox b { border:1px solid #c3c4c7; border-radius:6px; padding:8px 12px; font-size:14px; background:#f6f7f7; }
+.res { border:1px solid #c3c4c7; border-radius:6px; overflow:hidden; font-size:13.5px; }
+.res .row { padding:9px 12px; border-bottom:1px solid #e4e4e7; overflow-wrap:anywhere; }
+.res .row:last-child { border-bottom:0; }
+.res .t { font-weight:600; color:var(--brand); display:block; }
+.res .k { color:var(--muted); font-size:12.5px; }
+.res .none { color:var(--bad); font-weight:600; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:#ff8a80; font-weight:600; }
+.good { color:#8fd19e; font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Your WordPress site search finds nothing (or the wrong things)</h1>
+<p class="lede">A customer types a word that is right there on your page and gets "Nothing found". Or the search returns an old blog post and none of your products. Most of the time WordPress is doing exactly what it was built to do: its own search only reads a few places, and everything else is invisible to it. Below is a rebuilt example (not a real client), the one-minute check, and the fix for each cause.</p>
+
+<div class="switch" role="group" aria-label="Show the site before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What a customer sees</h2>
+    <div class="sbox"><span>gluten free</span><b>Search</b></div>
+    <div class="res" id="results"></div>
+  </div>
+  <div class="panel">
+    <h2>What the check found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>What WordPress search actually reads</h2>
+<p>Out of the box it looks at the <b>title</b>, the <b>main content</b> and the <b>excerpt</b> of published posts, pages and products. It does <b>not</b> read custom fields (ACF and similar), product attributes, tags and categories, PDFs, or text a theme or page builder keeps outside the main content. It also has no idea which result matters most: matches in a title come first, then everything else by date.</p>
+
+<h2>The one-minute check</h2>
+<ol>
+  <li><b>Open a private (incognito) window</b> so you search the way a visitor does. Logged in, you also see private pages and drafts; visitors do not.</li>
+  <li><b>Search for the exact title of one of your pages.</b> If even that finds nothing, search itself is broken (rows 5-7 below). If titles work but words from the page do not, the words live somewhere search does not read (rows 1-3).</li>
+  <li><b>Type the search into the address bar:</b> <code>yoursite.com/?s=your+word</code>. If that works but the search box does not, the box on the page is the problem, not search.</li>
+  <li><b>Note what you searched.</b> Very short words (two letters, a model number like "5k") and very common words are often dropped by search plugins.</li>
+</ol>
+
+<h2>What causes it and the fix</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Why it happens</th><th>The fix</th></tr>
+  <tr><td>"Nothing found" for a word that is <b>clearly on the page</b>, titles still work</td><td>The word is in a custom field, a product attribute, a tag or a page-builder block that stores its text outside the main content. Default search never reads those</td><td>Install a search plugin that builds its own index, such as <b>Relevanssi</b> (free) or SearchWP, tick the custom fields and taxonomies (tags, categories, product attributes) you want included, then <b>build the index</b>. Search then reads those places and sorts by relevance</td></tr>
+  <tr><td>WooCommerce: a <b>product</b> does not show up in search</td><td>The product's <b>Catalog visibility</b> is "Shop only" or "Hidden", it is out of stock with <b>Hide out of stock items</b> turned on, or the customer searched a SKU, which is often not searched by default</td><td>On the product, check <b>Catalog visibility</b> (top right, next to Publish) is "Shop and search results". In <b>WooCommerce &gt; Settings &gt; Products &gt; Inventory</b>, check the out-of-stock setting. For SKUs, a search plugin that indexes the SKU field</td></tr>
+  <tr><td>Search works but the <b>best result is buried</b> under old posts</td><td>Apart from title matches, default search sorts by date, not by how well a page matches</td><td>A relevance search plugin (as above); most let you weight titles, products or a post type higher, or pin a page to a search term</td></tr>
+  <tr><td>A <b>search plugin is installed</b> but new pages and products never appear</td><td>Its index was built once and is not being updated, often after an import, a migration or a bulk edit that skipped the plugin</td><td>Rebuild the index from the plugin's settings page. If new posts keep going missing, check that WordPress's scheduled jobs run (see <a href="scheduled-post-fix.html">scheduled posts not publishing</a>; the same scheduler updates many indexes)</td></tr>
+  <tr><td>Short words or model numbers ("ac", "5k", "x2") <b>never match</b></td><td>Search plugins skip words under a minimum length (often 3 letters) and a list of common "stop words"</td><td>Lower the minimum word length in the plugin settings and rebuild the index. Keep the stop-word list for words like "the" and "and"</td></tr>
+  <tr><td>Searching a page title finds nothing at all, or <b>everyone sees the same results</b> whatever they type</td><td>A page cache (host, CDN or plugin) is ignoring the <code>?s=</code> part of the address and serving one saved copy, or a theme or plugin limits search to one post type</td><td>Exclude <code>?s=</code> from every cache layer, including Cloudflare rules that "ignore query string", then clear the caches. If only blog posts come back, turn plugins off one at a time on a staging copy; one of them is narrowing the search</td></tr>
+  <tr><td>The search box goes to a <b>404, the home page or the old domain</b></td><td>The form's address was typed by hand (a custom HTML block, a header builder) and points to an old domain, http, or a path that no longer exists</td><td>Replace it with the theme's own search block or widget, or fix the form's <code>action</code> to your current home address. Then re-save <b>Settings &gt; Permalinks</b> once</td></tr>
+  <tr><td>You see a result when logged in, <b>visitors do not</b></td><td>The page is <b>Private</b>, a draft, scheduled for later, or behind a membership plugin. Logged-in admins see those in search; visitors never do</td><td>Publish the page (or make it public in its Visibility setting). That is working as designed for anything you meant to keep private</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not stuff keywords into page titles to make search find them. It hurts how the page reads and how Google shows it, and it does not fix fields search cannot see.</li>
+  <li>Do not run two search plugins at once. They fight over the same results and one of them usually wins silently.</li>
+  <li>Do not judge search while logged in. You see private pages and drafts your visitors never will.</li>
+</ul>
+<p class="note">Turning on a search plugin takes a few minutes. Deciding which fields to index, getting WooCommerce attributes and SKUs found, and tracking down the cache or plugin that narrows every search is where most owners would rather have someone do it. If that is you, the box below is for that. Related: <a href="changes-not-showing-fix.html">changes not showing</a>, <a href="scheduled-post-fix.html">scheduled posts not publishing</a> and <a href="search-snippet-fix.html">the wrong text under your site in Google</a>.</p>
+</div>
+
+<script>
+(function () {
+  var results = document.getElementById("results"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  function rows(r) {
+    return r.map(function (x) {
+      return '<div class="row"><span class="t">' + x[0] + '</span><span class="k">' + x[1] + '</span></div>';
+    }).join("");
+  }
+  var logBefore = 'Site: bakery in Portland, WordPress 6.x\n  + WooCommerce, 38 products\n\n' +
+    'Search "gluten free":\n  default WordPress search\n  reads title, content, excerpt\n\n' +
+    'Where the words actually are:\n  product attribute Dietary:\n    Gluten-free (6 products)\n  ACF field "allergens" (6)\n  product tag gluten-free (6)\n\n' +
+    'Host cache: ignores ?s=,\n  serves one saved results page\n\n' +
+    '<span class="bad">6 gluten-free products, 0 found.\nThe one hit is a 2019 blog post.</span>';
+  var logAfter = 'Steps taken:\n1. Relevanssi installed;\n   index includes product\n   attributes, tags and the\n   allergens field.\n2. Index built: 38 products,\n   41 pages and posts.\n' +
+    '3. ?s= excluded from the host\n   cache, cache cleared.\n4. Products weighted above\n   blog posts.\n5. Test in a private window:\n   "gluten free" -> 6 products.\n\n' +
+    '<span class="good">Every gluten-free item found,\nproducts first.</span>';
+  function show(isFixed) {
+    results.innerHTML = isFixed
+      ? rows([['Gluten-free sourdough loaf', 'Product - $9.00 - Dietary: Gluten-free'], ['Gluten-free brownie box (6)', 'Product - $18.00 - Dietary: Gluten-free'], ['Almond orange cake', 'Product - $32.00 - allergens: nuts; gluten free'], ['+ 3 more products', 'Rebuilt example, not a real client.']])
+      : '<div class="row"><span class="t">Our 2019 holiday menu</span><span class="k">Post - mentions "free delivery"</span></div><div class="row"><span class="none">No gluten-free products found.</span> <span class="k">Rebuilt example, not a real client.</span></div>';
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does my WordPress search say nothing found for a word on my page?","acceptedAnswer":{"@type":"Answer","text":"Default WordPress search only reads the title, main content and excerpt. Words in custom fields, product attributes, tags or some page-builder blocks are invisible to it. A search plugin that builds its own index, such as Relevanssi, can include those places."}},
+{"@type":"Question","name":"Why doesn't a WooCommerce product show up in my site search?","acceptedAnswer":{"@type":"Answer","text":"Check the product's Catalog visibility is 'Shop and search results', and whether out-of-stock items are hidden in WooCommerce > Settings > Products > Inventory. SKUs are often not searched by default; a search plugin that indexes the SKU field fixes that."}},
+{"@type":"Question","name":"Why does my site search show the same results whatever I type?","acceptedAnswer":{"@type":"Answer","text":"A page cache, often at the host or CDN, is ignoring the ?s= part of the address and serving one saved page. Exclude ?s= from every cache layer and clear the caches."}},
+{"@type":"Question","name":"Why can I find a page in search but my visitors can't?","acceptedAnswer":{"@type":"Answer","text":"Logged-in admins also see private pages, drafts and scheduled posts in search. Visitors only see published, public pages. Test search in a private window."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
