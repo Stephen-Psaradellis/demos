@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WooCommerce checkout not working: find why orders fail and fix it</title>
+<meta name="description" content="WooCommerce checkout not working? Place order spins forever, no payment methods, 'session has expired' or 'no shipping options'. Find the cause in minutes: cache, payment keys, a plugin, the checkout block.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/woocommerce-checkout-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#f1f3f4; color:#202124; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; border-bottom:1px solid var(--line); }
+.site .body { padding:16px; min-height:190px; background:#fff; font-size:14px; }
+.notice { border-left:4px solid var(--bad); background:#fdecea; padding:8px 10px; margin:0 0 12px; }
+.notice.ok { border-color:var(--good); background:#e8f5ec; }
+.line { display:flex; justify-content:space-between; gap:8px; border-bottom:1px solid var(--line); padding:5px 0; }
+.btn { display:block; width:100%; margin-top:12px; padding:10px; border:0; border-radius:6px; background:#555; color:#fff; font:inherit; font-weight:600; text-align:center; }
+.btn.go { background:var(--brand); }
+.spin { display:inline-block; width:12px; height:12px; border:2px solid #fff; border-right-color:transparent; border-radius:50%; vertical-align:-1px; margin-right:6px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WooCommerce checkout not working</h1>
+<p class="lede">Customers fill the cart, reach the checkout, and the order never goes through: the Place order button spins forever, the page says the session has expired, there are no payment methods, or there are no shipping options. Every hour this lasts is lost sales, and often nobody tells you; the orders just stop. Below is a rebuilt example (not a real client), the five-minute way to find which part is failing, and the fix for each cause.</p>
+
+<div class="switch" role="group" aria-label="Show the checkout">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>The checkout a customer sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar"></div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: place a test order yourself (five minutes)</h2>
+<ol>
+  <li><b>Use a private browser window, logged out.</b> Logged-in admins often skip the cache and see a working checkout while customers do not. Add one cheap product, go to the checkout, and place the order. Do it once on a phone too.</li>
+  <li><b>Write down exactly what happens</b>: the wording of any red message, whether payment methods and shipping options appear, and whether the button spins and stops or spins forever.</li>
+  <li><b>Read WooCommerce's own logs.</b> In the dashboard, WooCommerce &gt; Status &gt; Logs. Look for a <code>fatal-errors</code> log and the log of your payment plugin (Stripe, PayPal, Square) for the time of your test. A line there usually names the cause.</li>
+  <li><b>If the button spins forever with no message</b>, open the browser's developer console (F12, Console tab) on the checkout and press Place order again. A red JavaScript error that names a plugin file is the plugin to look at first.</li>
+</ol>
+
+<h2>The causes, most common first</h2>
+<ol>
+  <li><b>The cart and checkout pages are being cached.</b> A cached checkout hands every visitor the same old security token, so orders fail with "Your session has expired" or the cart empties at checkout. Caching plugins usually exclude Cart, Checkout and My account by themselves, but a host's server cache or a CDN rule such as Cloudflare "Cache Everything" may not. Exclude those three pages (and the <code>woocommerce_items_in_cart</code> and <code>wp_woocommerce_session_</code> cookies) everywhere a cache runs, then clear all caches.</li>
+  <li><b>The payment plugin is in test mode, or its keys are wrong or expired.</b> Common after a move to a new domain, a new Stripe or PayPal account, or a plugin update that asks you to reconnect. Open WooCommerce &gt; Settings &gt; Payments, open the gateway, check test mode is off and the account shows as connected. For Stripe, also check the webhook in the Stripe dashboard points at the current address and shows recent successful deliveries.</li>
+  <li><b>A plugin or theme update broke the page.</b> If checkout stopped right after an update, that update is the first suspect. On a staging copy (or at a quiet hour, after a backup), switch every plugin off except WooCommerce and the payment plugin, test, then switch them back one at a time. The <a href="plugin-conflict-fix.html">plugin conflict guide</a> has the steps.</li>
+  <li><b>An older payment or checkout plugin does not work with the new checkout block.</b> Since WooCommerce 8.3 (November 2023) new stores get a block-based checkout, and some older gateways and checkout add-ons only work on the classic one; the payment method then simply does not show. Edit the Checkout page: the editor warns when an extension is not compatible. The quick fix is to update the plugin; if there is no compatible version, switch the page back to the classic checkout (the Checkout block has a "Switch to classic checkout" option, or replace the block with the <code>[woocommerce_checkout]</code> shortcode).</li>
+  <li><b>"There are no payment methods available."</b> No gateway is enabled for this order: check each is switched on, and whether one is limited to some countries, currencies or a minimum amount that this cart does not meet.</li>
+  <li><b>"No shipping options were found."</b> The customer's address is not in any shipping zone that has a method. In WooCommerce &gt; Settings &gt; Shipping, every zone you sell to needs at least one method, and the zone list is matched top to bottom, so a narrow zone with no methods above a wide one catches addresses first.</li>
+  <li><b>The site's security certificate or address changed.</b> A checkout on <code>http</code>, or one that loads parts from the old address, can be blocked by the browser or the payment provider. See the <a href="not-secure-fix.html">"Not secure" guide</a> and the <a href="mixed-content-fix.html">mixed content guide</a>.</li>
+  <li><b>A server error under the page.</b> If the logs show a fatal error or the checkout returns a 500, follow the <a href="critical-error-fix.html">critical error guide</a> and the <a href="internal-server-error-fix.html">500 error guide</a>; old PHP and a full memory limit are frequent causes (<a href="memory-exhausted-fix.html">memory guide</a>).</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Usual cause</th><th>Usual fix</th></tr>
+  <tr><td>"Your session has expired" or the cart empties at checkout</td><td>Cart or checkout page cached (host cache or CDN)</td><td>Exclude Cart, Checkout, My account and the Woo cookies from every cache</td></tr>
+  <tr><td>Place order spins forever, no message</td><td>A JavaScript error from a plugin or theme, or a server error</td><td>Console error names the file; plugin conflict test; read the fatal-errors log</td></tr>
+  <tr><td>"There was an error processing your order" after the card is entered</td><td>Payment keys wrong, test mode on, account not connected</td><td>Reconnect the gateway; test mode off; check the webhook</td></tr>
+  <tr><td>Card payment option missing, PayPal shows (or the reverse)</td><td>Gateway not compatible with the checkout block, or limited by country/currency</td><td>Update it, or switch to the classic checkout</td></tr>
+  <tr><td>"No shipping options were found for..."</td><td>Address not in a zone with a method</td><td>Add a method to each zone; check zone order</td></tr>
+  <tr><td>Order paid at Stripe or PayPal but shows "Pending payment" in WooCommerce</td><td>Webhook pointing at an old address or failing</td><td>Fix the webhook URL; resend the failed events</td></tr>
+  <tr><td>Works for you, fails for customers</td><td>You are logged in and skip the cache</td><td>Test logged out, in a private window, on a phone</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not switch payment providers in a panic. The fault is almost always a setting, a cache or one plugin; a new provider means new keys, new webhooks and the same underlying problem.</li>
+  <li>Do not test only while logged in as the admin. That is the one visitor the cache and many security rules treat differently.</li>
+  <li>Do not leave it until Monday. Put a short notice on the cart ("Having trouble at checkout? Call us on ...") while you fix it, so the orders that would have been lost can still come in.</li>
+</ul>
+<p class="note">Once the cause is known, most checkout faults are fixed in an hour or two, and a test order proves it. If you would rather hand it over, that is what the box below is for. Related: <a href="plugin-conflict-fix.html">a plugin that broke the site</a>, <a href="emails-not-sending-fix.html">order emails that never arrive</a> and <a href="slow-site-fix.html">a site that is slow to load</a>.</p>
+</div>
+
+<script>
+(function () {
+  var bar = document.getElementById("site-bar"), body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var lines = '<div class="line"><span>Sourdough loaf x 2</span><span>$16.00</span></div>' +
+    '<div class="line"><span>Local delivery</span><span>$5.00</span></div>' +
+    '<div class="line"><b>Total</b><b>$21.00</b></div>';
+  var broken = '<div class="notice">Your session has expired. <a href="#" onclick="return false">Return to shop</a></div>' + lines +
+    '<p class="bad" style="margin:10px 0 0">Card payment: not shown</p>' +
+    '<div class="btn"><span class="spin"></span>Processing...</div>';
+  var fixed = '<div class="notice ok">Thank you. Your order #1048 has been received.</div>' + lines +
+    '<p class="good" style="margin:10px 0 0">Paid by card (Stripe)</p>' +
+    '<div class="btn go">Order received</div>';
+  var logBroken = 'Test order, private window, logged out:\n  "Your session has expired"\n  card option missing\n\n' +
+    'Response headers on /checkout/:\n  cf-cache-status: HIT\n  (Cloudflare rule "Cache Everything"\n   on the whole site)\n\n' +
+    'Checkout page editor:\n  Checkout block. Notice: the card\n  plugin (v2.1, 2022) is not\n  compatible with this block.\n\n' +
+    'WooCommerce > Status > Logs:\n  no fatal errors.\n\n' +
+    '<span class="bad">Checkout served from cache, and the\ncard option cannot load. Orders: 0\nin 4 days.</span>';
+  var logFixed = 'Steps taken:\n1. Cloudflare: bypass cache for\n   /cart/*, /checkout/*, /my-account/*\n   and the Woo cookies. Purged.\n' +
+    '2. Card plugin updated to a version\n   that supports the checkout block.\n3. Test mode off, account reconnected,\n   webhook URL checked.\n' +
+    '4. Test order placed logged out,\n   on a phone, then refunded.\n\n' +
+    '<span class="good">Order #1048 went through and\narrived in WooCommerce as Processing.</span>';
+  function show(isFixed) {
+    bar.textContent = "lakesidebakery.example/checkout/";
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is my WooCommerce checkout not working?","acceptedAnswer":{"@type":"Answer","text":"The usual causes, most common first: the cart or checkout page is being cached by the host or a CDN, the payment plugin is in test mode or its keys are wrong, a plugin or theme update broke the page, an older payment plugin is not compatible with the block checkout, or no payment or shipping method applies to the order. A test order placed logged out in a private window, plus WooCommerce > Status > Logs, shows which."}},
+{"@type":"Question","name":"Why does WooCommerce say my session has expired at checkout?","acceptedAnswer":{"@type":"Answer","text":"Almost always because the checkout page is cached, so the visitor gets an old security token. Exclude the Cart, Checkout and My account pages and the WooCommerce session cookies from every cache that runs (caching plugin, host server cache, CDN such as Cloudflare), then clear the caches."}},
+{"@type":"Question","name":"Why is a payment method not showing on my WooCommerce checkout?","acceptedAnswer":{"@type":"Answer","text":"Either it is switched off or limited to some countries, currencies or order amounts, or it is an older plugin that does not work with the block-based checkout WooCommerce has used for new stores since version 8.3. Update the plugin, or switch the Checkout page back to the classic checkout."}},
+{"@type":"Question","name":"Why are orders paid at Stripe but stuck on Pending payment in WooCommerce?","acceptedAnswer":{"@type":"Answer","text":"The payment provider tells WooCommerce about the payment through a webhook. If the webhook points at an old address or keeps failing, the order never updates. Fix the webhook address in the Stripe or PayPal dashboard and resend the failed events."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
