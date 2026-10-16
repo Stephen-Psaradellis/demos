@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"Parse error: syntax error, unexpected" on a WordPress site: find the line and undo it</title>
+<meta name="description" content="WordPress site and admin both showing 'Parse error: syntax error, unexpected ... on line 42', or a critical error after you pasted a code snippet? The message names the file and the line. Open that file outside WordPress, fix or remove the pasted code, and the site is back in minutes.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/syntax-error-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#f1f3f4; color:#202124; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; border-bottom:1px solid var(--line); }
+.site .body { padding:16px; min-height:190px; background:#fff; font-size:14px; }
+.err { font-family: ui-monospace, Consolas, monospace; font-size:13px; padding:12px 4px; overflow-wrap:anywhere; }
+.err b { font-family: system-ui, sans-serif; }
+.product { border:1px solid var(--line); border-radius:6px; padding:10px; margin-top:10px; font-size:13px; }
+.btn { display:inline-block; background:#7a3e6b; color:#fff; border-radius:6px; padding:7px 14px; margin-top:8px; font-weight:600; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>"Parse error: syntax error, unexpected ..." on a WordPress site</h1>
+<p class="lede">PHP, the language WordPress is written in, reads a whole file before it runs any of it. One wrong character - a missing semicolon, an extra brace, a curly quote pasted from a blog - and it refuses the entire file. If that file is your theme's <code>functions.php</code>, <code>wp-config.php</code> or an active plugin, every page and the admin go down together. The good news: the message names the exact file and line, and nothing in your content is lost. Below is a rebuilt example (not a real client), how to read the message, and the fix for each cause.</p>
+
+<div class="switch" role="group" aria-label="Show the page">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>The shop page</h2>
+    <div class="site">
+      <div class="bar" id="site-bar"></div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: read the message, then open the file outside WordPress</h2>
+<ol>
+  <li><b>Find the full message.</b> Depending on your host's settings you see either the raw line - <code>Parse error: syntax error, unexpected ... in /home/.../functions.php on line 42</code> - or WordPress's own "There has been a critical error on this website" page. In the second case the full line is in your host's error log (cPanel: Metrics &gt; Errors, or <code>error_log</code> in the site's folder), and the site's admin email usually has a message titled "Your Site is Experiencing a Technical Issue" that names it too.</li>
+  <li><b>Note the file and the line.</b> The path tells you whose code it is: <code>wp-content/themes/...</code> is the theme, <code>wp-content/plugins/name/...</code> is that plugin, <code>wp-config.php</code> is the site's settings file. The line number is where PHP gave up, so the mistake is on that line or just above it - a missing <code>;</code> or <code>)</code> at the end of the previous line is reported on the next one.</li>
+  <li><b>Open the file with the host's file manager or SFTP, not the WordPress editor.</b> The admin is down too, and the WordPress theme editor would not let you save the broken code anyway (since 2017 it tests a PHP change and rolls it back if it breaks the site). Download a copy of the file before you change anything.</li>
+</ol>
+
+<h2>The causes, most common first</h2>
+<ol>
+  <li><b>A code snippet pasted with a mistake.</b> A tutorial says "add this to your functions.php", and something got lost on the way: the last line, a closing brace, or the straight quotes, which a blog or a word processor turned into curly ones (&lsquo; &rsquo; &ldquo; &rdquo;). PHP only accepts straight quotes. Remove the block you pasted and save - the site comes back at once. Then add it again with straight quotes and every line ending in <code>;</code>, or better, through the free Code Snippets plugin, which checks the code before it runs and switches off a snippet that breaks.</li>
+  <li><b>An edit made through the host's file manager or FTP.</b> These save whatever you type, with no check. That is often how a snippet the WordPress editor refused still reached the site. Same fix: restore the copy you downloaded, or undo the last change.</li>
+  <li><b>A second <code>&lt;?php</code> or some HTML pasted inside PHP.</b> The message says <code>unexpected '&lt;'</code> or <code>unexpected token "&lt;"</code>. A snippet that starts with <code>&lt;?php</code> was pasted into a file that is already PHP. Delete the extra opening tag.</li>
+  <li><b>A plugin or theme that needs a newer PHP than your server runs.</b> Right after updating or uploading one, the error points inside that plugin's own folder and says something like <code>unexpected '?'</code>, <code>unexpected '=&gt;'</code> or <code>unexpected '|'</code>. The plugin is written for PHP 8 and the host still runs 7.x. Rename the plugin's folder in <code>wp-content/plugins</code> to switch it off, then either move the site's PHP version up in the host panel (after a backup, and after checking your other plugins support it) or install the plugin version that matches your PHP.</li>
+  <li><b>A file only half uploaded.</b> <code>unexpected end of file</code> in a plugin or theme file nobody edited usually means an FTP upload or an update was cut off. Delete that plugin's folder and install a fresh copy; your settings live in the database and stay.</li>
+  <li><b>An edit to <code>wp-config.php</code>.</b> Adding a line such as a memory limit or debug setting with a curly quote or no semicolon takes the whole site down, including the recovery email. Restore the copy, or retype the new line with straight quotes and a <code>;</code> at the end.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What the message says</th><th>Usual cause</th><th>Usual fix</th></tr>
+  <tr><td><code>unexpected identifier</code> or <code>unexpected variable</code> at the start of a line</td><td>Missing <code>;</code> or <code>)</code> at the end of the line before</td><td>Add it on the previous line</td></tr>
+  <tr><td><code>unexpected identifier</code> next to words in quotes, or a curly quote in the message</td><td>Curly quotes from a blog or a document</td><td>Retype the quotes as straight <code>'</code> or <code>"</code></td></tr>
+  <tr><td><code>unexpected '}'</code> or <code>unexpected end of file</code> in a file you edited</td><td>A brace missing or one too many</td><td>Remove the pasted block, or match every <code>{</code> with a <code>}</code></td></tr>
+  <tr><td><code>unexpected '&lt;'</code></td><td>A second <code>&lt;?php</code> or HTML inside PHP</td><td>Delete the extra opening tag</td></tr>
+  <tr><td><code>unexpected '?'</code>, <code>'=&gt;'</code> or <code>'|'</code> inside a plugin you just updated</td><td>Plugin needs a newer PHP</td><td>Rename its folder; raise PHP or use the matching version</td></tr>
+  <tr><td><code>unexpected end of file</code> in a file nobody touched</td><td>Upload or update cut off</td><td>Fresh copy of that plugin or theme</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not reinstall WordPress or restore last month's backup. The broken line is in one theme, plugin or settings file; a reinstall does not touch it, and a restore throws away this month's orders and posts.</li>
+  <li>Do not delete the whole <code>functions.php</code> to make the error go away. The theme needs the rest of that file; remove only what was added.</li>
+  <li>Do not paste snippets into the parent theme's <code>functions.php</code> at all. The next theme update wipes them out. Use a child theme or a snippets plugin.</li>
+</ul>
+<p class="note">Once you have the file and the line, the fix is usually one character or one pasted block. If you would rather hand it over, or you cannot get into the host's file manager, that is what the box below is for. Related: <a href="critical-error-fix.html">"There has been a critical error"</a>, <a href="white-screen-fix.html">a blank white screen</a>, <a href="internal-server-error-fix.html">500 Internal Server Error</a> and <a href="plugin-conflict-fix.html">a plugin conflict</a>.</p>
+</div>
+
+<script>
+(function () {
+  var bar = document.getElementById("site-bar"), body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="err"><b>Parse error</b>: syntax error, unexpected identifier "today’" in /home/bloomstem/public_html/wp-content/themes/petal-child/functions.php on line <b>42</b></div>' +
+    '<p class="note" style="margin:0">Every page, the shop and wp-admin show only this line.</p>';
+  var fixed = '<b>Spring tulip bouquet</b><div class="product">12 stems, wrapped, local delivery<br>$48.00<br><span class="btn">Order today</span></div>' +
+    '<p class="note" style="margin:12px 0 0">Shop and admin both load; the new button text shows.</p>';
+  var logBroken = 'File: themes/petal-child/functions.php\nLine 42:\n  return ‘Order today’;\n\n' +
+    'History: snippet copied from a blog\n  to rename "Add to cart". The theme\n  editor rolled it back, so it was\n  pasted again in the host\'s file\n  manager, which saves anything.\n\n' +
+    '<span class="bad">Curly quotes are not quotes to PHP:\nthe whole file is refused, and with\nit every page and the admin.</span>';
+  var logFixed = 'Steps taken:\n1. functions.php downloaded as a\n   copy first.\n' +
+    '2. Line 42 quotes retyped straight:\n   return \'Order today\';\n3. Site and admin back at once.\n' +
+    '4. Snippet moved into the Code\n   Snippets plugin, removed from\n   functions.php.\n\n' +
+    '<span class="good">Nothing lost; orders open again\nabout 10 minutes after the fix\nstarted.</span>';
+  function show(isFixed) {
+    bar.textContent = "bloomandstem.example/shop/";
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"How do I fix 'Parse error: syntax error, unexpected' in WordPress?","acceptedAnswer":{"@type":"Answer","text":"The message names a file and a line number. Open that file with your host's file manager or SFTP (the WordPress admin is down too), download a copy, and look at that line and the one above it. If you just pasted a code snippet, remove it and save; the site comes back at once. Then add it again with straight quotes and a semicolon at the end of each line, or through a snippets plugin that checks code before running it."}},
+{"@type":"Question","name":"Why does the error point to a line I did not change?","acceptedAnswer":{"@type":"Answer","text":"PHP reports the line where it gave up, not where the mistake is. A missing semicolon or closing bracket at the end of one line is reported on the next line, and a missing closing brace is often reported at the very end of the file as 'unexpected end of file'."}},
+{"@type":"Question","name":"Can curly quotes break a WordPress site?","acceptedAnswer":{"@type":"Answer","text":"Yes. PHP only accepts straight quotes. Code copied from a blog post or a word processor often has curly quotes, which PHP reads as part of a word, so it stops with 'syntax error, unexpected identifier' and refuses the whole file. Retype the quotes as straight ones."}},
+{"@type":"Question","name":"I got a syntax error right after updating a plugin. What happened?","acceptedAnswer":{"@type":"Answer","text":"If the error points inside that plugin's folder and mentions characters such as '?', '=>' or '|', the new version was written for a newer PHP than your server runs. Rename the plugin's folder in wp-content/plugins to switch it off and get the site back, then raise the site's PHP version in your host panel after a backup, or install the plugin version that matches your PHP."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
