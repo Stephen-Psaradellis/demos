@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress images not showing: find why each photo is broken and fix it</title>
+<meta name="description" content="Photos showing as blank boxes or broken icons on your WordPress site? One check on a broken image tells you why: missing file, old address after a move, blocked folder, lazy-load script, CDN or WebP rewrite. Then fix it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/images-not-showing-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#f1f3f4; color:#202124; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; border-bottom:1px solid var(--line); }
+.site .body { padding:16px; min-height:190px; background:#fff; font-size:14px; }
+.tiles { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:8px; }
+.tile { aspect-ratio: 1 / 1; border-radius:6px; display:flex; align-items:flex-end; padding:6px; font-size:12px; min-width:0; overflow:hidden; }
+.tile.ok { color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.6); }
+.tile.broken { background:#f3f3f3; border:1px dashed #bbb; color:var(--muted); align-items:center; justify-content:center; text-align:center; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress images not showing</h1>
+<p class="lede">Your gallery shows grey boxes, a small broken-picture icon, or nothing at all where the photos used to be. The photos are usually still fine; what breaks is the address the page asks for, or the step that is meant to load it. One check on a single broken image tells you which. Below is a rebuilt example (not a real client), that check, and the fix for each answer.</p>
+
+<div class="switch" role="group" aria-label="Show the page">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>The gallery page</h2>
+    <div class="site">
+      <div class="bar" id="site-bar"></div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: ask one broken image what went wrong</h2>
+<ol>
+  <li><b>Right-click the broken image and choose "Open image in new tab"</b> (or "Copy image address" and paste it). Read the address before anything else: does it start with your current domain and <code>https://</code>? An old domain, a staging address or <code>http://</code> is already the answer.</li>
+  <li><b>See what the new tab shows.</b> A "Not Found" page means the file is not at that address. "Forbidden" or "Access denied" means it is there but the server refuses it. If the photo opens fine on its own, the file is OK and something on the page is stopping it (the last two causes).</li>
+  <li><b>For more detail, press F12</b>, open the Network tab, choose the Img filter and reload. Each picture is a row with a status: <code>404</code> (missing), <code>403</code> (refused), <code>(blocked:mixed-content)</code>, or a red row naming another site. Pictures with no row at all were never requested, which points at a lazy-load script. The Console tab names any script error.</li>
+</ol>
+
+<h2>The causes, most common first</h2>
+<ol>
+  <li><b>The site moved and the image addresses did not.</b> After a move to a new host, a new domain or <code>https://</code>, posts still point at the old addresses, because WordPress stores the full address of every image inside the post text. Fix it with a search-and-replace across the database (the Better Search Replace plugin, or <code>wp search-replace</code> if you have WP-CLI): old address to new, a dry run first, and a backup before the real run. Do not edit the database by hand with a text editor: some values carry their own length, and a plain edit breaks them.</li>
+  <li><b>The files never arrived.</b> A move or a restore copied the database but not the <code>wp-content/uploads</code> folder, or only part of it. The Media Library still lists the photos (that list lives in the database) but every one is a 404. Copy the uploads folder again from the old host or the backup, keeping the year and month folders as they were.</li>
+  <li><b>Upper and lower case changed.</b> Windows servers treat <code>Shop.JPG</code> and <code>shop.jpg</code> as the same file; Linux servers do not. After a move from one to the other, the images whose names differ only in case go missing. Rename the files to match the addresses, or update the addresses.</li>
+  <li><b>The server refuses the folder.</b> A 403 on every image usually means the permissions on <code>wp-content/uploads</code> were changed (a security plugin, a host move, a hand-made change). Folders should normally be 755 and files 644; many hosts have a "fix permissions" button. A stray <code>.htaccess</code> inside uploads that denies everything does the same.</li>
+  <li><b>Hotlink protection blocks your own site.</b> cPanel's Hotlink Protection and Cloudflare's Hotlink Protection stop other sites showing your pictures, but a list that names only <code>example.com</code> also blocks <code>www.example.com</code>, your CDN, or Google Images. Add every version of your own address, or switch it off to test.</li>
+  <li><b>A CDN or image plugin rewrote the addresses.</b> Jetpack's Site Accelerator, Smush, Optimole, ShortPixel, EWWW and similar plugins swap image addresses for their own server, or for a <code>.webp</code> copy. If that copy was never made, or the account ran out, the swapped image fails while the original file is fine. Switch the plugin's CDN or WebP rewrite off; if the photos come back, regenerate its copies or contact the plugin's support.</li>
+  <li><b>Lazy loading never finished.</b> To save data, the page holds the real address in a spare slot (<code>data-src</code>) and a script moves it in when you scroll. If that script is broken, delayed or loaded twice (the theme, a speed plugin and WordPress all lazy-load), the swap never happens and you see placeholders. Turn off lazy loading and any "delay JavaScript" option in your speed plugin, one at a time, until the photos appear; keep one lazy loader, not two.</li>
+  <li><b>Thumbnails were never made.</b> The full-size photo exists, but the smaller sizes the theme asks for do not (a new theme, a failed upload, or a server with no image library). The Regenerate Thumbnails plugin rebuilds them. If new uploads still come out without sizes, ask the host whether the GD or Imagick PHP extension is installed.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Usual cause</th><th>Usual fix</th></tr>
+  <tr><td>Image address names an old domain, a staging site or <code>http://</code></td><td>Site moved, addresses did not</td><td>Database search-and-replace, dry run and backup first</td></tr>
+  <tr><td>Image opens on its own as "Not Found"</td><td>Uploads not copied, or a name changed case</td><td>Copy <code>wp-content/uploads</code> again; match file names</td></tr>
+  <tr><td>"Forbidden" or 403 on every image</td><td>Folder permissions or hotlink protection</td><td>Folders 755, files 644; add your own addresses to the hotlink list</td></tr>
+  <tr><td>Address ends in <code>.webp</code> or points at a plugin's server</td><td>CDN or WebP rewrite with no copy behind it</td><td>Switch the rewrite off, regenerate the copies</td></tr>
+  <tr><td>Grey placeholders, no image requests in the Network tab</td><td>Lazy-load script broken or doubled</td><td>One lazy loader; switch off "delay JavaScript" to test</td></tr>
+  <tr><td>Full-size photo fine, small versions missing</td><td>Thumbnails never generated</td><td>Regenerate Thumbnails; ask the host about GD or Imagick</td></tr>
+  <tr><td>Photos fine for you, broken for visitors</td><td>An old cached page with old addresses</td><td>Clear the caches, then check in a private window</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not upload every photo again. It makes a second copy of each, leaves the old broken addresses in the posts, and takes hours. Find the cause first; it is usually one setting.</li>
+  <li>Do not set the uploads folder to 777 to make a 403 go away. It lets anything on the server write there, which is how hacked sites end up with scripts in their uploads.</li>
+  <li>Do not run a search-and-replace without a backup and a dry run. One wrong replace across the whole database is much harder to undo than a broken gallery.</li>
+</ul>
+<p class="note">Once one broken image has told you its status, the fix is usually minutes. If you would rather hand it over, or the photos still will not show, that is what the box below is for. Related: <a href="upload-error-fix.html">a photo that will not upload</a>, <a href="slow-photos-fix.html">a site slow because of big photos</a> and <a href="changes-not-showing-fix.html">changes that do not show on the live site</a> (an old cached page can carry old image addresses too).</p>
+</div>
+
+<script>
+(function () {
+  var bar = document.getElementById("site-bar"), body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var shots = [["Wedding arch", "#8e5a7a"], ["Peonies", "#c4708a"], ["Sunflowers", "#c79a2a"], ["Shop front", "#4f7a5a"], ["Table runner", "#6a7fa3"], ["Bouquet", "#a3566a"]];
+  function tiles(okFn) {
+    var h = '<div class="tiles">';
+    for (var i = 0; i < shots.length; i++) {
+      h += okFn(i) ? '<div class="tile ok" style="background:' + shots[i][1] + '">' + shots[i][0] + '</div>'
+                   : '<div class="tile broken" aria-label="broken image">&#9638;<br>' + shots[i][0] + '</div>';
+    }
+    return h + '</div>';
+  }
+  var broken = tiles(function (i) { return i === 3; }) + '<p class="note" style="margin:12px 0 0">Moved to a new host last week. Five of six gallery photos are blank.</p>';
+  var fixed = tiles(function () { return true; }) + '<p class="note" style="margin:12px 0 0">All six photos load, on a phone and logged out.</p>';
+  var logBroken = 'Broken image, opened in a new tab:\n  http://old-host.example/wp-content/\n  uploads/2025/05/Peonies.JPG\n  -> site no longer exists\n\n' +
+    'Network tab, Img filter:\n  4 rows: old domain, no answer\n  1 row: 404 .../Bouquet.JPG\n  (file on the server is bouquet.jpg)\n  shop-front.jpg: 200 (uploaded\n  after the move)\n\n' +
+    'Media Library: 212 photos listed,\nuploads folder present\n\n' +
+    '<span class="bad">The posts still name the old host,\nand one file changed case on the\nway to a Linux server.</span>';
+  var logFixed = 'Steps taken:\n1. Full backup.\n2. Search-and-replace, dry run:\n   http://old-host.example\n   -> https://bloomandstem.example\n   38 rows would change. Ran it.\n' +
+    '3. Bouquet.JPG renamed to match\n   the address in the post.\n4. Caches cleared; checked in a\n   private window on a phone.\n\n' +
+    '<span class="good">Network tab: 6 of 6 images 200,\nall from https://bloomandstem.example</span>';
+  function show(isFixed) {
+    bar.textContent = "bloomandstem.example/gallery/";
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why are my WordPress images not showing?","acceptedAnswer":{"@type":"Answer","text":"Usually the address the page asks for is wrong or refused, not the photo itself: image addresses still pointing at an old domain or http:// after a move, upload files that were never copied, folder permissions or hotlink protection returning 403, a CDN or WebP plugin pointing at a copy that does not exist, or a lazy-load script that never swaps the real image in. Open one broken image in a new tab and read its address and status to tell which."}},
+{"@type":"Question","name":"Why did my WordPress images break after moving to a new host or domain?","acceptedAnswer":{"@type":"Answer","text":"WordPress stores the full address of each image inside the post text, so after a move the posts still point at the old domain. Run a database search-and-replace from the old address to the new one (Better Search Replace or wp search-replace), with a backup and a dry run first. If the images return Not Found, the wp-content/uploads folder was not copied in full."}},
+{"@type":"Question","name":"Why do my WordPress images show in the Media Library but not on the site?","acceptedAnswer":{"@type":"Answer","text":"The Media Library list lives in the database, so it can list photos whose files are missing, or whose addresses in the pages are out of date. Open a broken image in a new tab: Not Found means the file is missing or its name changed case; an old domain means the addresses need a search-and-replace; a page that loads the photo fine on its own points at a lazy-load or CDN plugin."}},
+{"@type":"Question","name":"What permissions should the WordPress uploads folder have?","acceptedAnswer":{"@type":"Answer","text":"Normally 755 for folders and 644 for files. A 403 Forbidden on every image usually means these were changed, or an .htaccess file inside uploads denies access. Do not use 777: it lets anything on the server write to the folder."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
