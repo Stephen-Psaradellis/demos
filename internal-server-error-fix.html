@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress "500 Internal Server Error": what it means and how it gets fixed</title>
+<meta name="description" content="WordPress site showing 500 Internal Server Error? Read the error log, then check .htaccess, plugins, the PHP version and file permissions, in that order.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/internal-server-error-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.err { font-family: "Times New Roman", serif; font-size:15px; color:#000; }
+.err h3 { margin:0 0 10px; font-size:24px; }
+.err p { margin:0 0 10px; }
+.home h3 { margin:0 0 8px; font-size:20px; }
+.home p { margin:0 0 10px; color:#333; font-size:14.5px; }
+.cta { display:inline-block; background:#1d5fa8; color:#fff; padding:8px 14px; border-radius:6px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress site shows "500 Internal Server Error"</h1>
+<p class="lede">You may see "Internal Server Error: The server encountered an internal error or misconfiguration and was unable to complete your request", or in Chrome "This page isn't working ... HTTP ERROR 500". Either way the web server started on the page and gave up, and the screen does not say why. The reason is written down in one place, the server's error log, and on a WordPress site it is nearly always one of five things: a bad line in <code>.htaccess</code>, a plugin or theme that crashes, a PHP version change, wrong file permissions, or a typo in <code>wp-config.php</code>. Below is a rebuilt example (not a real client), then how to find which one it is and fix it without making things worse.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What a visitor sees on every page</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">lakesideautorepair.example</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Find out which kind it is (five minutes)</h2>
+<ol>
+  <li><b>Read the error log first.</b> In the host's control panel: cPanel has Metrics, Errors; other hosts have "Logs" or "Error log" under the site. A file named <code>error_log</code> may also sit in the site's main folder or in <code>wp-admin</code>. The newest line at the time you loaded the page usually names the cause outright: a file and line number, "Invalid command", "Permission denied", or "PHP Fatal error".</li>
+  <li><b>Note what changed just before.</b> A plugin or theme update, a line pasted from a tutorial, a host "upgrade" email about PHP, a site move, a security plugin's "harden" button. The last change is the first suspect.</li>
+  <li><b>Is it every page, or only some?</b> Every page including <code>/wp-admin</code> points at <code>.htaccess</code>, <code>wp-config.php</code> or the PHP version. Only the front of the site, or only one form or button, points at a plugin or the theme.</li>
+  <li><b>Is it really 500?</b> 502, 503 and 504 are different: the server was too busy or too slow to answer, which is a hosting capacity question, not a broken file. A white page with no words is the <a href="white-screen-fix.html">white screen</a>, and "There has been a critical error on this website" is <a href="critical-error-fix.html">its own guide</a>.</li>
+</ol>
+
+<h2>The fixes, in the order to try them</h2>
+<ol>
+  <li><b>Back up first.</b> Take a backup in the host's panel, or at least download <code>.htaccess</code> and <code>wp-config.php</code> before touching them. Every step below is a rename or a small edit you can undo.</li>
+  <li><b>Test <code>.htaccess</code>.</b> In the file manager (turn on "show hidden files"), rename <code>.htaccess</code> in the site's main folder to <code>.htaccess-old</code> and reload the home page. If the home page comes back, the file was the cause. Log in, go to Settings, Permalinks and click Save without changing anything: WordPress writes a fresh, correct file. Then look in the old file for what was added; lines starting <code>php_value</code> or <code>php_flag</code> are the usual culprit, because many servers do not allow them there. If inner pages now 404, see the <a href="pages-404-fix.html">pages 404 guide</a>.</li>
+  <li><b>Test the plugins.</b> Rename <code>wp-content/plugins</code> to <code>plugins-off</code>. If the site loads, rename it back, then switch plugins on one at a time (or rename single plugin folders) until the error returns; the <a href="plugin-conflict-fix.html">plugin conflict guide</a> has the method. Renaming keeps every plugin's settings.</li>
+  <li><b>Test the theme.</b> Rename the active theme's folder in <code>wp-content/themes</code>; WordPress falls back to a default theme such as Twenty Twenty-Four if one is installed. Site loads: the theme needs an update or its last edit undone.</li>
+  <li><b>Check the PHP version.</b> In the host panel ("Select PHP Version" or "PHP settings"), see if it changed recently. An old theme or plugin may crash on PHP 8. Go back one version to get the site up today, then update or replace what crashed, because old PHP versions stop getting security fixes.</li>
+  <li><b>Check permissions</b> if the log says "Permission denied" or the site was just moved. Folders should be 755 and files 644, with <code>wp-config.php</code> 640 or 600 if the host recommends it. Many hosts refuse to run files set to 777 and answer with a 500.</li>
+  <li><b>Check <code>wp-config.php</code></b> if it was edited: a missing semicolon or quote there breaks every page. Compare with the copy you downloaded, or with <code>wp-config-sample.php</code> for the shape of each line.</li>
+  <li><b>Still broken with all of that ruled out?</b> Re-upload fresh <code>wp-admin</code> and <code>wp-includes</code> folders from the same WordPress version (this does not touch <code>wp-content</code>, so posts, photos and settings stay), or send the host the exact log line and the time: some causes, like a server module or a memory cap on the plan, only the host can change.</li>
+  <li><b>Test</b>: the home page, two inner pages, the contact form and the dashboard, logged out and on your phone. Check the error log again the next day.</li>
+</ol>
+
+<h2>What the log says, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you find</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>"Invalid command 'php_value'" or "php_flag" in the log</td><td>A line in <code>.htaccess</code> this server does not allow</td><td>Remove the line; set the value in the host's PHP settings instead</td></tr>
+  <tr><td>Site back after renaming <code>.htaccess</code></td><td>A broken or foreign rule in that file</td><td>Settings, Permalinks, Save to write a clean one</td></tr>
+  <tr><td>"PHP Fatal error" with a path in <code>wp-content/plugins/<i>name</i></code></td><td>That plugin crashed</td><td>Update it, or switch it off and replace it</td></tr>
+  <tr><td>Started after the host changed PHP</td><td>Old code that does not run on the new version</td><td>One version back for today, then update the plugin or theme</td></tr>
+  <tr><td>"Permission denied", or right after a site move</td><td>Files the server will not read or run</td><td>Folders 755, files 644, nothing at 777</td></tr>
+  <tr><td>"syntax error" in <code>wp-config.php</code></td><td>A typo in the last edit</td><td>Restore the downloaded copy, redo the edit carefully</td></tr>
+  <tr><td>"Allowed memory size ... exhausted"</td><td>The page ran out of memory</td><td>See the <a href="memory-exhausted-fix.html">memory guide</a></td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not set files or folders to 777 to "fix permissions". Many hosts then refuse to run them, and it lets anything on the server change your site.</li>
+  <li>Do not delete <code>.htaccess</code> or a plugin folder. Rename them: the site's rules and the plugin's settings stay recoverable.</li>
+  <li>Do not reinstall WordPress over the whole site or restore an old backup first. You may lose recent posts or orders, and the log line usually points at a two-minute fix.</li>
+  <li>Do not leave the site on an old PHP version for good after rolling back. It is a way to get the site up today, not the fix.</li>
+</ul>
+<p class="note">Most 500 errors are one of steps 2 to 4 and the site is back in fifteen minutes. If the log says something you cannot place, or the host is pointing at your site while you are pointing at the host, that is what the box below is for. Related: <a href="too-many-redirects-fix.html">"redirected you too many times"</a> and <a href="link-expired-fix.html">"the link you followed has expired"</a>, whose upload-size fix is where many of these <code>php_value</code> lines come from.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="err"><h3>Internal Server Error</h3><p>The server encountered an internal error or misconfiguration and was unable to complete your request.</p>' +
+    '<p>More information about this error may be available in the server error log.</p></div>';
+  var fixed = '<div class="home"><h3>Lakeside Auto Repair</h3><p>Brakes, tires and inspections. Same-day appointments most weekdays.</p>' +
+    '<span class="cta">Book a service</span></div>';
+  var logBroken = 'Owner followed a blog tutorial to allow\nbigger theme uploads and pasted two lines\ninto .htaccess. Every page, including\n/wp-admin, now shows a 500.\n\n' +
+    'cPanel > Metrics > Errors, newest line:\n.htaccess: Invalid command \'php_value\',\nperhaps misspelled or defined by a\nmodule not included in the server\nconfiguration\n\n' +
+    'Host runs PHP as FPM, so php_value is\nnot allowed in .htaccess here.\n\n' +
+    '<span class="bad">One pasted line takes down the whole\nsite; WordPress and the plugins are fine.</span>';
+  var logFixed = 'Steps taken:\n1. Backup; .htaccess downloaded.\n' +
+    '2. .htaccess renamed .htaccess-old:\n   home page loads again.\n' +
+    '3. Settings > Permalinks > Save: fresh\n   .htaccess, inner pages load.\n' +
+    '4. The upload size set where this host\n   allows it: MultiPHP INI Editor,\n   upload_max_filesize + post_max_size.\n' +
+    '5. Home, two inner pages, contact form\n   and dashboard checked, logged out and\n   on a phone; error log quiet next day.\n\n' +
+    '<span class="good">Site back, bigger uploads working, and\nnothing deleted or reinstalled.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What causes a 500 Internal Server Error on a WordPress site?","acceptedAnswer":{"@type":"Answer","text":"The web server started the page and gave up. On WordPress it is nearly always a bad line in .htaccess (often php_value or php_flag), a plugin or theme that crashes, a PHP version change, wrong file permissions, or a typo in wp-config.php. The server's error log names which one."}},
+{"@type":"Question","name":"How do I fix a WordPress 500 error caused by .htaccess?","acceptedAnswer":{"@type":"Answer","text":"Rename .htaccess to .htaccess-old in the file manager and reload the site. If it comes back, log in and go to Settings > Permalinks and click Save to write a fresh file, then move any setting you need (such as upload size) to the host's PHP settings instead."}},
+{"@type":"Question","name":"Should I set WordPress file permissions to 777 to fix a 500 error?","acceptedAnswer":{"@type":"Answer","text":"No. Folders should be 755 and files 644. Many hosts refuse to run files set to 777 and answer with a 500, and 777 lets anything on the server change the site."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
