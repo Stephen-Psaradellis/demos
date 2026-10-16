@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mobile menu (hamburger) not opening on WordPress: the causes and the fix</title>
+<meta name="description" content="Tap the menu button on a phone and nothing happens? Usually a speed plugin delaying the menu's script, or something invisible on top of the button. Find which.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/mobile-menu-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.phone { max-width:260px; margin:0 auto; border:8px solid #222; border-radius:26px; overflow:hidden; background:#fff; }
+.phone .bar { background:#f1f3f4; color:#202124; font-size:11.5px; padding:6px 10px; overflow-wrap:anywhere; border-bottom:1px solid var(--line); }
+.phone .body { min-height:260px; font-size:12.5px; position:relative; }
+.mock-head { display:flex; justify-content:space-between; align-items:center; background:#1d3b2a; color:#fff; font-weight:700; padding:10px 12px; }
+.burger { width:30px; height:26px; border:1px solid rgba(255,255,255,.6); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:16px; line-height:1; }
+.burger.dead { outline:2px solid var(--bad); outline-offset:2px; }
+.mock-menu { background:#24492f; padding:4px 12px 8px; }
+.mock-menu div { color:#fff; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.18); }
+.mock-body { padding:10px 12px; }
+.mock-line { height:7px; background:#e3e3e3; border-radius:4px; margin:6px 0; }
+.mock-line.short { width:60%; }
+.tap { color:var(--bad); font-size:11.5px; margin-top:8px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Mobile menu (hamburger) not opening</h1>
+<p class="lede">On a computer the menu is fine. On a phone you tap the three-line button and nothing happens, or it needs two or three taps, or it opens and the links cannot be tapped. Most visitors arrive on a phone, so for them the site has no menu at all. The usual causes are a speed plugin holding back the script that opens the menu, an invisible layer sitting on top of the button, or a menu that was never assigned to the mobile spot. Below is a rebuilt example (not a real client), how to tell which cause you have, and the fix for each.</p>
+
+<div class="switch" role="group" aria-label="Show the page">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>The site on a phone, after one tap on the menu</h2>
+    <div class="phone">
+      <div class="bar" id="site-bar"></div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First: three quick checks</h2>
+<ol>
+  <li><b>Test logged out.</b> Open the site in a private window on the phone (or on a computer with the browser's phone view: in Chrome press F12, then Ctrl+Shift+M). Logged-in pages often skip the cache and the speed plugin, so the menu can work for you and fail for every visitor.</li>
+  <li><b>Look for a red error.</b> In that phone view, open the Console tab and tap the button. A red line such as <code>jQuery is not defined</code>, <code>$ is not a function</code> or <code>Cannot read properties of null</code> means the menu's script did not run (the first three rows below).</li>
+  <li><b>No error at all?</b> Then the script may be fine and something is covering the button, or the menu is empty (the later rows). The console line in the next section tells you which.</li>
+</ol>
+
+<h2>The causes and their fixes</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>Cause</th><th>How to spot it</th><th>What to do</th></tr>
+  <tr><td>A speed plugin delays or defers the menu's script</td><td>The menu broke after a speed setting was turned on: "Delay JavaScript execution" or "Load JavaScript deferred" (WP Rocket), "Load JS Deferred" set to Delayed (LiteSpeed Cache), "Aggregate JS-files" (Autoptimize), or a similar option in SiteGround Optimizer or Perfmatters. Typical sign: the first tap does nothing, the second works</td><td>Turn that one setting off, clear the cache and test. If the menu works again, turn it back on and add the theme's navigation script and jQuery to that setting's exclusion box (WP Rocket and LiteSpeed both have one; the file is usually named <code>navigation.js</code>, <code>menu.js</code> or the theme's <code>main.js</code>)</td></tr>
+  <tr><td>An older theme's script after a WordPress update</td><td>The console shows <code>$ is not a function</code> or a "jQuery.fn..." warning, and the menu stopped after a WordPress update. Older themes used jQuery functions that newer jQuery versions removed</td><td>Update the theme. If it has no update, the "Enable jQuery Migrate Helper" plugin restores the old functions while you plan a theme change; it is a stopgap, not a fix</td></tr>
+  <tr><td>A plugin conflict</td><td>A red error names a plugin's file, or the menu broke right after a plugin was installed or updated (menu, slider, popup and chat plugins most often)</td><td>Use the Health Check &amp; Troubleshooting plugin's troubleshooting mode, which turns plugins off for you only, and switch them back on one at a time. More in <a href="plugin-conflict-fix.html">the plugin conflict guide</a></td></tr>
+  <tr><td>Something invisible on top of the button</td><td>No console error, and the button does not even change colour when tapped. A sticky header, a cookie banner's empty container, a chat widget's frame or a slider can sit over it</td><td>Find the layer with the line in the next section. Then give the header a higher layer than it (in Appearance &gt; Customize &gt; Additional CSS, for example <code>.site-header { position:relative; z-index:999; }</code> with your theme's header class), or shrink the widget's container</td></tr>
+  <tr><td>The menu opens, but behind the page or off screen</td><td>The button changes to an X but no links appear, or the page goes dark with nothing on it</td><td>Same layer problem in reverse: the opened menu needs a higher <code>z-index</code> than the content in front of it. Also check the menu's text is not white on a white panel (theme Customizer &gt; Colors or Header)</td></tr>
+  <tr><td>No menu assigned to the mobile spot</td><td>The button is there but opens an empty panel, or there is no button at all</td><td>Classic themes: Appearance &gt; Menus &gt; Manage Locations, and give the "Mobile" or "Primary" location a menu. Block themes: in Appearance &gt; Editor open the header, select the Navigation block and set "Overlay menu" to Mobile. Page builders (Elementor, Divi) set this in the header template's menu widget</td></tr>
+  <tr><td>Sub-menus cannot be opened</td><td>The menu opens, but tapping "Services" just closes it or goes to <code>#</code> instead of showing the pages under it</td><td>On a phone there is no hover, so the theme needs a small arrow next to each parent item. Turn on the theme's "sub-menu toggle" option if it has one, or give the parent item a real page of its own so the tap leads somewhere useful</td></tr>
+</table>
+</div>
+
+<h2>Finding what covers the button</h2>
+<p>In the browser's phone view, open the Console tab, paste this line and press Enter. It prints the menu button, then whatever element is really on top at its centre. If the second one is not the button (or an icon inside it), that element is blocking the tap:</p>
+<pre>var b=document.querySelector('.menu-toggle, .hamburger, .elementor-menu-toggle, button[aria-controls], [class*=menu-toggle]');var r=b.getBoundingClientRect();console.log(b, document.elementFromPoint(r.left+r.width/2, r.top+r.height/2))</pre>
+<p class="note">If it prints an error about <code>null</code>, your theme's button has another name: right-click the button, choose Inspect, and put its class in place of the list at the start.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not turn the speed plugin off for good to get the menu back. Exclude the one script instead; the rest of the speed gain stays.</li>
+  <li>Do not edit the theme's own files. The next update replaces them. Use Additional CSS, the plugin's exclusion box or a child theme.</li>
+  <li>Do not test only while logged in. Visitors get the cached, optimised page; you may not.</li>
+</ul>
+<p class="note">For most sites this is one setting or one CSS line, a few minutes' work once you know which cause it is. If you would rather hand it over, that is what the box below is for. Related: <a href="phone-view-fix.html">a site that is hard to use on a phone</a>, <a href="changes-not-showing-fix.html">changes not showing</a>, and <a href="sidebar-below-fix.html">a sidebar that dropped below the post</a>.</p>
+</div>
+
+<script>
+(function () {
+  var bar = document.getElementById("site-bar"), body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var lines = '<div class="mock-line"></div><div class="mock-line"></div><div class="mock-line short"></div>';
+  var menu = '<div class="mock-menu"><div>Services</div><div>Prices</div><div>Book a visit</div><div>Contact</div></div>';
+  function page(fixed) {
+    return '<div class="mock-head">Greenway Lawn Care<span class="burger' + (fixed ? '' : ' dead') + '" aria-hidden="true">' + (fixed ? '&times;' : '&#9776;') + '</span></div>' +
+      (fixed ? menu : '') +
+      '<div class="mock-body"><b>Weekly mowing from $35</b>' + lines + (fixed ? '' : '<div class="tap">Tapped: nothing opened.</div>') + lines + '</div>';
+  }
+  var logBefore = 'Site: lawn care, WordPress,\n  classic theme, WP Rocket\n\nLogged in: menu works\nPrivate window on a phone:\n  first tap does nothing\n\n' +
+    'Console:\n  Uncaught ReferenceError:\n  jQuery is not defined\n  (navigation.js)\n\nCause: "Delay JavaScript execution"\n  turned on last week; it held\n  back jQuery and the menu script\n\n' +
+    '<span class="bad">Phone visitors (most of them)\nhad no menu, so no Prices or\nBook a visit page.</span>';
+  var logAfter = 'Steps taken:\n1. Delay JS switched off: menu\n   worked, so that was the cause.\n' +
+    '2. Switched back on, with jquery\n   and navigation.js added to\n   its exclusion box.\n3. Cache cleared.\n' +
+    '4. Tested logged out on an iPhone\n   and an Android: one tap opens,\n   every link works.\n\n' +
+    '<span class="good">Menu opens on the first tap;\nthe page is still delayed-JS fast.</span>';
+  function show(isFixed) {
+    bar.textContent = "greenwaylawn.example";
+    body.innerHTML = page(isFixed);
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is my WordPress mobile menu not opening?","acceptedAnswer":{"@type":"Answer","text":"Most often a speed plugin is delaying or deferring the script that opens the menu (settings such as Delay JavaScript execution or Load JS deferred), something invisible such as a cookie banner or chat widget is covering the button, or no menu is assigned to the theme's mobile location. Test in a private window on a phone and look for a red error in the browser console to tell which."}},
+{"@type":"Question","name":"Why does my hamburger menu need two taps to open?","acceptedAnswer":{"@type":"Answer","text":"A speed setting that delays JavaScript until the visitor interacts is the usual cause: the first tap only loads the scripts, the second one opens the menu. Exclude jQuery and the theme's navigation script from that setting, then clear the cache."}},
+{"@type":"Question","name":"Why does the mobile menu work when I am logged in but not for visitors?","acceptedAnswer":{"@type":"Answer","text":"Logged-in users usually get an uncached page that the speed plugin does not optimise, so the menu script loads normally. Visitors get the cached, optimised page. Always test in a private window, then exclude the menu's script from the optimisation that breaks it."}},
+{"@type":"Question","name":"Why can't I open sub-menus on my phone?","acceptedAnswer":{"@type":"Answer","text":"Phones have no hover, so sub-menus need a tap target such as a small arrow beside the parent item. Turn on the theme's sub-menu toggle option if it has one, or link the parent item to a real page so the tap leads somewhere useful."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
