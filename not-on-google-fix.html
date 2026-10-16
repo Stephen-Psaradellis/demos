@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress site not showing up on Google: find the cause and fix it</title>
+<meta name="description" content="Your WordPress site does not appear on Google, even for your own business name? The usual causes (a ticked box, a noindex tag, robots.txt, a coming-soon page) and how to fix each one.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/not-on-google-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#f1f3f4; color:#202124; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; border-bottom:1px solid var(--line); }
+.site .body { padding:16px; min-height:190px; background:#fff; }
+.page { font-family:system-ui,sans-serif; font-size:14px; color:#3c434a; }
+.page p { margin:0 0 8px; overflow-wrap:anywhere; }
+.serp { border-top:1px solid var(--line); padding:8px 0; overflow-wrap:anywhere; }
+.serp:first-child { border-top:0; }
+.serp .u { color:#1e7a3c; font-size:12.5px; }
+.serp .t { color:#1a0dab; }
+.serp .d { color:#4d5156; font-size:13px; }
+.empty { color:#4d5156; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress site not showing up on Google</h1>
+<p class="lede">You search Google for your own business name and your website is not there, even though it has been live for weeks. Or it used to show and has vanished. Most of the time this is not about "SEO" at all: something on the site is telling Google to stay away, and a single setting or file is usually the cause. Below is a rebuilt example (not a real client), then the four checks that find the cause in about ten minutes, and the fix for each one.</p>
+
+<div class="switch" role="group" aria-label="Show the search">
+  <button type="button" id="b-broken" aria-pressed="true">Hidden</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Google search for the site</h2>
+    <div class="site">
+      <div class="bar" id="site-bar"></div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Not found, or just not first?</h2>
+<p>Two different problems look alike. Search Google for <code>site:yourdomain.com</code> (no space after the colon). If that shows your pages, Google has them and the problem is ranking: you are listed, just below other businesses for the words you tried. If it shows nothing, or only one or two old pages, Google has been kept out or has not found the site, and the checks below apply. For a local business, also check that you have a Google Business Profile: the map listing often shows above every website.</p>
+
+<h2>The four checks (about ten minutes)</h2>
+<ol>
+  <li><b>The "discourage" box.</b> In the dashboard, Settings, Reading, look at "Search engine visibility". If "Discourage search engines from indexing this site" is ticked, WordPress tells Google to leave every page out. Developers tick it while building the site and it is very often still ticked after launch. Many hosts tick it on a fresh install or a staging copy that is later made live.</li>
+  <li><b>A noindex tag on the page.</b> Open your home page, right-click, View page source, and search (Ctrl+F) for <code>noindex</code>. A line such as <code>&lt;meta name='robots' content='noindex, nofollow'&gt;</code> keeps that page out of Google. It comes from the box above, from an SEO plugin (Yoast, Rank Math, All in One SEO each have a per-page and a per-content-type "show in search results" setting), or from a coming-soon or maintenance plugin.</li>
+  <li><b>robots.txt.</b> Open <code>yourdomain.com/robots.txt</code> in a browser. The line <code>Disallow: /</code> under <code>User-agent: *</code> blocks every crawler from every page. It is usually a real file left over from a staging copy, uploaded by hand or written by a plugin.</li>
+  <li><b>Google's own answer.</b> In Google Search Console (free, verify the site once), paste your home page address into URL Inspection. It says in plain words why a page is not indexed: "Excluded by 'noindex' tag", "Blocked by robots.txt", "Page with redirect", "Alternate page with proper canonical tag", "Discovered - currently not indexed" or "Crawled - currently not indexed". The Pages report lists the same reasons for the whole site.</li>
+</ol>
+
+<h2>The fix for each cause</h2>
+<ol>
+  <li><b>Box ticked:</b> untick it in Settings, Reading and save. On a site with a caching plugin or host cache, clear the cache afterwards, or Google keeps seeing the old tag.</li>
+  <li><b>noindex from a plugin:</b> in the SEO plugin, open the home page and your main pages, set "Allow search engines to show this page in search results" (or the plugin's version of it) to Yes, and check the plugin's global settings for Pages and Posts. Turn off any coming-soon or maintenance mode: those return a "come back later" answer to Google too.</li>
+  <li><b>robots.txt:</b> edit or delete the file (by SFTP, the host's file manager, or the SEO plugin's file editor). Removing <code>Disallow: /</code> is enough; an empty file or no file means "everything allowed". Add a line naming your sitemap.</li>
+  <li><b>Wrong canonical or redirect:</b> if URL Inspection says the page points somewhere else, look for an old or staging address in Settings, General (both site addresses), in the SEO plugin's canonical field, and in redirects. Pages should point at themselves on the live address.</li>
+  <li><b>Then tell Google.</b> In Search Console, submit your sitemap under Sitemaps (WordPress has one at <code>/wp-sitemap.xml</code>; Yoast and Rank Math use <code>/sitemap_index.xml</code>), then use URL Inspection, Request indexing on the home page and two or three main pages. Pages usually start appearing within a few days to two weeks.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Usual cause</th><th>Usual fix</th></tr>
+  <tr><td><code>site:</code> search shows nothing, site live for weeks</td><td>"Discourage search engines" ticked, or a noindex tag</td><td>Untick, clear cache, request indexing</td></tr>
+  <tr><td>Search Console: "Excluded by 'noindex' tag"</td><td>The box, an SEO plugin setting, or a coming-soon plugin</td><td>Find the source in page source, switch it off</td></tr>
+  <tr><td>Search Console: "Blocked by robots.txt"</td><td><code>Disallow: /</code> left from a staging copy</td><td>Edit or delete robots.txt, add the sitemap line</td></tr>
+  <tr><td>Results show "No information is available for this page"</td><td>robots.txt blocks the page Google already knew about</td><td>Same as above, then request indexing</td></tr>
+  <tr><td>Disappeared after a redesign or a move to a new host</td><td>New site went live with the staging settings</td><td>All four checks, then sitemap and request indexing</td></tr>
+  <tr><td>"Alternate page with proper canonical tag" on your main pages</td><td>Canonical points at an old or staging address</td><td>Fix site addresses and the SEO plugin's canonical</td></tr>
+  <tr><td>"Discovered/Crawled - currently not indexed"</td><td>New site, few links to it, thin pages</td><td>Sitemap, Business Profile link, real text on each page; give it time</td></tr>
+  <tr><td>Indexed but Google shows spam titles</td><td>The site was broken into</td><td><a href="hacked-redirect-fix.html">Hacked site clean-up</a></td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not buy an "SEO package" before running the four checks. No amount of keywords helps a site that tells Google to stay out.</li>
+  <li>Do not press Request indexing over and over. Once is enough; repeating it does not move you up the queue.</li>
+  <li>Do not copy a staging site to live without re-checking the box and robots.txt afterwards. That is how most sites end up here.</li>
+</ul>
+<p class="note">The fix itself is usually a few minutes once the cause is known; finding it is the part people get stuck on. If you would rather hand it over, that is what the box below is for. Related: <a href="search-snippet-fix.html">Google shows the wrong words under your name</a>, <a href="page-title-fix.html">a home page with no title</a> and <a href="maintenance-mode-fix.html">a site stuck in maintenance mode</a>.</p>
+</div>
+
+<script>
+(function () {
+  var bar = document.getElementById("site-bar"), body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="page"><p class="empty">Your search - <b>site:harborplumbing.example</b> - did not match any documents.</p>' +
+    '<p class="empty">Suggestions: make sure all words are spelled correctly.</p></div>';
+  var fixed = '<div class="page">' +
+    '<div class="serp"><div class="u">harborplumbing.example</div><div class="t">Harbor Plumbing | Emergency plumber, drains and water heaters</div><div class="d">Same-day repairs, upfront prices, open 7 days. Call or book online.</div></div>' +
+    '<div class="serp"><div class="u">harborplumbing.example/water-heaters/</div><div class="t">Water heater repair and replacement | Harbor Plumbing</div></div>' +
+    '<div class="serp"><div class="u">harborplumbing.example/contact/</div><div class="t">Contact Harbor Plumbing | Book a visit</div></div></div>';
+  var logBroken = 'Live since: 7 weeks ago (redesign).\n\n' +
+    'site:harborplumbing.example\n  0 results.\n\n' +
+    'Settings, Reading:\n  "Discourage search engines" TICKED\n  (copied over from the staging site).\n\n' +
+    'Home page source:\n  <meta name=\'robots\'\n    content=\'noindex, nofollow\'>\n\n' +
+    'robots.txt:\n  User-agent: *\n  Disallow: /\n\n' +
+    'Search Console, URL Inspection:\n  "Blocked by robots.txt"\n\n' +
+    '<span class="bad">Every page tells Google to stay away.\nNo amount of SEO would show it.</span>';
+  var logFixed = 'Steps taken:\n1. Unticked "Discourage search engines".\n2. Host cache cleared; page source\n   no longer has noindex.\n' +
+    '3. robots.txt: Disallow line removed,\n   sitemap line added.\n4. Sitemap submitted in Search Console.\n' +
+    '5. Request indexing: home, services,\n   contact.\n\n' +
+    'Day 4: site: search shows 9 pages.\nDay 9: first for "harbor plumbing".\n\n' +
+    '<span class="good">The site is in Google, and the business\nname search finds it first.</span>';
+  function show(isFixed) {
+    bar.textContent = "google.com/search?q=site:harborplumbing.example";
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken.replace(/</g, "&lt;").replace(/&lt;span class="bad">/, '<span class="bad">').replace(/&lt;\/span>/, "</span>");
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is my WordPress site not showing up on Google?","acceptedAnswer":{"@type":"Answer","text":"Most often something on the site tells Google to stay out: the 'Discourage search engines from indexing this site' box in Settings, Reading is still ticked, an SEO or coming-soon plugin adds a noindex tag, or robots.txt says Disallow: /. Search Google for site:yourdomain.com and use URL Inspection in Google Search Console to see the exact reason."}},
+{"@type":"Question","name":"How do I check if my WordPress site is blocking Google?","acceptedAnswer":{"@type":"Answer","text":"Check Settings, Reading for the 'Discourage search engines' box, view your home page source and search for 'noindex', open yourdomain.com/robots.txt and look for 'Disallow: /', and inspect the home page in Google Search Console, which names the reason in plain words."}},
+{"@type":"Question","name":"How long does it take for Google to show my site after fixing it?","acceptedAnswer":{"@type":"Answer","text":"After removing the block, submit your sitemap and request indexing for the home page in Google Search Console. Pages usually start appearing within a few days to two weeks. Requesting indexing repeatedly does not speed it up."}},
+{"@type":"Question","name":"My site disappeared from Google after a redesign. Why?","acceptedAnswer":{"@type":"Answer","text":"The new site was probably built on a staging copy with search engines discouraged or a robots.txt that blocks everything, and those settings went live with it. Untick the box, fix robots.txt and any wrong canonical address, clear the cache, then resubmit the sitemap."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have this problem?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
