@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"Warning:" or "Deprecated:" text at the top of your WordPress site: the check and the fix</title>
+<meta name="description" content="Lines like 'Warning: Cannot modify header information' or 'Deprecated:' across the top of your site. What each one means and the fix, in plain steps.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/php-warnings-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid #dadce0; border-radius:8px; font-size:14px; overflow:hidden; overflow-wrap:anywhere; }
+.site .warn { background:#fff; color:#000; font-family: Georgia, serif; font-size:12.5px; padding:8px 10px; border-bottom:1px solid #eee; }
+.site .hdr { background:#7a4b2a; color:#fff; padding:12px 14px; font-weight:600; }
+.site .body { padding:14px; }
+.site .body p { margin:0 0 6px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:#ff8a80; font-weight:600; }
+.good { color:#8fd19e; font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+pre.cfg { background:#eef0f3; color:var(--ink); margin:8px 0; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>"Warning:" or "Deprecated:" lines across the top of your WordPress site</h1>
+<p class="lede">Your pages open with a block of technical text such as <code>Warning: Cannot modify header information - headers already sent</code> or <code>Deprecated: Creation of dynamic property</code>, often with a file path from your server. Visitors read it as a broken or hacked site, it can push your layout down, and some of these messages also stop logins and forms from working. Below is a rebuilt example (not a real client), the two-minute check, and the fix for each cause.</p>
+
+<div class="switch" role="group" aria-label="Show the site before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What a visitor sees</h2>
+    <div id="screen"></div>
+  </div>
+  <div class="panel">
+    <h2>What the check found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>The two-minute check</h2>
+<ol>
+  <li><b>Read the first word and the file path.</b> <code>Deprecated</code> and <code>Notice</code> are harmless old-code messages that should never be shown to visitors. <code>Warning</code> means something did not run as intended. The path after <code>in /.../wp-content/plugins/<i>name</i>/</code> or <code>/themes/<i>name</i>/</code> tells you which plugin or theme sent it.</li>
+  <li><b>Open <code>wp-config.php</code></b> (hosting File Manager or SFTP, in the folder that holds <code>wp-admin</code>) and look for <code>WP_DEBUG</code>. If it says <code>true</code> on your live site, that alone explains most cases (row 1).</li>
+  <li><b>Check what changed.</b> Did your host move you to a newer PHP version, or did you update a plugin or theme the day the messages appeared? Your hosting panel shows the PHP version (row 2).</li>
+  <li><b>Try to log in and send your contact form.</b> If the message says <code>headers already sent</code>, logins, redirects and form confirmations often fail too (row 3).</li>
+</ol>
+
+<h2>What causes it and the fix</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Why it happens</th><th>The fix</th></tr>
+  <tr><td>Many <code>Deprecated</code>, <code>Notice</code> or <code>Warning</code> lines on every page</td><td>Debug mode was left on in <code>wp-config.php</code> (often after someone troubleshot the site), so WordPress prints every message to visitors</td><td>Keep the messages, but send them to a private log instead of the page. In <code>wp-config.php</code>, above the line that says "That's all, stop editing":<pre class="cfg">define( 'WP_DEBUG', true );
+define( 'WP_DEBUG_LOG', true );
+define( 'WP_DEBUG_DISPLAY', false );
+@ini_set( 'display_errors', 0 );</pre>Or set <code>WP_DEBUG</code> to <code>false</code> once nothing needs investigating. Change the existing lines; do not add a second copy</td></tr>
+  <tr><td><code>Deprecated: ...</code> or <code>Warning: Undefined array key</code> appeared after your host upgraded PHP</td><td>An older plugin or theme was written for an earlier PHP version. Newer PHP reports code it is retiring</td><td>Update the plugin or theme named in the path. If it has had no update in a year or more, replace it with a maintained one. Do not move back to an old PHP version for long: it stops getting security fixes (see <a href="outdated-php-fix.html">outdated PHP</a>)</td></tr>
+  <tr><td><code>Warning: Cannot modify header information - headers already sent by (output started at /.../<i>file</i>.php:<i>NN</i>)</code></td><td>Something printed text before WordPress sent the page headers. Usually a blank line or space before <code>&lt;?php</code> or after a closing <code>?&gt;</code> in the file named after "output started at", often <code>functions.php</code> or <code>wp-config.php</code> edited by hand. It also stops logins and redirects</td><td>Open the file and line it names. Delete any blank line or space before the first <code>&lt;?php</code>, and remove a closing <code>?&gt;</code> at the very end of the file (it is not needed). Save it as UTF-8 <b>without BOM</b>; some editors add an invisible mark that counts as output. If the file is a plugin's, update or replace the plugin</td></tr>
+  <tr><td>Warnings show even though <code>WP_DEBUG</code> is <code>false</code></td><td>The hosting account has PHP's <code>display_errors</code> switched on, so real warnings still reach the page</td><td>In your hosting panel's PHP settings (cPanel "MultiPHP INI Editor" or "Select PHP Version &gt; Options"), turn <code>display_errors</code> off. Then fix the warning itself: it is still a problem, now just a quiet one</td></tr>
+  <tr><td><code>Warning: include(...): Failed to open stream: No such file or directory</code></td><td>A plugin or theme update did not finish and left files missing, or a file was deleted</td><td>Reinstall that plugin or theme from <b>Plugins &gt; Add New</b> or the theme's source (your settings are kept in the database). If the update failed halfway, see <a href="install-update-failed-fix.html">update failed</a></td></tr>
+  <tr><td>The messages appeared and the editor or a form now says "not a valid JSON response"</td><td>The warning text is printed inside data the page expected to be clean, so the browser cannot read it</td><td>Fix the warning with the rows above; then see <a href="json-response-fix.html">"not a valid JSON response"</a> if the editor still fails</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not just hide the messages and forget them. A warning about a missing file or a failed include is a real fault; log it and fix it.</li>
+  <li>Do not edit a plugin's own files to silence it. The next update puts the old code back. Update, replace, or ask its author.</li>
+  <li>Do not paste code into <code>functions.php</code> from the WordPress dashboard editor. One stray character there can take the whole site down (see <a href="critical-error-fix.html">critical error</a> and <a href="syntax-error-fix.html">syntax error</a>).</li>
+</ul>
+<p class="note">Turning debug display off takes a minute. Finding which plugin's code breaks on the new PHP version, replacing an abandoned plugin without losing its settings, or chasing a "headers already sent" that also broke logins is where most owners would rather have someone do it. If that is you, the box below is for that. Related: <a href="white-screen-fix.html">white screen</a>, <a href="login-loop-fix.html">login keeps sending you back</a> and <a href="outdated-php-fix.html">outdated PHP version</a>.</p>
+</div>
+
+<script>
+(function () {
+  var screen = document.getElementById("screen"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var logBefore = 'Business: bakery in Columbus\n  host moved PHP 7.4 -> 8.2\n  WP_DEBUG true since a 2022 fix\n\n' +
+    'Top of every page:\n  14 "Deprecated" lines from\n  an old slider plugin\n  1 "headers already sent"\n  from functions.php line 1\n\n' +
+    '<span class="bad">Owner could not log in:\nthe login page reloaded.\nOrder form never confirmed.</span>';
+  var logAfter = 'Steps taken:\n1. wp-config.php: debug to a\n   private log, display off.\n2. functions.php: removed the\n   blank line before &lt;?php.\n3. Slider plugin (no update\n   since 2019) replaced.\n4. Log read a day later.\n\n' +
+    '<span class="good">No messages on any page.\nLogin and order form work.\nLog empty.</span>';
+  var before = '<div class="site"><div class="warn"><b>Deprecated</b>: Creation of dynamic property Slider_Widget::$opts is deprecated in /home/site/public_html/wp-content/plugins/old-slider/slider.php on line 42<br><b>Warning</b>: Cannot modify header information - headers already sent by (output started at /home/site/public_html/wp-content/themes/bakery/functions.php:1)</div><div class="hdr">Corner Street Bakery</div><div class="body"><p>Fresh bread daily from 7am.</p><p style="color:#666">Rebuilt example, not a real client.</p></div></div>';
+  var after = '<div class="site"><div class="hdr">Corner Street Bakery</div><div class="body"><p>Fresh bread daily from 7am.</p><p>Order ahead for pickup.</p><p style="color:#666">Rebuilt example, not a real client.</p></div></div>';
+  function show(isFixed) {
+    screen.innerHTML = isFixed ? after : before;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"How do I stop PHP warnings showing on my WordPress site?","acceptedAnswer":{"@type":"Answer","text":"In wp-config.php set WP_DEBUG_DISPLAY to false and WP_DEBUG_LOG to true, so messages go to a private log instead of the page, or set WP_DEBUG to false. If they still show, turn off display_errors in your hosting panel's PHP settings, then fix the warning the log names."}},
+{"@type":"Question","name":"What does 'Cannot modify header information - headers already sent' mean?","acceptedAnswer":{"@type":"Answer","text":"Something printed text before WordPress sent the page headers, usually a blank line or space before <?php or after ?> in the file named after 'output started at'. Remove it and save the file as UTF-8 without BOM. It often also breaks logins and redirects."}},
+{"@type":"Question","name":"Why did 'Deprecated' messages appear after my host upgraded PHP?","acceptedAnswer":{"@type":"Answer","text":"An older plugin or theme uses code the newer PHP version is retiring. Update the plugin or theme named in the message, or replace it if it is no longer maintained. Turning debug display off hides the messages from visitors meanwhile."}},
+{"@type":"Question","name":"Are PHP warnings on my site dangerous?","acceptedAnswer":{"@type":"Answer","text":"Deprecated notices are harmless but look broken to visitors and reveal your server's file paths. Warnings can mean a real fault, such as a missing file or a failed login redirect, so log them and fix the cause rather than only hiding them."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
