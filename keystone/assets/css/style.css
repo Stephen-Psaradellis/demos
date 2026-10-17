@@ -4,7 +4,7 @@
  *
  * TABLE OF CONTENTS
  *  1. Design tokens  (EDIT THE SIX VARIABLES IN 1a TO RETHEME THE WHOLE SITE)
- *  2. Colour presets (.theme-plumbing / .theme-dental / .theme-cleaning / .theme-legal)
+ *  2. Colour presets (.theme-plumbing / .theme-dental / .theme-cleaning / .theme-legal / .theme-roofing)
  *  3. Dark mode
  *  4. Base & typography
  *  5. Layout helpers
@@ -86,6 +86,7 @@
   --brand: #1e3a5f; --accent: #c9a24b; --ink: #141a24; --radius: 6px;
   --font-head: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
 }
+.theme-roofing  { --brand: #b4441f; --accent: #f2b134; --ink: #1d1714; }
 
 /* ==========================================================================
    3. DARK MODE
