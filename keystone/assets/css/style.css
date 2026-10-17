@@ -4,7 +4,7 @@
  *
  * TABLE OF CONTENTS
  *  1. Design tokens  (EDIT THE SIX VARIABLES IN 1a TO RETHEME THE WHOLE SITE)
- *  2. Colour presets (.theme-plumbing / .theme-dental / .theme-cleaning / .theme-legal / .theme-roofing / .theme-electrician)
+ *  2. Colour presets (.theme-plumbing / .theme-dental / .theme-cleaning / .theme-legal / .theme-roofing / .theme-electrician / .theme-landscaping)
  *  3. Dark mode
  *  4. Base & typography
  *  5. Layout helpers
@@ -88,6 +88,7 @@
 }
 .theme-roofing  { --brand: #b4441f; --accent: #f2b134; --ink: #1d1714; }
 .theme-electrician { --brand: #4338ca; --accent: #facc15; --ink: #14132a; }
+.theme-landscaping { --brand: #3f6212; --accent: #f59e0b; --ink: #161d0c; }
 
 /* ==========================================================================
    3. DARK MODE
