@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"Error establishing a Redis connection" in WordPress: what it means and how it gets fixed</title>
+<meta name="description" content="Your WordPress site shows 'Error establishing a Redis connection'. Get it back in two minutes by renaming one file, then find which of the six usual causes it was and fix that.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/redis-connection-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.br { border:1px solid #dadce0; border-radius:8px; font-size:13.5px; overflow:hidden; min-height:220px; background:#fff; overflow-wrap:anywhere; }
+.br .url { background:#f0f0f1; border-bottom:1px solid #dcdcde; padding:7px 10px; color:#555; font-size:12.5px; }
+.br .body { padding:16px; }
+.br .body p { margin:0 0 8px; }
+.br .err { max-width:420px; margin:10px auto; border:1px solid #ccd0d4; background:#fff; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+.br .err b { display:block; font-size:16px; margin-bottom:6px; }
+.br .ttl { font-size:18px; font-weight:700; }
+.br .nav { display:flex; gap:12px; color:var(--brand); font-weight:600; margin-bottom:10px; flex-wrap:wrap; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:#ff8a80; font-weight:600; }
+.good { color:#8fd19e; font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+pre.cfg { background:#eef0f3; color:var(--ink); margin:8px 0; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>"Error establishing a Redis connection"</h1>
+<p class="lede">Every page of your site, the dashboard included, shows <b>"Error establishing a Redis connection"</b>. Redis is a fast memory store that some hosts and plugins put in front of the WordPress database so pages load quicker. Your content is not lost: it is still in the database. WordPress was told to ask Redis first, Redis did not answer, and it gave up. Below is a rebuilt example (not a real client), a way to get the site back in two minutes, and the fix for each cause.</p>
+
+<div class="switch" role="group" aria-label="Show the site before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div id="screen"></div>
+  </div>
+  <div class="panel">
+    <h2>What the check found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Get the site back first (two minutes)</h2>
+<ol>
+  <li><b>Open your files.</b> Use the host's <b>File Manager</b> or an FTP program and go to the <code>wp-content</code> folder.</li>
+  <li><b>Rename one file.</b> Find <code>object-cache.php</code> and rename it to <code>object-cache.php.off</code>. This file is what tells WordPress to use Redis. Without it, WordPress reads straight from the database, a little slower but working.</li>
+  <li><b>Reload the site.</b> If it comes back, Redis was the whole problem and nothing else is broken. If you now see <a href="database-connection-fix.html">"Error establishing a database connection"</a> or a <a href="critical-error-fix.html">critical error</a>, follow that guide instead.</li>
+  <li><b>Then find the cause</b> with the table below, fix it, and rename the file back (or turn the cache back on from the plugin, which writes a fresh copy). Leaving it off is safe for a few days, but the site loses the speed Redis was giving it.</li>
+</ol>
+
+<h2>Which cause it is</h2>
+<ul>
+  <li><b>Did it start after a server restart, a host move, a staging copy or a plan change?</b> Rows 1, 2 and 5.</li>
+  <li><b>On your own server (VPS)?</b> Run <code>redis-cli ping</code>. <code>PONG</code> means Redis is running and the problem is the settings (row 3) or memory (row 4). "Could not connect" means it is stopped (row 1).</li>
+  <li><b>On shared or managed hosting?</b> Look in the host panel for a Redis or "object cache" switch, or ask support one question: "Is Redis running for my site, and what are its host, port and password?"</li>
+  <li><b>Can you reach the dashboard with the file renamed?</b> <b>Settings &gt; Redis</b> (Redis Object Cache plugin) shows the status and the exact error. LiteSpeed Cache and W3 Total Cache show theirs under their <b>Object Cache</b> settings.</li>
+</ul>
+
+<h2>What causes it and the fix</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Why it happens</th><th>The fix</th></tr>
+  <tr><td>The error appeared after the server rebooted or crashed, and <code>redis-cli ping</code> cannot connect</td><td>The Redis service is stopped. It was started by hand once and is not set to start when the server boots, or it crashed when the server ran out of memory</td><td>Start it and make it start on boot:<pre class="cfg">sudo systemctl start redis-server
+sudo systemctl enable redis-server</pre>(the service is called <code>redis</code> on some systems). If it keeps dying, check the server's memory: see row 4</td></tr>
+  <tr><td>The error appeared right after moving to a new host, or on a staging or local copy of the site</td><td><code>object-cache.php</code> was copied with the rest of <code>wp-content</code>, but the new server has no Redis, or Redis lives at a different address</td><td>Keep <code>object-cache.php</code> renamed on that copy. If the new host offers Redis, switch it on in their panel, then turn the cache back on from the plugin so it connects to the new address</td></tr>
+  <tr><td>Redis is running, but WordPress still cannot reach it</td><td>The connection settings in <code>wp-config.php</code> do not match the server: wrong host or port, a password the host changed, a socket path that moved, or a Redis database number in use by another site</td><td>Compare these lines with what the host gives you and correct them:<pre class="cfg">define( 'WP_REDIS_HOST', '127.0.0.1' );
+define( 'WP_REDIS_PORT', 6379 );
+define( 'WP_REDIS_PASSWORD', '...' );
+define( 'WP_REDIS_DATABASE', 0 );</pre>A socket setup uses <code>WP_REDIS_SCHEME</code> set to <code>unix</code> and <code>WP_REDIS_PATH</code> instead of host and port. Take a backup of the file first</td></tr>
+  <tr><td>It fails at busy times, or the plugin's error mentions <b>OOM</b> or <b>maxmemory</b></td><td>Redis is full. With no rule for throwing old entries away, it refuses new writes once it reaches its memory limit</td><td>Give Redis a limit and let it drop the oldest entries, in <code>redis.conf</code>: <code>maxmemory 256mb</code> and <code>maxmemory-policy allkeys-lru</code>, then restart it. On managed hosting, ask the host to do this or raise the limit</td></tr>
+  <tr><td>The error started after a hosting plan change or renewal, with no change on your side</td><td>The Redis add-on was removed or moved to a different server with the plan change, but the site still points at it</td><td>Ask the host whether Redis is still part of the plan. If not, leave <code>object-cache.php</code> renamed and turn the plugin's object cache off. A page cache still keeps a small site fast</td></tr>
+  <tr><td>It started right after the host changed the PHP version</td><td>The PHP extension that talks to Redis (phpredis) is installed for the old PHP version but not the new one</td><td>Ask the host to add the Redis extension for the new PHP version, or in the Redis Object Cache plugin set <code>WP_REDIS_CLIENT</code> to <code>predis</code>, which needs no extension. Check <b>Tools &gt; Site Health &gt; Info</b> to see which version is active</td></tr>
+</table>
+</div>
+<p class="note">Once it works again, use the plugin's <b>Flush Cache</b> button once, so no half-written entries from the outage are served. For a site that must never show this page, the Redis Object Cache plugin can be told to fall back to the database when Redis does not answer (<code>define( 'WP_REDIS_GRACEFUL', true );</code>); most owners never notice the difference.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not reinstall WordPress or restore an old backup. Redis holds only copies; every post, order and setting is still in the database, and a restore can throw away real orders or form entries made since.</li>
+  <li>Do not delete the database or "reset" the site from the host panel because the word "connection" sounds like the database guide. This error is about Redis only.</li>
+  <li>Do not just deactivate the cache plugin from the dashboard and stop there: the error usually keeps you out of the dashboard, and when it does not, a leftover <code>object-cache.php</code> can bring the error back. Rename the file, then fix the cause.</li>
+</ul>
+<p class="note">Renaming one file takes a minute. Finding why Redis died on a VPS that nobody has logged into for a year, moving a site whose host dropped Redis without saying, or tuning memory so it does not happen again at the next sale is where most owners would rather have someone do it. If that is you, the box below is for that. Related: <a href="database-connection-fix.html">error establishing a database connection</a>, <a href="slow-site-fix.html">slow site</a> and <a href="changes-not-showing-fix.html">changes not showing</a>.</p>
+</div>
+
+<script>
+(function () {
+  var screen = document.getElementById("screen"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var logBefore = 'Business: bakery in Columbus\n  order form for cakes\n  small VPS, Redis object cache\n\n' +
+    'Every page, wp-admin too:\n  Error establishing a\n  Redis connection\n\n' +
+    'Server rebooted overnight\n(provider maintenance).\n$ redis-cli ping\n  Could not connect to Redis\n  at 127.0.0.1:6379\n\n' +
+    '<span class="bad">Site down since 06:10.\nNo cake orders this morning.</span>';
+  var logAfter = 'Steps taken:\n1. object-cache.php renamed:\n   site back in 2 minutes.\n2. redis-server started and\n   enabled on boot.\n3. maxmemory 256mb,\n   allkeys-lru set.\n4. Cache turned back on,\n   flushed once.\n\n' +
+    '<span class="good">Settings > Redis: Connected.\nReboot tested: site stays up.\nNo orders lost (all in the DB).</span>';
+  var before = '<div class="br"><div class="url">example-bakery.com</div><div class="body"><div class="err"><b>Error establishing a Redis connection</b>WordPress is unable to connect to Redis. The connection settings may be wrong, or the Redis server is not reachable.</div></div></div>';
+  var after = '<div class="br"><div class="url">example-bakery.com</div><div class="body"><div class="nav"><span>Cakes</span><span>Order</span><span>Visit</span></div><p class="ttl">Custom cakes, baked to order</p><p>Order by Thursday for weekend pickup.</p><p style="color:#666;margin:8px 0 0">Rebuilt example, not a real client.</p></div></div>';
+  function show(isFixed) {
+    screen.innerHTML = isFixed ? after : before;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'Error establishing a Redis connection' mean?","acceptedAnswer":{"@type":"Answer","text":"WordPress has been set up to use Redis, a memory store that speeds up the site, and Redis did not answer. The content is safe in the database. Usually Redis is stopped, the connection settings in wp-config.php are wrong, or the site was moved to a server without Redis."}},
+{"@type":"Question","name":"How do I get my site back right now?","acceptedAnswer":{"@type":"Answer","text":"In the host's File Manager or by FTP, open wp-content and rename object-cache.php to object-cache.php.off. WordPress then reads straight from the database and the site comes back, a little slower, while you fix the cause."}},
+{"@type":"Question","name":"Did I lose my posts or orders?","acceptedAnswer":{"@type":"Answer","text":"No. Redis only holds copies of data that WordPress keeps in its database. Do not restore an old backup because of this error; that is what could lose recent orders."}},
+{"@type":"Question","name":"How do I stop it happening again?","acceptedAnswer":{"@type":"Answer","text":"Make Redis start when the server boots, give it a memory limit with a policy that drops old entries, and keep the connection settings in wp-config.php in step with the host. The Redis Object Cache plugin can also fall back to the database when Redis is down."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
