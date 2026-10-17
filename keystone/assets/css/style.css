@@ -4,7 +4,7 @@
  *
  * TABLE OF CONTENTS
  *  1. Design tokens  (EDIT THE SIX VARIABLES IN 1a TO RETHEME THE WHOLE SITE)
- *  2. Colour presets (.theme-plumbing / .theme-dental / .theme-cleaning / .theme-legal / .theme-roofing)
+ *  2. Colour presets (.theme-plumbing / .theme-dental / .theme-cleaning / .theme-legal / .theme-roofing / .theme-electrician)
  *  3. Dark mode
  *  4. Base & typography
  *  5. Layout helpers
@@ -87,6 +87,7 @@
   --font-head: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
 }
 .theme-roofing  { --brand: #b4441f; --accent: #f2b134; --ink: #1d1714; }
+.theme-electrician { --brand: #4338ca; --accent: #facc15; --ink: #14132a; }
 
 /* ==========================================================================
    3. DARK MODE
