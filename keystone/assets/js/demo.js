@@ -12,7 +12,8 @@
     ["theme-cleaning", "Cleaning", "#167c42"],
     ["theme-legal", "Legal", "#1e3a5f"],
     ["theme-roofing", "Roofing", "#b4441f"],
-    ["theme-electrician", "Electrician", "#4338ca"]
+    ["theme-electrician", "Electrician", "#4338ca"],
+    ["theme-landscaping", "Landscaping", "#3f6212"]
   ];
   var names = PRESETS.map(function (p) { return p[0]; });
 
@@ -51,7 +52,7 @@
     "</div><p>Appearance</p><div class=\"demo-modes\">" +
     '<button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button><button type="button" data-mode="auto">Auto</button>' +
     "</div><p>Niche home pages</p><div class=\"demo-links\">" +
-    '<a href="index.html">Plumbing &amp; HVAC</a><a href="home-dental.html">Dental clinic</a><a href="home-cleaning.html">Cleaning company</a><a href="home-legal.html">Law firm</a><a href="home-roofing.html">Roofing company</a><a href="home-electrician.html">Electrician</a>' +
+    '<a href="index.html">Plumbing &amp; HVAC</a><a href="home-dental.html">Dental clinic</a><a href="home-cleaning.html">Cleaning company</a><a href="home-legal.html">Law firm</a><a href="home-roofing.html">Roofing company</a><a href="home-electrician.html">Electrician</a><a href="home-landscaping.html">Landscaping</a>' +
     "</div></div>";
   document.body.appendChild(wrap);
 
