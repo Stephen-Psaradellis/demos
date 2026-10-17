@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress keeps logging me out: "Your session has expired" and how it gets fixed</title>
+<meta name="description" content="WordPress logs you out every few minutes, or shows 'Your session has expired' while you write. The six usual causes, a five-minute check, and the fix for each, in plain steps.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/session-expired-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.ed { position:relative; border:1px solid #dadce0; border-radius:8px; font-size:13.5px; overflow:hidden; min-height:220px; background:#fff; overflow-wrap:anywhere; }
+.ed .bar { background:#f0f0f1; border-bottom:1px solid #dcdcde; padding:8px 10px; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.ed .btn { border:1px solid #2271b1; background:#2271b1; color:#fff; border-radius:3px; padding:2px 10px; font-size:12.5px; font-weight:600; }
+.ed .body { padding:14px; }
+.ed .body p { margin:0 0 8px; }
+.ed .ttl { font-size:18px; font-weight:700; }
+.ed .shade { position:absolute; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:14px; }
+.ed .modal { background:#fff; border-radius:6px; padding:14px; max-width:260px; box-shadow:0 4px 16px rgba(0,0,0,.3); }
+.ed .modal b { display:block; margin-bottom:6px; }
+.ed .saved { color:#1e7a3c; font-weight:600; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:#ff8a80; font-weight:600; }
+.good { color:#8fd19e; font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+pre.cfg { background:#eef0f3; color:var(--ink); margin:8px 0; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress keeps logging you out</h1>
+<p class="lede">You are writing a post or editing a page and a box says <b>"Your session has expired. Please log in to continue where you left off."</b> Or you log in, click twice, and you are back at the login screen. WordPress normally keeps you logged in for two days (fourteen with <b>Remember Me</b> ticked), so being thrown out every few minutes means something is cutting the login short. Below is a rebuilt example (not a real client), a five-minute check, and the fix for each cause.</p>
+
+<div class="switch" role="group" aria-label="Show the editor before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div id="screen"></div>
+  </div>
+  <div class="panel">
+    <h2>What the check found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>The five-minute check</h2>
+<ol>
+  <li><b>Compare the two addresses.</b> Go to <b>Settings &gt; General</b> and look at <b>WordPress Address (URL)</b> and <b>Site Address (URL)</b>. They should match exactly, including <code>https</code> and <code>www</code>. Then look at your browser's address bar while you are logged in. If any of the three differ (one has <code>www.</code>, another does not), that is the most common cause (row 1).</li>
+  <li><b>Try another browser.</b> Log in from a private window or a different browser and work for ten minutes. If the problem stops there, it is your browser's cookie settings or an extension, not the site (row 2).</li>
+  <li><b>Look for a timeout setting.</b> Open the settings of any security or login plugin you have (All-In-One WP Security, Inactive Logout, a "session" or "idle" plugin, or your host's security tool) and search the page for <b>logout</b>, <b>idle</b> or <b>session</b>. A number of minutes there is your answer (row 3).</li>
+  <li><b>Notice when it happens.</b> Every time you switch Wi-Fi to phone data or turn a VPN on or off? Row 4. Everyone in the office at the same moment, every few days? Row 5. Only the front of the site acts logged out while the dashboard still works? Row 6.</li>
+</ol>
+
+<h2>What causes it and the fix</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Why it happens</th><th>The fix</th></tr>
+  <tr><td>Logged out after a few clicks, often right after you follow a link or save</td><td>The site answers on two addresses (with and without <code>www</code>, or <code>http</code> and <code>https</code>). WordPress stores your login for one address; a link or a redirect takes you to the other, which has never heard of you. Common after adding SSL or moving hosts</td><td>Make <b>WordPress Address</b> and <b>Site Address</b> identical and use the address people actually type, then have the host redirect the other version to it. If the two boxes are greyed out, they are set in <code>wp-config.php</code>:<pre class="cfg">define( 'WP_HOME', 'https://www.example.com' );
+define( 'WP_SITEURL', 'https://www.example.com' );</pre>Correct both lines there. If <code>COOKIE_DOMAIN</code> is also in that file and names a different address, remove it unless a developer set it on purpose. Take a backup first: a typo in these lines locks everyone out (see <a href="login-loop-fix.html">login page keeps reloading</a>)</td></tr>
+  <tr><td>It happens on your computer only; a colleague or a private window stays logged in</td><td>The browser throws the login cookie away: "clear cookies when the window closes", strict tracking protection for this site, or a privacy or cookie-cleaning extension</td><td>Add your site to the browser's list of sites always allowed to keep cookies, or turn off the extension for your site. Tick <b>Remember Me</b> on the login form</td></tr>
+  <tr><td>Logged out after the same number of minutes every time, even while typing</td><td>A security or "inactive logout" plugin ends logins after a set time. Some count minutes since you logged in, not since you last clicked</td><td>Raise the limit (an hour or two is reasonable for the people who write content) or turn the feature off for administrators and editors. Keep a limit on shared office computers if that was the reason it was switched on</td></tr>
+  <tr><td>Logged out whenever you move between Wi-Fi and phone data, or turn a VPN on or off</td><td>A security setting ties each login to the internet address it started from. Phones, VPNs and some office connections change that address during the day</td><td>Turn off the "lock session to IP address" style setting in the security plugin or the host's panel, or exempt administrators. Two-step login protects the account better than an address lock does</td></tr>
+  <tr><td>Everyone is logged out at once, every few days or after each plugin update</td><td>The secret keys in <code>wp-config.php</code> (<code>AUTH_KEY</code>, <code>LOGGED_IN_SALT</code> and the rest) are being replaced. Changing them logs everybody out, which is right once after a break-in. Some security plugins are set to change them on a schedule, and a deploy script or host tool can rewrite them on every update</td><td>Find what changes them (the security plugin's "salts" or "secret keys" setting, or the deploy process) and set it to change only when you ask. Do not edit the keys by hand unless you mean to log everyone out</td></tr>
+  <tr><td>The dashboard works, but the front of the site shows you logged out (no black admin bar) or shows an old version of a page</td><td>A page cache (a caching plugin, Cloudflare "Cache Everything", or the host's cache) served you a copy saved for visitors. You are not really logged out</td><td>In the cache settings, skip the cache for logged-in users and never cache <code>/wp-admin/</code> or <code>wp-login.php</code>. On Cloudflare, add a rule that bypasses the cache when the <code>wordpress_logged_in_</code> cookie is present. See <a href="changes-not-showing-fix.html">changes not showing</a></td></tr>
+</table>
+</div>
+<p class="note">Lost a draft when the box appeared? Open the post again: WordPress usually says <b>"There is an autosave of this post that is more recent than the version below"</b> with a link to restore it. Older copies are under <b>Revisions</b> in the post's settings panel.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not switch off WordPress's "Heartbeat" inside the editor to save server load (WP Rocket, Perfmatters and Heartbeat Control all offer it). Heartbeat is what warns you before a save fails and what keeps autosave running. Slow it down if you must; do not turn it off in the editor.</li>
+  <li>Do not save your password in a sticky note or a shared document because you type it so often. Fix the cause, then use the browser's own password manager.</li>
+  <li>Do not install a second "keep me logged in" plugin on top of a security plugin that logs you out. Two plugins fighting over the same login make it worse, and one of them is usually set the wrong way already.</li>
+</ul>
+<p class="note">Matching two addresses or changing one timeout takes a minute. Untangling a site that answers on four addresses after a host move, a security plugin that rewrites the keys, or a Cloudflare rule that caches the dashboard is where most owners would rather have someone do it. If that is you, the box below is for that. Related: <a href="login-loop-fix.html">login page keeps reloading</a>, <a href="too-many-redirects-fix.html">too many redirects</a> and <a href="lost-access-fix.html">lost access to the site</a>.</p>
+</div>
+
+<script>
+(function () {
+  var screen = document.getElementById("screen"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var logBefore = 'Business: dental office in Tulsa\n  office manager writes the blog\n  site moved to SSL in 2025\n\n' +
+    'Addresses:\n  WordPress Address\n    https://example-dental.com\n  Site Address\n    https://www.example-dental.com\n\n' +
+    'Security plugin:\n  force logout after 10 min\n\n' +
+    '<span class="bad">Logged out 4-6 times a post.\nTwo drafts lost this month.</span>';
+  var logAfter = 'Steps taken:\n1. Backup taken.\n2. Both addresses set to\n   https://www.example-dental.com\n3. Host redirects the bare\n   address to www.\n4. Force logout raised to\n   120 min for editors.\n\n' +
+    '<span class="good">A full post written and saved\nwith no logout. Autosave and\nthe expiry warning still on.</span>';
+  var editor = '<div class="bar"><span>Edit Post</span><span class="btn">Update</span></div><div class="body"><p class="ttl">5 questions to ask before a crown</p><p>Most crowns last ten to fifteen years, but the first question is whether you need one at all...</p>';
+  var before = '<div class="ed">' + editor + '</div><div class="shade"><div class="modal"><b>Your session has expired.</b>Please log in to continue where you left off.</div></div></div>';
+  var after = '<div class="ed">' + editor + '<p class="saved">Post updated.</p><p style="color:#666;margin:8px 0 0">Rebuilt example, not a real client.</p></div></div>';
+  function show(isFixed) {
+    screen.innerHTML = isFixed ? after : before;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does WordPress keep logging me out?","acceptedAnswer":{"@type":"Answer","text":"Most often because the WordPress Address and Site Address in Settings, General differ (one with www, one without, or http and https), so the login is stored for one address and you land on the other. A security plugin's logout timer, a browser that deletes cookies, a login tied to your IP address, or secret keys that keep changing are the other usual causes."}},
+{"@type":"Question","name":"What does 'Your session has expired' mean in WordPress?","acceptedAnswer":{"@type":"Answer","text":"WordPress checks every minute or so that you are still logged in. The box appears when your login cookie is no longer valid, so it has expired, been cleared, or was stored for a different address than the one you are on. Log in again in the box and your work continues; if it keeps appearing, find the cause."}},
+{"@type":"Question","name":"How long does a WordPress login last?","acceptedAnswer":{"@type":"Answer","text":"Two days by default, or fourteen days if Remember Me is ticked on the login form. A security or inactive-logout plugin can shorten that to minutes."}},
+{"@type":"Question","name":"How do I get back a post I lost when WordPress logged me out?","acceptedAnswer":{"@type":"Answer","text":"Open the post again. WordPress usually shows a notice that there is a more recent autosave with a link to restore it. Older copies are listed under Revisions in the post settings."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v5';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
