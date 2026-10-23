@@ -95,8 +95,10 @@
   <p>Microsoft 365 domains are the best protected: its setup wizard asks for SPF, and an SPF record
   is nearly universal there. Google Workspace domains are protected least often - only 8.1% - and
   more than a third have no SPF record at all. On GoDaddy email, 83% have no <i>valid</i> SPF
-  record; in the ones we inspected by hand, a common cause was a record that begins with the
-  hosting server's name instead of <code>v=spf1</code>, which receivers ignore.</p>
+  record. When we re-checked a random 120 of them on 23 October 2026, 119 had no SPF record of
+  any kind and one had since added a correct one, so the cause is a record nobody added, not a
+  broken one. (An earlier version of this page blamed a malformed record that starts with the
+  hosting server's name; the re-check found none, and we have removed that claim.)</p>
 
   <h2>The rest of the scan</h2>
   <p>The same scan loaded the websites of 29,412 small businesses listed on OpenStreetMap:</p>
