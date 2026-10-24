@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"cURL error 28: Operation timed out" in WordPress: what it means and the fix</title>
+<meta name="description" content="WordPress Site Health showing cURL error 28, a failed loopback or a REST API error? Find which server timed out and why, and the fix without raising the timeout.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/curl-error-28-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.err { font-family: "Times New Roman", serif; font-size:15px; color:#000; }
+.err h3 { margin:0 0 10px; font-size:24px; }
+.err p { margin:0 0 10px; }
+.home h3 { margin:0 0 8px; font-size:20px; }
+.home p { margin:0 0 10px; color:#333; font-size:14.5px; }
+.cta { display:inline-block; background:#1d5fa8; color:#fff; padding:8px 14px; border-radius:6px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>"cURL error 28: Operation timed out" in WordPress</h1>
+<p class="lede">Site Health shows a critical issue ("The REST API encountered an error", "Your site could not complete a loopback request", "cURL error 28: Operation timed out after 10001 milliseconds"), or updates, a payment plugin or a backup to the cloud fail with the same line. It means one thing: WordPress asked another server for something and gave up waiting. The question is which server, and why it did not answer in time.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees in Tools, Site Health</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">brightsidebakery.example/wp-admin/site-health.php</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Find out which case it is (five minutes)</h2>
+<ol>
+  <li><b>Read the address in the message.</b> If it names your own site (a loopback or REST API check), WordPress could not reach itself. If it names <code>api.wordpress.org</code>, a payment service, a backup service or a font or map provider, the outgoing connection to that one host is the problem.</li>
+  <li><b>Does it fail every time, or now and then?</b> Every time points to a block (a firewall, a security plugin, a wrong DNS or IP). Now and then points to a slow site: the request did go out, but the page it asked for took more than the 10 seconds WordPress waits.</li>
+  <li><b>Open the site in a private window and time a page.</b> If your own pages take 8-15 seconds, the loopback timeout is a symptom of the slow site, not a separate fault.</li>
+  <li><b>Switch to a default theme and turn off plugins on a staging copy</b> (or with the Health Check plugin's troubleshooting mode, which does it for your login only). If the error clears, turn them back on one at a time; the one that brings it back is the cause. Security, caching and "login protection" plugins are the usual ones.</li>
+</ol>
+
+<h2>The fixes, by case</h2>
+<ol>
+  <li><b>Loopback or REST API blocked by a security plugin or firewall.</b> The plugin sees the site calling itself and treats it as an attack. Add your own server's address to the plugin's or the host firewall's allow list, or turn off the one rule that blocks it (often "block REST API for visitors" or "rate limit"). Do not turn off the whole plugin.</li>
+  <li><b>A slow site.</b> Find what is slow: a page builder loading every add-on, a cron job running a big import, a full database. Fix that, and the loopback answers in time. See the <a href="slow-site-fix.html">slow site guide</a> and <a href="wp-admin-slow-fix.html">slow dashboard guide</a>.</li>
+  <li><b>The site cannot find itself.</b> After a host or domain move, the server may still look up your domain at the old address, or behind Cloudflare it may loop out to the internet and back. Ask the host to check that the server resolves your domain to itself and that outgoing connections on port 443 are open.</li>
+  <li><b>One outside service times out</b> (updates, a payment gateway, a backup destination). Ask the host whether outgoing connections to that host are blocked or slow; shared hosts sometimes block them by default. Check the service's status page first, because sometimes it is down for everyone.</li>
+  <li><b>An old cURL or OpenSSL on the server.</b> Very old PHP builds cannot finish a secure connection with modern services and time out instead of saying so. Moving to a supported PHP version in the host panel fixes this. See the <a href="outdated-php-fix.html">PHP version guide</a>.</li>
+  <li><b>Test</b>: run Site Health again (Tools, Site Health, it re-checks on load), run one plugin update, and place a test order or run one backup if that was what failed.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>"could not complete a loopback request"</td><td>The site could not call itself in 10 seconds</td><td>Allow-list the server in the security plugin or firewall, or fix the slow page</td></tr>
+  <tr><td>"The REST API encountered an error" + cURL 28</td><td>Same call, to /wp-json/</td><td>Same: a blocking rule or a slow site; the block editor may also misbehave</td></tr>
+  <tr><td>Updates fail, message names api.wordpress.org</td><td>Outgoing connection to WordPress.org blocked or slow</td><td>Host opens outgoing 443 or fixes DNS</td></tr>
+  <tr><td>Payment or backup plugin times out</td><td>That one service unreachable from the server</td><td>Service status page, then the host's outgoing rules</td></tr>
+  <tr><td>Only now and then, mostly at busy times</td><td>The site is slow, not blocked</td><td>Find the slow plugin or job</td></tr>
+  <tr><td>"cURL error 60" or "SSL certificate problem"</td><td>A certificate problem, not a timeout</td><td>Update PHP / the server's certificate store</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not paste a snippet that raises the HTTP timeout to 30 or 60 seconds. It hides a slow site and makes every failing call hang the page longer.</li>
+  <li>Do not paste a snippet that turns off SSL verification (<code>sslverify</code> false). It does not fix a timeout, and it lets anyone between your server and a payment service read or change the traffic.</li>
+  <li>Do not hide the Site Health warning with a plugin. Scheduled posts, updates and backups use the same calls and will keep failing quietly.</li>
+  <li>Do not switch off the whole security plugin to make the warning go away. Allow your own server and keep the protection.</li>
+</ul>
+<p class="note">Most of these are one security rule blocking the site from calling itself, or one slow plugin, and are gone once that rule or plugin is fixed. If it fails every time and you cannot tell which case it is, that is what the box below is for. Related: <a href="scheduled-post-fix.html">scheduled posts missing</a>, <a href="auto-update-failed-fix.html">automatic updates failing</a> and <a href="json-response-fix.html">"not a valid JSON response"</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="home"><h3>Site Health Status</h3><p style="color:#b3261e">Should be improved &middot; 2 critical issues</p>' +
+    '<p style="color:#b3261e">The REST API encountered an error<br><span style="font-size:13px">cURL error 28: Operation timed out after 10001 milliseconds with 0 bytes received</span></p>' +
+    '<p style="color:#b3261e">Your site could not complete a loopback request</p></div>';
+  var fixed = '<div class="home"><h3>Site Health Status</h3><p style="color:#1e7a3c">Good &middot; 0 critical issues</p>' +
+    '<p>REST API available &middot; loopback request completed in 0.4 s</p><p style="font-size:13px;color:#666">Security plugin still on; one rule changed.</p></div>';
+  var logBroken = 'Owner: scheduled posts went out late\nand Site Health shows two criticals.\n\n' +
+    'Both name the site&#39;s own address:\nthe site cannot call itself.\n\n' +
+    'Home page loads in 0.9 s, so the site\nis not slow.\n\n' +
+    'Health Check troubleshooting mode with\nall plugins off: loopback works.\nSecurity plugin back on: fails again.\n\n' +
+    '<span class="bad">Its "block repeated requests" rule\nbans the server&#39;s own IP.</span>';
+  var logFixed = 'Steps taken:\n1. Server IP added to the security\n   plugin&#39;s allow list (one entry).\n' +
+    '2. Rate-limit rule left on for\n   everyone else.\n' +
+    '3. No timeout snippet, SSL checks\n   untouched.\n' +
+    '4. Site Health re-run, a test post\n   scheduled 5 minutes out: published.\n\n' +
+    '<span class="good">0 critical issues, protection kept,\nnothing installed.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does cURL error 28 mean in WordPress?","acceptedAnswer":{"@type":"Answer","text":"WordPress asked a server for something and gave up after about 10 seconds with no answer. If the message names your own site, the site could not call itself (a loopback or REST API check); if it names another host, the outgoing connection to that host is blocked or slow."}},
+{"@type":"Question","name":"How do I fix 'Your site could not complete a loopback request'?","acceptedAnswer":{"@type":"Answer","text":"Check whether a security plugin or host firewall blocks the server's own address and allow it, or find the slow plugin or job that makes the page take more than 10 seconds. Health Check's troubleshooting mode shows which plugin is involved."}},
+{"@type":"Question","name":"Should I increase the HTTP timeout to fix cURL error 28?","acceptedAnswer":{"@type":"Answer","text":"No. A longer timeout hides a slow site or a blocked connection and makes failing calls hang longer. Fix the blocking rule, the slow plugin, or the host's outgoing connection instead."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
