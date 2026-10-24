@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"Your PHP installation appears to be missing the MySQL extension" in WordPress: the fix</title>
+<meta name="description" content="WordPress says your PHP installation is missing the MySQL extension? It is almost always a PHP version switch with mysqli off. How to turn it back on in minutes.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/missing-mysql-extension-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.err { font-family: "Times New Roman", serif; font-size:15px; color:#000; }
+.err h3 { margin:0 0 10px; font-size:24px; }
+.err p { margin:0 0 10px; }
+.home h3 { margin:0 0 8px; font-size:20px; }
+.home p { margin:0 0 10px; color:#333; font-size:14.5px; }
+.cta { display:inline-block; background:#1d5fa8; color:#fff; padding:8px 14px; border-radius:6px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>"Your PHP installation appears to be missing the MySQL extension which is required by WordPress"</h1>
+<p class="lede">Every page of the site, the admin included, shows one plain line: "Your PHP installation appears to be missing the MySQL extension which is required by WordPress. Please check that the mysqli PHP extension is installed and enabled." Nothing is lost: the database and the files are fine. PHP simply cannot talk to the database, and that almost always started with a PHP version change.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">lakesideflorist.example</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Find out which case it is (five minutes)</h2>
+<ol>
+  <li><b>Ask what changed.</b> A PHP version switch in the host panel, a host's own upgrade e-mail ("PHP 7.4 is end of life, your sites move to 8.x"), a server move or a new VPS is the cause nine times out of ten.</li>
+  <li><b>Open the host panel's PHP settings</b> ("Select PHP Version", "PHP Selector", "MultiPHP Manager" or similar) and note the version the site runs now, and whether <code>mysqli</code> (or <code>nd_mysqli</code>) is ticked in the extensions list for that version.</li>
+  <li><b>Check how old WordPress is.</b> Open <code>wp-includes/version.php</code> in the file manager and read <code>$wp_version</code>. Very old versions (before 3.9) only knew PHP's old <code>mysql</code> extension, which PHP 7 removed, so they show this message on any modern PHP even with mysqli switched on.</li>
+  <li><b>On your own server or VPS</b>, check the PHP that serves the site, not the command line: they can be different versions. <code>php -m</code> answers for the command line only; a <code>phpinfo()</code> page (delete it straight after) answers for the web server.</li>
+</ol>
+
+<h2>The fixes, by case</h2>
+<ol>
+  <li><b>Quickest way back up:</b> switch the PHP version back to the one the site ran yesterday. The site returns at once, and you can then do the real fix without the shop being down.</li>
+  <li><b>mysqli is off for the new version</b> (shared hosting). In the PHP extensions list, tick <code>mysqli</code>, or <code>nd_mysqli</code> on CloudLinux-style selectors (one of the two, not both), save, and reload the site. Each PHP version has its own list, so a switch can quietly reset it.</li>
+  <li><b>The extension is not installed</b> (your own server). Install the MySQL package for the exact PHP version that runs the site, for example <code>php8.2-mysql</code> on Debian or Ubuntu, then restart PHP-FPM for that version (or the web server). Check again with a <code>phpinfo()</code> page and remove it.</li>
+  <li><b>WordPress itself is very old.</b> Put the old PHP version back, take a full backup, update WordPress, the theme and the plugins step by step on the old PHP, and only then move to the new PHP. Expect some old plugins to need replacing; the <a href="outdated-php-fix.html">outdated PHP guide</a> covers the order.</li>
+  <li><b>Test</b>: open the home page, log in, and add something to a cart or send the contact form. Then check the error log stays quiet for a day.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Started right after a PHP version change</td><td>The new version has mysqli switched off</td><td>Tick mysqli for that version, or switch back first</td></tr>
+  <tr><td>Started after a server move or a new VPS</td><td>The MySQL extension was never installed there</td><td>Install the php-mysql package for that PHP version, restart PHP</td></tr>
+  <tr><td>mysqli is on and the message stays</td><td>WordPress older than 3.9, or the web server runs a different PHP than you checked</td><td>Check <code>$wp_version</code> and a phpinfo page</td></tr>
+  <tr><td>"Error establishing a database connection" instead</td><td>PHP can reach MySQL code but not the database</td><td>See the <a href="database-connection-fix.html">database connection guide</a></td></tr>
+  <tr><td>"There has been a critical error" after the PHP change</td><td>A plugin or theme breaks on the new PHP</td><td>See the <a href="critical-error-fix.html">critical error guide</a></td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not edit <code>wp-includes/load.php</code> to remove the check. The check is right: without the extension WordPress cannot read a single post, and the edit is wiped at the next update.</li>
+  <li>Do not restore a backup or re-install WordPress. The files and the database are fine; a restore only risks losing recent orders and posts.</li>
+  <li>Do not leave a <code>phpinfo()</code> file on the site. It shows your server's paths and settings to anyone who finds it.</li>
+  <li>Do not keep an end-of-life PHP version for good just to make the message go away. Switching back is a way to get the site up today, not the fix.</li>
+</ul>
+<p class="note">Most of these are one tick box in the host panel and are fixed in minutes. If the site is very old, or it runs on its own server and nobody knows how it was set up, that is what the box below is for. Related: <a href="outdated-php-fix.html">outdated PHP</a>, <a href="database-connection-fix.html">database connection error</a> and <a href="critical-error-fix.html">"There has been a critical error"</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="err"><p>Your PHP installation appears to be missing the MySQL extension which is required by WordPress.</p>' +
+    '<p>Please check that the <code>mysqli</code> PHP extension is installed and enabled.</p></div>';
+  var fixed = '<div class="home"><h3>Lakeside Florist</h3><p>Same-day flowers across town. Order by 2 pm.</p>' +
+    '<span class="cta">Order flowers</span></div>';
+  var logBroken = 'Owner: the whole site went down\nthis morning, admin too.\n\n' +
+    'Host e-mail last night: PHP 7.4 is\nend of life, sites moved to PHP 8.2.\n\n' +
+    'PHP 8.2 extensions list: mysqli\nnot ticked (7.4 had it ticked).\n\n' +
+    '<span class="bad">WordPress cannot open the database\non PHP 8.2 as it is set up.</span>';
+  var logFixed = 'Steps taken:\n1. Ticked mysqli for PHP 8.2 in the\n   host panel, saved.\n' +
+    '2. WordPress 6.x, theme and plugins\n   checked for PHP 8.2: all current.\n' +
+    '3. No core files edited, no restore,\n   no phpinfo page left behind.\n' +
+    '4. Home page, login and an order\n   tested; error log quiet.\n\n' +
+    '<span class="good">Site back on PHP 8.2, nothing lost,\ndown for one morning only.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'Your PHP installation appears to be missing the MySQL extension' mean?","acceptedAnswer":{"@type":"Answer","text":"The PHP version running the site has no mysqli extension enabled, so WordPress cannot talk to its database. It usually follows a PHP version change in the host panel or a server move; the files and the database are fine."}},
+{"@type":"Question","name":"How do I enable the mysqli extension?","acceptedAnswer":{"@type":"Answer","text":"On shared hosting, open the PHP version or PHP selector page in the host panel and tick mysqli (or nd_mysqli) for the version the site uses. On your own server, install the php-mysql package for that PHP version and restart PHP-FPM or the web server."}},
+{"@type":"Question","name":"Why does the error stay after enabling mysqli?","acceptedAnswer":{"@type":"Answer","text":"Either WordPress is older than 3.9 and only knows PHP's removed mysql extension, or the web server runs a different PHP version than the one you checked. Check the WordPress version and a temporary phpinfo page."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
