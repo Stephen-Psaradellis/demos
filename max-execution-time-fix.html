@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"Maximum execution time of 30 seconds exceeded" in WordPress: the cause and the fix</title>
+<meta name="description" content="WordPress fatal error: Maximum execution time of 30 seconds exceeded? Find the job, plugin or slow query behind it and fix it without removing the time limit.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/max-execution-time-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.err { font-family: "Times New Roman", serif; font-size:15px; color:#000; }
+.err h3 { margin:0 0 10px; font-size:24px; }
+.err p { margin:0 0 10px; }
+.home h3 { margin:0 0 8px; font-size:20px; }
+.home p { margin:0 0 10px; color:#333; font-size:14.5px; }
+.cta { display:inline-block; background:#1d5fa8; color:#fff; padding:8px 14px; border-radius:6px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>"Maximum execution time of 30 seconds exceeded" in WordPress</h1>
+<p class="lede">A white page or a half-loaded admin screen says "Fatal error: Maximum execution time of 30 seconds exceeded in /wp-includes/... on line ...". It usually appears during an import, a backup, an image regeneration, a plugin update or a big WooCommerce report. It means PHP stopped one request because it ran longer than the server allows. The file it names is where PHP happened to be when the clock ran out, not the cause. The cause is whatever made that one request do too much work, or wait too long on something else.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">harborviewdental.example/wp-admin/admin.php?page=import</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Find out which case it is (five minutes)</h2>
+<ol>
+  <li><b>Note what you were doing.</b> One button (import, backup, "regenerate thumbnails", a report) points to a job that is too big for one request. Every page, all the time, points to a plugin, a theme or a stuck outside call.</li>
+  <li><b>Read the path in the message.</b> A path under <code>/wp-content/plugins/&lt;name&gt;/</code> names the plugin that was running. A path under <code>/wp-includes/</code> (for example <code>class-wp-http-curl.php</code> or <code>class-wpdb.php</code>) means WordPress was waiting on a remote server or on the database when the clock ran out.</li>
+  <li><b>Check the error log</b> in the host panel (or <code>wp-content/debug.log</code> with WP_DEBUG_LOG on) for the lines just before the fatal error; they often name the plugin or the slow query.</li>
+  <li><b>On a staging copy, turn plugins off and switch to a default theme</b> (or use the Health Check plugin's troubleshooting mode, which does it for your login only). If the error stops, turn them back on one at a time.</li>
+</ol>
+
+<h2>The fixes, by case</h2>
+<ol>
+  <li><b>A big one-off job</b> (import, backup, thumbnail regeneration). Run it in smaller batches, or with a tool that works in steps (most importers and backup plugins have a "batch size" or "chunk" setting; WP-CLI runs it from the server with no web timeout). Raising the limit for that one job, in the host panel, and lowering it again after is also fine.</li>
+  <li><b>A plugin that hangs on every page.</b> Usually it calls an outside service on each page load (a licence check, a feed, a social count) and that service is slow or down. Update the plugin, or replace it. See the <a href="curl-error-28-fix.html">cURL error 28 guide</a> for outside calls that time out.</li>
+  <li><b>A slow database query.</b> A huge options table, years of post revisions or a report that scans every order. Clean the autoloaded options and old revisions, and add the plugin's own database indexes if it offers them. See the <a href="slow-site-fix.html">slow site guide</a>.</li>
+  <li><b>Updates or installs that stop half-way.</b> If an update was cut off, the site may be left in maintenance mode or with a half-copied plugin. See <a href="maintenance-mode-fix.html">stuck in maintenance mode</a> and <a href="install-update-failed-fix.html">install or update failed</a>.</li>
+  <li><b>The limit itself is very low.</b> Some cheap hosting sets it to 30 seconds and the host panel lets you raise it (often "PHP options" or "MultiPHP INI Editor": <code>max_execution_time</code>). 60-120 seconds is normal for the admin side; it does not fix a hang, it only gives a big job room to finish.</li>
+  <li><b>Test</b>: run the same job or open the same page again, and check the error log stays quiet for a day.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Only during an import, backup or regeneration</td><td>One job too big for one request</td><td>Smaller batches, WP-CLI, or a raised limit for that job</td></tr>
+  <tr><td>Path in <code>/wp-content/plugins/&lt;name&gt;/</code></td><td>That plugin was running when time ran out</td><td>Update, configure or replace that plugin</td></tr>
+  <tr><td>Path in <code>class-wp-http-curl.php</code> or <code>class-requests</code></td><td>Waiting on another server</td><td>Find the outside call; the host or the service is slow or blocked</td></tr>
+  <tr><td>Path in <code>class-wpdb.php</code></td><td>Waiting on a slow database query</td><td>Clean the database, add indexes, fix the report</td></tr>
+  <tr><td>On every page since an update</td><td>A plugin or theme now loops or hangs</td><td>Roll that one update back, then report it</td></tr>
+  <tr><td>"Allowed memory size exhausted" instead</td><td>Memory, not time</td><td>See the <a href="memory-exhausted-fix.html">memory guide</a></td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not set <code>max_execution_time</code> to 0 (no limit) or 3600 for the whole site. A hanging page then holds a server worker for an hour, and a few visitors at once take the site down.</li>
+  <li>Do not paste <code>set_time_limit(0)</code> into a theme or plugin file. It is overwritten at the next update and hides the real hang until then.</li>
+  <li>Do not edit the WordPress file named in the error. It is where PHP was, not what was wrong.</li>
+  <li>Do not keep re-clicking the import or update button. Each try can leave half-written data behind; check what the first one left first.</li>
+</ul>
+<p class="note">Most of these are one oversized job or one plugin waiting on a slow outside service, and are gone once that job is batched or that plugin is fixed. If it happens on every page and the log does not name a plugin, that is what the box below is for. Related: <a href="memory-exhausted-fix.html">memory exhausted</a>, <a href="white-screen-fix.html">white screen</a> and <a href="critical-error-fix.html">"There has been a critical error"</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="err"><p><b>Fatal error</b>: Maximum execution time of 30 seconds exceeded in <b>/home/site/public_html/wp-includes/class-wpdb.php</b> on line <b>2351</b></p>' +
+    '<p style="font-size:13px;color:#555">Patients import: 1,140 of 6,800 rows done.</p></div>';
+  var fixed = '<div class="home"><h3>Import complete</h3><p style="color:#1e7a3c">6,800 rows imported in 14 batches of 500.</p>' +
+    '<p>No errors in the log. Time limit back at the host default.</p></div>';
+  var logBroken = 'Owner: the patient list import dies\nhalf-way, every time.\n\n' +
+    'Error names class-wpdb.php: PHP was\nwaiting on the database.\n\n' +
+    'Slow query log: each row runs a\nduplicate check over all posts,\nno index, 0.02 s and growing.\n\n' +
+    '<span class="bad">6,800 rows in one request can never\nfinish in 30 seconds.</span>';
+  var logFixed = 'Steps taken:\n1. Import set to batches of 500 rows\n   (the importer&#39;s own setting).\n' +
+    '2. Duplicate check pointed at an\n   indexed field.\n' +
+    '3. No set_time_limit(0), no core\n   files edited.\n' +
+    '4. Partial rows from the failed runs\n   found and removed first.\n\n' +
+    '<span class="good">All 6,800 rows in, no duplicates,\nnothing left half-written.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'Maximum execution time of 30 seconds exceeded' mean in WordPress?","acceptedAnswer":{"@type":"Answer","text":"PHP stopped one request because it ran longer than the server allows. The file named is where PHP was when time ran out, not the cause; the cause is a job too big for one request, a plugin waiting on a slow outside service, or a slow database query."}},
+{"@type":"Question","name":"Should I set max_execution_time to 0?","acceptedAnswer":{"@type":"Answer","text":"No. With no limit a hanging page holds a server worker indefinitely and a few visitors can take the site down. Raise it moderately for one big job if needed, and fix the job or plugin that runs too long."}},
+{"@type":"Question","name":"How do I stop an import or backup timing out?","acceptedAnswer":{"@type":"Answer","text":"Run it in smaller batches using the tool's batch or chunk setting, or run it from the server with WP-CLI, which has no web request time limit."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
