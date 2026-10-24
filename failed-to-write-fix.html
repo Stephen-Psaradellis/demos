@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"Upload: Failed to write file to disk" in WordPress: the fix</title>
+<meta name="description" content="WordPress says Failed to write file to disk when you upload a photo? It is a full disk, a full or unwritable temp folder, or the uploads folder's permissions. How to tell which and fix it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/failed-to-write-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.media { font-size:14px; color:#1d2327; }
+.media h3 { margin:0 0 10px; font-size:18px; font-weight:600; }
+.notice { border-left:4px solid #d63638; background:#fff; box-shadow:0 1px 1px rgba(0,0,0,.08); padding:8px 12px; margin:0 0 10px; }
+.notice.ok { border-left-color:#00a32a; }
+.thumbs { display:flex; gap:8px; }
+.thumbs span { width:64px; height:64px; background:#dcdcde; border-radius:3px; display:inline-block; }
+.thumbs span.new { background:#c9e3c4; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>"Upload: Failed to write file to disk" in WordPress</h1>
+<p class="lede">You drop a photo into the Media Library and WordPress answers "Upload: Failed to write file to disk." (or "The uploaded file could not be moved to wp-content/uploads"). The photo is fine and the site is fine. The server took the file in and then had nowhere it was allowed to put it: the disk is full, PHP's temporary folder is full or locked, or the uploads folder will not accept writes.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">harborbakery.example/wp-admin/upload.php</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Find out which case it is (five minutes)</h2>
+<ol>
+  <li><b>Look at disk space first.</b> The host panel's usage page (cPanel's "Disk Usage", Plesk's "Statistics" or your host's dashboard) shows how close the plan is to its limit. A plan at 100% refuses every write, and the usual culprits are old backups kept inside the site folder, a huge error log, or a cache folder that never empties.</li>
+  <li><b>Try a tiny file.</b> If a 20 KB screenshot also fails, it is the disk, the temp folder or the permissions. If only big files fail with a different message, it is an upload size limit instead (see the <a href="upload-error-fix.html">upload error guide</a>).</li>
+  <li><b>Check PHP's temporary folder.</b> PHP writes every upload to a temp folder before WordPress moves it. On shared hosting that folder can be full or have the wrong owner even when your own space is fine. Tools, Site Health, Info, "Directories and Sizes" plus the server section show the paths; your host can confirm the temp folder's state.</li>
+  <li><b>Check the uploads folder.</b> In the file manager, <code>wp-content/uploads</code> and the year/month folders in it should be 755 and owned by the same account as the rest of the site. Folders copied in during a site move are the usual ones with the wrong owner.</li>
+</ol>
+
+<h2>The fixes, by case</h2>
+<ol>
+  <li><b>The disk is full.</b> Download old backups (zip files in the site root or in a backup plugin's folder) to your computer and delete them from the server, empty the cache plugin's cache, and clear an oversized <code>error_log</code> or <code>debug.log</code> after reading what filled it. If the site has simply grown, the plan needs more space.</li>
+  <li><b>PHP's temp folder is full or locked.</b> On shared hosting, ask the host to clear or fix it; it is their server folder, not yours. On your own server, check the free space where <code>upload_tmp_dir</code> (or the system temp folder) lives, and that the PHP user can write to it.</li>
+  <li><b>The uploads folder will not take writes.</b> Set <code>wp-content/uploads</code> and its subfolders to 755 (files 644) in the file manager. If they already are, the owner is wrong: the host can reset ownership to your account in a minute.</li>
+  <li><b>After a site move:</b> if Settings, Media still shows a "Store uploads in this folder" box with the old server's path, empty it and save, so WordPress uses the normal <code>wp-content/uploads</code> again.</li>
+  <li><b>Test</b>: upload a small photo, then a normal-sized one, and open both in the Media Library to see the thumbnails were made.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Disk usage at or near 100%</td><td>No room for any new file</td><td>Move old backups and logs off the server, or a bigger plan</td></tr>
+  <tr><td>Space is free, every upload still fails</td><td>PHP's temp folder is full or not writable</td><td>The host clears or fixes it</td></tr>
+  <tr><td>"Could not be moved to wp-content/uploads"</td><td>The uploads folder's permissions or owner</td><td>755 folders, 644 files, owner reset by the host</td></tr>
+  <tr><td>Started right after moving the site</td><td>Old upload path in Settings, Media, or files copied in as another user</td><td>Empty the path box; ask the host to reset ownership</td></tr>
+  <tr><td>Only big files fail, small ones upload</td><td>An upload size limit, not the disk</td><td>See the <a href="upload-error-fix.html">upload error guide</a></td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not set the uploads folder to 777. It makes the message go away and lets anything on the server write into your site, which is how many hacked sites start.</li>
+  <li>Do not delete things on the server you do not recognise to free space. Download backups before removing them, and leave system folders alone.</li>
+  <li>Do not keep backups inside the site folder. Besides filling the disk, a backup zip in a public folder can be downloaded by anyone who guesses its name.</li>
+  <li>Do not re-install WordPress. Nothing in WordPress is broken; the server just has nowhere to put the file.</li>
+</ul>
+<p class="note">Most of these are a clean-up or one message to the host. If the disk fills up again every few weeks, or nobody knows what is eating the space, that is what the box below is for. Related: <a href="upload-error-fix.html">WordPress will not upload a photo or file</a>, <a href="file-type-not-permitted-fix.html">"Sorry, this file type is not permitted"</a> and <a href="images-not-showing-fix.html">images not showing</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="media"><h3>Upload New Media</h3>' +
+    '<div class="notice">&ldquo;croissant-tray.jpg&rdquo; has failed to upload.<br>Upload: Failed to write file to disk.</div>' +
+    '<div class="thumbs"><span></span><span></span><span></span></div></div>';
+  var fixed = '<div class="media"><h3>Media Library</h3>' +
+    '<div class="notice ok">croissant-tray.jpg uploaded.</div>' +
+    '<div class="thumbs"><span class="new"></span><span></span><span></span><span></span></div></div>';
+  var logBroken = 'Owner: no photo will upload,\neven a small screenshot.\n\n' +
+    'Host panel disk usage:\n10.0 GB of 10 GB used.\n\n' +
+    'Site root: 14 backup zips from a\nbackup plugin, 7.8 GB in total.\n\n' +
+    '<span class="bad">The plan is full, so the server\nrefuses to write any new file.</span>';
+  var logFixed = 'Steps taken:\n1. Downloaded the 2 newest backups,\n   deleted all 14 from the server.\n' +
+    '2. Backup plugin set to store copies\n   off the server, keep 3.\n' +
+    '3. Uploads folder checked: 755,\n   right owner, nothing set to 777.\n' +
+    '4. Small and full-size photo uploaded,\n   thumbnails made.\n\n' +
+    '<span class="good">2.2 GB used, uploads work,\nno files lost.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'Upload: Failed to write file to disk' mean in WordPress?","acceptedAnswer":{"@type":"Answer","text":"The server received the file but could not save it. The hosting plan's disk is full, PHP's temporary upload folder is full or not writable, or the wp-content/uploads folder has the wrong permissions or owner."}},
+{"@type":"Question","name":"How do I fix 'Failed to write file to disk'?","acceptedAnswer":{"@type":"Answer","text":"Check disk usage in the host panel first and move old backups and large logs off the server. If space is free, set wp-content/uploads folders to 755 and files to 644, and ask the host to fix the PHP temp folder or the folder ownership."}},
+{"@type":"Question","name":"Should I set the uploads folder to 777?","acceptedAnswer":{"@type":"Answer","text":"No. 777 lets any process on the server write into the site and is a common way in for attackers. Use 755 for folders and ask the host to correct the owner if uploads still fail."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
