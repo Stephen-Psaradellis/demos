@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERR_SSL_VERSION_OR_CIPHER_MISMATCH on your website: the fix</title>
+<meta name="description" content="Chrome says ERR_SSL_VERSION_OR_CIPHER_MISMATCH on your site? The server has no valid certificate for that name, Cloudflare has not issued one yet, or it only speaks old TLS. How to tell which, and the fix.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/ssl-cipher-mismatch-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.xmlerr { border:2px solid #e0b4b4; background:#fdf2f2; padding:10px 12px; font-size:13px; margin:0 0 12px; overflow-wrap:anywhere; }
+.xmlerr h3 { margin:0 0 6px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Your site says "ERR_SSL_VERSION_OR_CIPHER_MISMATCH"</h1>
+<p class="lede">Chrome shows "This site can't provide a secure connection. The client and server don't support a common SSL protocol version or cipher suite." Edge says the same, Firefox says "SSL_ERROR_NO_CYPHER_OVERLAP". Despite the wording, it is rarely about ciphers. Almost always the server has no certificate it can offer for that exact address, so it gives up before the page starts. Here is how to tell which case you have, and the fix for each.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the visitor sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">https://www.shop.harborbakery.example/</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Find out which case you have</h2>
+<ol>
+  <li><b>Try the address with and without <code>www</code>, and on a phone on mobile data.</b> If one form works and the other fails, the certificate covers only one name. If everything fails everywhere, the server has no certificate for the domain at all. If only one computer fails, it is that computer (see the last fix).</li>
+  <li><b>Run the free SSL Labs server test</b> (ssllabs.com/ssltest) on the failing address. "No secure protocols supported" or "Certificate name mismatch" names the case. A list of only TLS 1.0 / 1.1 means the server is too old for current browsers.</li>
+  <li><b>Is the site behind Cloudflare?</b> Open Cloudflare &gt; SSL/TLS &gt; Edge Certificates. A certificate marked "Pending Validation", or none at all, means Cloudflare cannot serve the site over HTTPS yet. Also check the name: the free certificate covers <code>example.com</code> and <code>*.example.com</code>, one level only, so <code>www.shop.example.com</code> is not covered.</li>
+  <li><b>Did it start after a move?</b> A new host, a new IP address, a domain added to a hosting account, or a change of nameservers all leave a gap where the new server has no certificate for the name yet.</li>
+  <li><b>If you can use a terminal:</b> <code>openssl s_client -connect example.com:443 -servername example.com</code>. "no peer certificate available" or "handshake failure" confirms the server has nothing to offer for that name.</li>
+</ol>
+
+<h2>The fixes, by case</h2>
+<ol>
+  <li><b>No certificate for the name on the host:</b> in cPanel &gt; SSL/TLS Status, tick the domain and its <code>www</code> form and click Run AutoSSL (or use the host's Let's Encrypt button). This only works once the domain's DNS points at this host, so fix DNS first if it does not.</li>
+  <li><b>Cloudflare certificate pending:</b> check that the nameservers at the registrar are the two Cloudflare gave you, and that no CAA record in DNS blocks Cloudflare's certificate authorities. Most pending certificates issue within 15 minutes of that being right; until then, set the record to "DNS only" (grey cloud) so visitors reach the host's own certificate.</li>
+  <li><b>A name two levels deep under Cloudflare</b> (<code>www.shop.example.com</code>): rename it to one level (<code>shop.example.com</code>), switch that record to "DNS only", or add an Advanced Certificate that names it.</li>
+  <li><b>Server offers only TLS 1.0 / 1.1:</b> current browsers refuse both. On a managed host ask them to enable TLS 1.2 and 1.3; on your own server update OpenSSL and the web server and set <code>ssl_protocols TLSv1.2 TLSv1.3;</code> (nginx) or <code>SSLProtocol -all +TLSv1.2 +TLSv1.3</code> (Apache).</li>
+  <li><b>Old cipher list:</b> a hand-written cipher list that only allows RC4 or 3DES gets the same error. Replace it with the host's default or Mozilla's "intermediate" setting.</li>
+  <li><b>Only one computer fails:</b> an antivirus "HTTPS scanning" feature, an office proxy, or a very old browser or operating system. Update the browser, turn off HTTPS scanning to test, and check the clock is right.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Fails everywhere, right after a host move or new domain</td><td>The new server has no certificate for the name</td><td>Run AutoSSL / Let's Encrypt once DNS points there</td></tr>
+  <tr><td>Cloudflare shows "Pending Validation"</td><td>Cloudflare has not issued its certificate</td><td>Fix nameservers or CAA, or grey-cloud for now</td></tr>
+  <tr><td>Only <code>www.shop.example.com</code> fails</td><td>The free certificate covers one level only</td><td>Rename, grey-cloud, or an Advanced Certificate</td></tr>
+  <tr><td>SSL Labs lists only TLS 1.0 / 1.1</td><td>Server is too old for current browsers</td><td>Enable TLS 1.2 and 1.3</td></tr>
+  <tr><td>Fails on one computer only</td><td>Antivirus, proxy or an old browser</td><td>Update, turn off HTTPS scanning</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not tell visitors to "click through". This error has no "proceed anyway" link, and a site no one can open loses every order and enquiry until it is fixed.</li>
+  <li>Do not switch Cloudflare to "Flexible" to hide it. That does not create the missing certificate and often adds a redirect loop.</li>
+  <li>Do not buy a paid certificate first. The free one from the host or Cloudflare covers almost every small business site once the name and DNS are right.</li>
+  <li>Write down every DNS record before changing nameservers, so email and other services can be put back exactly.</li>
+</ul>
+<p class="note">Most cases are a certificate that was never issued for the name after a move, or a Cloudflare certificate still pending. If it is still failing, that is what the box below is for. Related: <a href="ssl-protocol-error-fix.html">ERR_SSL_PROTOCOL_ERROR</a>, <a href="not-secure-fix.html">"Not secure" warning</a>, <a href="cloudflare-error-fix.html">Cloudflare error</a>, <a href="too-many-redirects-fix.html">Too many redirects</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="xmlerr"><h3>This site can&rsquo;t provide a secure connection</h3>www.shop.harborbakery.example ' +
+    'uses an unsupported protocol.<br>ERR_SSL_VERSION_OR_CIPHER_MISMATCH</div>' +
+    '<p style="font-size:14px;margin:0;color:#666">No page, no "proceed anyway" link</p>';
+  var fixed = '<p style="font-size:15px;margin:0 0 10px"><b>Harbor Bakery Shop</b></p>' +
+    '<p style="font-size:14px;margin:0 0 8px;color:#1e7a3c"><b>Padlock shown, shop loads.</b></p>' +
+    '<p style="font-size:14px;margin:0">Free certificate &middot; no plan or host change</p>';
+  var logBroken = 'SSL Labs, www.shop.harborbakery.example:\n  Certificate name mismatch\n\n' +
+    'Cloudflare > Edge Certificates:\n  covers harborbakery.example\n  and *.harborbakery.example\n' +
+    '  (one level only)\n\n' +
+    '<span class="bad">www.shop. is two levels deep,\nso Cloudflare has no certificate\nto offer for it.</span>';
+  var logFixed = 'Steps taken:\n1. DNS records written down.\n' +
+    '2. Shop moved to shop.harborbakery.example\n   (one level, covered).\n' +
+    '3. Old www.shop. address redirects\n   to the new one.\n' +
+    '4. SSL Labs: grade A, TLS 1.2 + 1.3.\n\n' +
+    '<span class="good">No paid certificate, nothing\nelse changed.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does ERR_SSL_VERSION_OR_CIPHER_MISMATCH mean?","acceptedAnswer":{"@type":"Answer","text":"The browser and the server could not agree on a secure connection. On a business website this almost always means the server has no certificate for that exact address, for example after a host move or while a Cloudflare certificate is still pending. Less often the server only supports old TLS 1.0 or 1.1."}},
+{"@type":"Question","name":"Why does ERR_SSL_VERSION_OR_CIPHER_MISMATCH happen with Cloudflare?","acceptedAnswer":{"@type":"Answer","text":"Either the Cloudflare edge certificate has not been issued yet (Pending Validation, often wrong nameservers or a CAA record), or the address is two levels deep, like www.shop.example.com, which the free certificate does not cover."}},
+{"@type":"Question","name":"How do I fix ERR_SSL_VERSION_OR_CIPHER_MISMATCH on my website?","acceptedAnswer":{"@type":"Answer","text":"Run the SSL Labs test to name the case. Issue a free certificate for the name with AutoSSL or Let's Encrypt once DNS points at the host, fix a pending Cloudflare certificate or grey-cloud the record, and enable TLS 1.2 and 1.3 if the server only offers older versions."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
