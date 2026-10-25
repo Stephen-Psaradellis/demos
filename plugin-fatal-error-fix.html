@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress "Plugin could not be activated because it triggered a fatal error": the fix</title>
+<meta name="description" content="WordPress says a plugin could not be activated because it triggered a fatal error? Read the error line, then fix the PHP version, duplicate copy, missing extension or memory limit behind it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/plugin-fatal-error-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.xmlerr { border:2px solid #e0b4b4; background:#fdf2f2; padding:10px 12px; font-size:13px; margin:0 0 12px; overflow-wrap:anywhere; }
+.xmlerr h3 { margin:0 0 6px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress: "Plugin could not be activated because it triggered a fatal error"</h1>
+<p class="lede">You clicked Activate and WordPress refused, with a red box and a line of PHP underneath. The good news: WordPress caught the crash before it switched the plugin on, so your site is still running exactly as before. The line under the message tells you why the plugin crashed. Here is how to read it, and the fix for each case.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">harborbakery.example/wp-admin/plugins.php</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Find out which case it is (five minutes)</h2>
+<ol>
+  <li><b>Read the line under the message.</b> It usually starts with <code>Fatal error:</code> or <code>Parse error:</code> and names a file and a line. If it is blank, add <code>define('WP_DEBUG', true); define('WP_DEBUG_LOG', true);</code> to <code>wp-config.php</code>, click Activate again, and read <code>wp-content/debug.log</code>.</li>
+  <li><b>Look for "Cannot redeclare" or "already declared".</b> Two copies of the same code are loading: an old and a new copy of the plugin, a free and a Pro version, or a theme that bundles the same library.</li>
+  <li><b>Look for "syntax error, unexpected" or "requires PHP".</b> The plugin needs a newer PHP than your server runs. Tools, Site Health, Info, Server shows your PHP version; the plugin page on wordpress.org shows what it needs.</li>
+  <li><b>Look for "Call to undefined function" or "Class not found".</b> Either a PHP extension is missing on the server (mbstring, intl, zip, gd, curl) or the plugin is an add-on that needs its parent plugin active first.</li>
+  <li><b>Look for "Allowed memory size exhausted".</b> The plugin needs more PHP memory than the server gives.</li>
+</ol>
+
+<h2>The fixes, by case</h2>
+<ol>
+  <li><b>Cannot redeclare / already declared:</b> deactivate and delete the other copy first (the free version before installing Pro, or an old folder such as <code>plugin-name-1</code> left by a failed update), then activate. If the clash names your theme, ask the theme or plugin author which one should drop the bundled library.</li>
+  <li><b>Syntax error or "requires PHP 8.x":</b> raise the PHP version in your hosting panel (most hosts have a one-click PHP selector). Test on a staging copy first if your other plugins are old. Or install the last plugin version that supports your PHP.</li>
+  <li><b>Missing PHP extension:</b> enable it in the hosting panel's PHP extensions list, or send your host a one-line ticket naming the extension from the error.</li>
+  <li><b>Undefined function from a parent plugin:</b> add-ons for WooCommerce, Elementor, ACF and the like need the parent installed and active first. Activate the parent, then the add-on.</li>
+  <li><b>Memory exhausted:</b> add <code>define('WP_MEMORY_LIMIT', '256M');</code> to <code>wp-config.php</code>; if the host caps it lower, ask them to raise <code>memory_limit</code>.</li>
+  <li><b>Incomplete upload:</b> a "failed to open stream" or "No such file" error points at a file that is not there. Delete the plugin and install it again from Plugins, Add New, or upload a fresh zip.</li>
+  <li><b>A nulled or "free premium" copy:</b> delete it. These are a common source of crashes and of hidden malware. Get the plugin from its author.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Cannot redeclare ... / already declared</td><td>Two copies of the same code</td><td>Delete the old or free copy, then activate</td></tr>
+  <tr><td>syntax error, unexpected ... / requires PHP</td><td>Server PHP is too old for the plugin</td><td>Raise PHP in the hosting panel</td></tr>
+  <tr><td>Call to undefined function mb_...</td><td>A PHP extension is missing</td><td>Enable the extension or ask the host</td></tr>
+  <tr><td>Class "WooCommerce" not found</td><td>Add-on activated before its parent</td><td>Activate the parent plugin first</td></tr>
+  <tr><td>Allowed memory size exhausted</td><td>PHP memory limit too low</td><td>WP_MEMORY_LIMIT 256M or host raises it</td></tr>
+  <tr><td>failed to open stream: No such file</td><td>The upload was incomplete</td><td>Delete and reinstall the plugin</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not keep clicking Activate. Nothing changes until the cause does.</li>
+  <li>Do not edit the plugin's files to remove the failing line. The next update undoes it and the plugin may break in a worse place.</li>
+  <li>Do not downgrade PHP to suit one plugin. Old PHP is a security risk for the whole site.</li>
+  <li>Do not leave <code>WP_DEBUG</code> on once you have read the error; set it back to false.</li>
+</ul>
+<p class="note">Most cases are one duplicate copy or one PHP setting. If the plugin still will not activate, that is what the box below is for. Related: <a href="critical-error-fix.html">"There has been a critical error"</a>, <a href="memory-exhausted-fix.html">Memory exhausted</a>, <a href="outdated-php-fix.html">Outdated PHP</a>, <a href="plugin-valid-header-fix.html">"Plugin does not have a valid header"</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<p style="font-size:15px;margin:0 0 10px"><b>Plugins</b></p>' +
+    '<div class="xmlerr"><h3>Plugin could not be activated because it triggered a fatal error.</h3>' +
+    'Fatal error: Cannot redeclare booking_calendar_init() (previously declared in ' +
+    'wp-content/plugins/booking-calendar/booking.php:41)</div>';
+  var fixed = '<p style="font-size:15px;margin:0 0 10px"><b>Plugins</b></p>' +
+    '<p style="font-size:14px;margin:0 0 8px;color:#1e7a3c"><b>Plugin activated.</b></p>' +
+    '<p style="font-size:14px;margin:0">Booking Calendar Pro &middot; Active &middot; Bookings page loads</p>';
+  var logBroken = 'Owner: bought the Pro version,\nuploaded it, Activate fails.\n\n' +
+    'Error line:\n  "Cannot redeclare\n   booking_calendar_init()"\n\n' +
+    'Plugins folder:\n  booking-calendar/      (free, active)\n  booking-calendar-pro/  (new)\n\n' +
+    '<span class="bad">Free and Pro both define the same\nfunction, so Pro crashes on load.</span>';
+  var logFixed = 'Steps taken:\n1. Free version deactivated\n   (settings kept in the database).\n' +
+    '2. Free version deleted.\n' +
+    '3. Pro activated: no error.\n' +
+    '4. Existing bookings all present.\n\n' +
+    '<span class="good">No plugin file edited, no PHP\ndowngrade.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'Plugin could not be activated because it triggered a fatal error' mean?","acceptedAnswer":{"@type":"Answer","text":"WordPress tried to load the plugin, the plugin's PHP crashed, and WordPress refused to switch it on. The site keeps running as before. The line under the message names the cause: two copies of the same code, a PHP version that is too old, a missing PHP extension, a missing parent plugin, or too little memory."}},
+{"@type":"Question","name":"How do I fix 'Cannot redeclare' when activating a plugin?","acceptedAnswer":{"@type":"Answer","text":"Another copy of the same code is already loaded, usually the free version of a plugin you are upgrading to Pro or an old duplicate folder. Deactivate and delete the other copy, then activate the new one. Settings are normally kept in the database."}},
+{"@type":"Question","name":"Is my site broken after this error?","acceptedAnswer":{"@type":"Answer","text":"No. WordPress catches the crash during activation and leaves the plugin switched off, so visitors see the site as before. Only the new plugin's features are missing until the cause is fixed."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
