@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress shows the install screen on an existing site: the fix</title>
+<meta name="description" content="WordPress asking to install again on a live site? Your posts are usually still there. Check the table prefix and database name in wp-config.php before you click Install.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/install-screen-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.xmlerr { border:2px solid #e0b4b4; background:#fdf2f2; padding:10px 12px; font-size:13px; margin:0 0 12px; overflow-wrap:anywhere; }
+.xmlerr h3 { margin:0 0 6px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress shows the install screen on a site that already exists</h1>
+<p class="lede">You open your site, or log in, and WordPress greets you with "Welcome to the famous five-minute WordPress installation process" or a language picker, as if the site had never been set up. Your posts are almost always still there. WordPress shows the install screen when it reaches the database but cannot find its own tables under the name it expects. Here is how to tell why, and the fix for each case.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">harborbakery.example/wp-admin/install.php</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Do not click Install yet</h2>
+<p>Running the installer on a live site writes a fresh, empty site on top of your settings, and can leave you with two sets of tables. Close the tab and work out the cause first. It takes about ten minutes.</p>
+
+<h2>Find out which case it is</h2>
+<ol>
+  <li><b>Open <code>wp-config.php</code> and read <code>$table_prefix</code>.</b> It is usually <code>'wp_'</code>, but many hosts and security plugins use something like <code>'wp8x2_'</code>.</li>
+  <li><b>Open the database in phpMyAdmin</b> (or your host's database tool) and look at the table names. Is there a table called <code>&lt;prefix&gt;options</code>, for example <code>wp_options</code> or <code>wp8x2_options</code>?</li>
+  <li><b>Prefix in the file and prefix on the tables differ?</b> That is the cause in most cases, typically after a move, a restore, or a security plugin that renamed the tables.</li>
+  <li><b>No WordPress tables at all in this database?</b> <code>DB_NAME</code> in <code>wp-config.php</code> points at the wrong database (common after moving hosts, where the new database got a new name), or the import never finished.</li>
+  <li><b>Tables are there, prefix matches, but <code>&lt;prefix&gt;options</code> is missing or empty?</b> The options table was damaged or dropped. Check for a <code>siteurl</code> row in it.</li>
+  <li><b>Did the screen appear right after a host move or a "migration" plugin?</b> Note that, because it decides which backup you restore from.</li>
+</ol>
+
+<h2>The fixes, by case</h2>
+<ol>
+  <li><b>Prefix mismatch:</b> set <code>$table_prefix</code> in <code>wp-config.php</code> to the prefix the tables actually use (keep the underscore). Reload the site. This alone fixes most cases.</li>
+  <li><b>Wrong database:</b> correct <code>DB_NAME</code> (and <code>DB_USER</code>, <code>DB_PASSWORD</code>, <code>DB_HOST</code> if they changed) to the database that holds your tables. Your host's database page lists the right names.</li>
+  <li><b>Unfinished import:</b> import the database export again, all of it. A large file often stops halfway through phpMyAdmin's upload limit; use the host's import tool, split the file, or ask the host to load it.</li>
+  <li><b>Tables renamed by a security plugin, but some were missed:</b> rename the strays to the same prefix, and make sure the <code>wp_user_roles</code> option and the <code>wp_capabilities</code> user meta keys carry the new prefix too, or you will log in with no admin rights.</li>
+  <li><b>Damaged or missing options table:</b> run a repair from phpMyAdmin first (select the table, Repair). If it is gone, restore just that table from your latest backup rather than the whole database.</li>
+  <li><b>Nothing you have matches:</b> restore the most recent full backup from your host's backup page. Most managed hosts keep daily copies for 14 to 30 days.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Install screen; tables use a different prefix</td><td>wp-config.php names the wrong prefix</td><td>Set $table_prefix to the tables' prefix</td></tr>
+  <tr><td>Install screen; database has no WordPress tables</td><td>DB_NAME points at an empty database</td><td>Point wp-config.php at the right database</td></tr>
+  <tr><td>Install screen after a move; only some tables present</td><td>The import stopped partway</td><td>Re-import the full export</td></tr>
+  <tr><td>Site loads, but "Sorry, you are not allowed" in admin</td><td>Prefix changed, role keys did not</td><td>Rename wp_user_roles and wp_capabilities keys</td></tr>
+  <tr><td>Install screen; options table missing or empty</td><td>Options table damaged or dropped</td><td>Repair it, or restore that one table</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not click Install WordPress or pick a language on the live site. It creates a new, empty site on top of yours.</li>
+  <li>Do not delete tables that "look old" in the database. The ones with the other prefix are probably your real site.</li>
+  <li>Do not restore a full backup before checking the prefix. A one-line config change is quicker and loses nothing written since the backup.</li>
+  <li>Take a database export before you change anything, so every step can be undone.</li>
+</ul>
+<p class="note">Most cases are one line in <code>wp-config.php</code>. If your posts still do not come back, that is what the box below is for. Related: <a href="database-connection-fix.html">"Error establishing a database connection"</a>, <a href="database-update-loop-fix.html">Database update loop</a>, <a href="lost-access-fix.html">Lost admin access</a>, <a href="not-allowed-fix.html">"Sorry, you are not allowed to access this page"</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bar = document.getElementById("site-bar");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<p style="font-size:15px;margin:0 0 10px"><b>WordPress</b></p>' +
+    '<div class="xmlerr"><h3>Welcome</h3>Welcome to the famous five-minute WordPress installation process! ' +
+    'Please provide the following information.</div>' +
+    '<p style="font-size:14px;margin:0;color:#666">Site Title: ____ &middot; Username: ____ &middot; [Install WordPress]</p>';
+  var fixed = '<p style="font-size:15px;margin:0 0 10px"><b>Harbor Bakery</b></p>' +
+    '<p style="font-size:14px;margin:0 0 8px;color:#1e7a3c"><b>Home page loads.</b></p>' +
+    '<p style="font-size:14px;margin:0">Menu, 212 posts and the order form all present &middot; admin login works</p>';
+  var logBroken = 'Owner: moved hosts on Friday,\nnow the site asks to install.\n\n' +
+    'wp-config.php:\n  $table_prefix = \'wp_\';\n\n' +
+    'Database tables:\n  hb7k_options, hb7k_posts,\n  hb7k_users ... (12 tables)\n  no wp_options\n\n' +
+    '<span class="bad">WordPress looks for wp_options,\nfinds nothing, and assumes a\nnew install.</span>';
+  var logFixed = 'Steps taken:\n1. Database exported (backup).\n' +
+    '2. $table_prefix set to \'hb7k_\'.\n' +
+    '3. Site reloaded: home page,\n   posts and settings back.\n' +
+    '4. Admin login: full rights.\n\n' +
+    '<span class="good">Installer never run, nothing\nrestored, nothing lost.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bar.textContent = isFixed ? "harborbakery.example/" : "harborbakery.example/wp-admin/install.php";
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is WordPress showing the install screen on my existing site?","acceptedAnswer":{"@type":"Answer","text":"WordPress connected to the database but could not find its options table under the name it expects. The usual cause is a table prefix in wp-config.php that does not match the tables, often after a host move or restore. Less often the config points at the wrong database or an import stopped partway."}},
+{"@type":"Question","name":"Should I click Install WordPress to fix it?","acceptedAnswer":{"@type":"Answer","text":"No. Running the installer on a live site creates a new, empty site on top of your settings. Check the table prefix and the database name in wp-config.php first; your posts are usually still in the database."}},
+{"@type":"Question","name":"How do I fix a table prefix mismatch in WordPress?","acceptedAnswer":{"@type":"Answer","text":"Look at the table names in phpMyAdmin, for example hb7k_options, and set $table_prefix in wp-config.php to that prefix, including the underscore. Take a database export first. Reload the site and the content returns."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
