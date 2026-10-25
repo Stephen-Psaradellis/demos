@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress "The plugin does not have a valid header" or "No valid plugins were found": the fix</title>
+<meta name="description" content="WordPress says 'The plugin does not have a valid header' or 'No valid plugins were found' when you upload or activate a plugin. The zip or folder is packed wrong. Find which case it is and fix it in minutes.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/plugin-valid-header-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.xmlerr { border:2px solid #e0b4b4; background:#fdf2f2; padding:10px 12px; font-size:13px; margin:0 0 12px; }
+.xmlerr h3 { margin:0 0 6px; font-size:14px; }
+.xmltree { font-family:ui-monospace, Consolas, monospace; font-size:12.5px; color:#1d2327; overflow-wrap:anywhere; margin:0; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress plugin install error: "The plugin does not have a valid header"</h1>
+<p class="lede">You upload a plugin zip or click Activate, and WordPress stops with "The package could not be installed. No valid plugins were found." or "The plugin does not have a valid header." The plugin is usually fine. WordPress just cannot find its main file where it expects it. Here is how to tell which case you have, and the fix for each.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">harborbakery.example/wp-admin/plugins.php</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Find out which case it is (five minutes)</h2>
+<ol>
+  <li><b>When did it appear?</b> During "Upload Plugin" ("No valid plugins were found"), the zip is packed wrong or is not a plugin. On "Activate", or right after a plugin vanished from the list, the plugin's folder on the server is wrong.</li>
+  <li><b>Open the zip on your computer.</b> A good plugin zip holds one folder (for example <code>contact-widget/</code>) and inside it a <code>.php</code> file whose top comment starts with <code>Plugin Name:</code>. If the zip holds another zip, or a folder inside a folder, that is the fault.</li>
+  <li><b>Is it really a plugin?</b> A theme zip (it has <code>style.css</code>), a "full package" download from a marketplace (it has documentation and a licence file next to the real zip), or a source download from GitHub (named like <code>plugin-main.zip</code>) all fail this way.</li>
+  <li><b>Look on the server.</b> In the host's File Manager or FTP, open <code>wp-content/plugins/</code>. The plugin's folder should contain its main <code>.php</code> file directly, not a second folder of the same name.</li>
+</ol>
+
+<h2>The fixes, by case</h2>
+<ol>
+  <li><b>Zip inside a zip:</b> unzip the download on your computer. Upload the inner zip that is named after the plugin, not the whole package. Marketplaces like CodeCanyon call this the "installable WordPress file only" download.</li>
+  <li><b>Folder inside a folder:</b> on the server, move the inner folder's contents up one level (or delete the plugin folder and re-upload a zip that has one folder only). Then go to Plugins and activate it again.</li>
+  <li><b>GitHub download:</b> rename the folder from <code>plugin-name-main</code> to <code>plugin-name</code>, zip that folder, and upload the new zip. Better: download the release zip from the plugin's Releases page, which is packed for WordPress.</li>
+  <li><b>It is a theme:</b> upload it in Appearance, Themes, Add New, Upload Theme instead.</li>
+  <li><b>Main file renamed or broken:</b> if you edited the plugin, the comment block at the top of the main file must still start with <code>/*</code> and contain <code>Plugin Name: Something</code>. A missing line or a file saved with a byte-order mark hides it. Re-download the plugin rather than patching it.</li>
+  <li><b>Plugin "deactivated because the plugin file does not exist":</b> the folder was renamed or moved, often by an update that failed halfway. Re-install the plugin from Plugins, Add New; its settings are kept in the database.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>"No valid plugins were found" on upload</td><td>The zip has no plugin main file at the top level</td><td>Upload the inner zip, or re-zip one folder</td></tr>
+  <tr><td>"The plugin does not have a valid header" on Activate</td><td>WordPress looks for the main file in the wrong place</td><td>Fix the folder-in-folder on the server, then activate</td></tr>
+  <tr><td>Zip named <code>something-main.zip</code></td><td>A GitHub source download</td><td>Rename the folder, or use the release zip</td></tr>
+  <tr><td>Zip contains <code>style.css</code> and screenshots</td><td>It is a theme</td><td>Install it under Appearance, Themes</td></tr>
+  <tr><td>"Plugin file does not exist" after an update</td><td>The plugin folder was renamed or half-replaced</td><td>Re-install the plugin; settings stay</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not download a "nulled" copy of a paid plugin to get one that installs. Those copies are the most common way WordPress sites get hacked.</li>
+  <li>Do not add a fake <code>Plugin Name:</code> line to some random file to make the error go away. WordPress will then load the wrong file.</li>
+  <li>Do not delete the plugin's rows from the database to "start clean". Re-installing the files is enough, and the settings are worth keeping.</li>
+  <li>Do not keep uploading the same zip. If it failed once, it is packed wrong, and every try can leave another half-made folder in <code>wp-content/plugins/</code>.</li>
+</ul>
+<p class="note">Most cases are one zip opened and one folder moved. If the plugin still will not install, that is what the box below is for. Related: <a href="install-update-failed-fix.html">plugin install or update failed</a>, <a href="add-plugin-missing-fix.html">"Add New Plugin" button missing</a>, <a href="file-type-not-permitted-fix.html">"file type is not permitted"</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="xmlerr"><h3>Installing plugin from uploaded file: booking-pro-package.zip</h3>' +
+    'Unpacking the package...<br>Installing the plugin...<br>The package could not be installed. ' +
+    'No valid plugins were found.<br>Plugin installation failed.</div>';
+  var fixed = '<p style="font-size:14px;margin:0 0 8px">Installing plugin from uploaded file: booking-pro.zip</p>' +
+    '<p style="font-size:14px;margin:0 0 8px">Plugin installed successfully.</p>' +
+    '<p style="font-size:14px;margin:0"><b>Booking Pro</b> &middot; Active</p>';
+  var logBroken = 'Owner: bought a booking plugin, upload\nfails with "No valid plugins were found".\n\n' +
+    'booking-pro-package.zip contains:\n  documentation/\n  licensing/\n  booking-pro.zip\n\n' +
+    'No .php file with "Plugin Name:" at\nthe top level of the uploaded zip.\n\n' +
+    '<span class="bad">The whole marketplace package was\nuploaded, not the plugin zip inside it.</span>';
+  var logFixed = 'Steps taken:\n1. Package unzipped on the computer.\n' +
+    '2. Inner booking-pro.zip checked: one\n   folder, booking-pro.php inside with\n   "Plugin Name: Booking Pro".\n' +
+    '3. Inner zip uploaded in Plugins,\n   Add New, Upload Plugin.\n4. Plugin activated.\n\n' +
+    '<span class="good">Installed and active; nothing on the\nserver edited by hand.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'The plugin does not have a valid header' mean in WordPress?","acceptedAnswer":{"@type":"Answer","text":"WordPress cannot find the plugin's main PHP file, the one whose top comment contains 'Plugin Name:'. Usually the plugin sits in a folder inside another folder, or the uploaded zip is a package that holds the real plugin zip."}},
+{"@type":"Question","name":"How do I fix 'The package could not be installed. No valid plugins were found'?","acceptedAnswer":{"@type":"Answer","text":"Open the zip on your computer. If it contains another zip, upload that inner zip instead. If it is a GitHub download, rename the folder without '-main' and re-zip it. If it contains style.css, it is a theme and installs under Appearance, Themes."}},
+{"@type":"Question","name":"Will I lose plugin settings if I reinstall a plugin to fix the header error?","acceptedAnswer":{"@type":"Answer","text":"No. Plugin settings live in the WordPress database, not in the plugin folder, so removing and re-installing the plugin's files keeps them."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
