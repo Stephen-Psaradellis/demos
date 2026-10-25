@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"Cannot modify header information - headers already sent" in WordPress: the fix</title>
+<meta name="description" content="WordPress shows Cannot modify header information, headers already sent by. A file printed something too early. The message names the file and line: remove the stray space, BOM or closing tag there.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/headers-already-sent-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.warn { font-size:13px; font-family:ui-monospace, Consolas, monospace; color:#1d2327; overflow-wrap:anywhere; margin:0 0 12px; }
+.media h3 { margin:0 0 10px; font-size:18px; font-weight:600; }
+.notice { border-left:4px solid #00a32a; background:#fff; box-shadow:0 1px 1px rgba(0,0,0,.08); padding:8px 12px; margin:0 0 10px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>"Cannot modify header information - headers already sent" in WordPress</h1>
+<p class="lede">The page shows a warning like "Cannot modify header information - headers already sent by (output started at /wp-content/themes/yours/functions.php:42)", and often the login or a redirect stops working with it. Before WordPress can send a redirect or a login cookie, nothing may have been printed to the page. Some file printed something first: usually a blank line, a space or an invisible byte-order mark before <code>&lt;?php</code> or after a closing <code>?&gt;</code>. The message tells you exactly where: the part in brackets after "output started at" is the file and line to fix, not the file the warning is "in".</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">harborbakery.example/wp-login.php</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Find out which case it is (five minutes)</h2>
+<ol>
+  <li><b>Read the brackets.</b> Copy the path after "output started at". That file and line number printed too early. The file named before it (often <code>pluggable.php</code> or <code>wp-login.php</code>) is only where WordPress noticed, and is almost never the one to change.</li>
+  <li><b>Did you just edit a file?</b> A recent edit to <code>functions.php</code> or <code>wp-config.php</code>, or a snippet pasted from a website, is the usual source. A space or empty line before the first <code>&lt;?php</code>, or after a final <code>?&gt;</code>, is enough.</li>
+  <li><b>Does it name a plugin folder?</b> A path under <code>wp-content/plugins/</code> means that plugin printed something early, often right after an update. Its name is the folder after <code>plugins/</code>.</li>
+  <li><b>Is the line a warning itself?</b> If the line shown printed a PHP notice or deprecation message (see <a href="php-warnings-fix.html">PHP warnings on the site</a>), that printed text is what broke the headers. Fix or hide the first warning and this one goes with it.</li>
+</ol>
+
+<h2>The fixes, by case</h2>
+<ol>
+  <li><b>Take a copy of the file first</b> (download it with the host's File Manager or FTP). You are about to remove a few characters, and a copy makes that reversible.</li>
+  <li><b>Stray space or blank line:</b> open the file named in the brackets in the host's File Manager editor, go to the very top, and make sure <code>&lt;?php</code> is the first thing in the file, with nothing before it. At the very end, delete a closing <code>?&gt;</code> and any blank lines after it; WordPress files do not need one.</li>
+  <li><b>Invisible byte-order mark:</b> if the top looks clean, the file was saved with a "BOM" by a desktop editor. Re-save it as "UTF-8 without BOM" (Notepad++: Encoding, UTF-8; VS Code: click "UTF-8 with BOM" in the status bar, Save with Encoding, UTF-8) and upload it again.</li>
+  <li><b>A plugin is printing early:</b> rename its folder in <code>wp-content/plugins/</code> (add <code>-off</code>), check the site works, then update or replace that plugin before turning it back on.</li>
+  <li><b>A PHP warning is printing:</b> on a live site, warnings should go to a log, not the page. In <code>wp-config.php</code> set <code>define('WP_DEBUG_DISPLAY', false);</code> and fix the warning itself when you can.</li>
+  <li><b>Log in and check again:</b> clear the browser cache, log in, save a post. No warning at the top and a working redirect means it is fixed.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>"output started at .../functions.php:1"</td><td>Something before <code>&lt;?php</code>: a space or a byte-order mark</td><td>Delete it, or re-save as UTF-8 without BOM</td></tr>
+  <tr><td>"output started at" the last line of a file</td><td>Blank lines after a closing <code>?&gt;</code></td><td>Delete the closing tag and what follows</td></tr>
+  <tr><td>"output started at .../wp-config.php"</td><td>A pasted line in the config printed text</td><td>Remove the stray characters at the top or bottom</td></tr>
+  <tr><td>Path under <code>wp-content/plugins/name/</code></td><td>That plugin prints before WordPress is ready</td><td>Turn it off by renaming its folder, then update or replace it</td></tr>
+  <tr><td>Starts after a PHP upgrade, with "Deprecated" lines above</td><td>Old code prints warnings on the new PHP</td><td>Hide warnings on screen, update the code that warns</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not edit <code>pluggable.php</code> or <code>wp-login.php</code>. They are where WordPress noticed the problem, not the cause, and an update overwrites them anyway.</li>
+  <li>Do not wrap the site in <code>ob_start()</code> to hide the warning. It covers the real fault and makes the next one harder to find.</li>
+  <li>Do not edit a theme file with the built-in Theme File Editor if you cannot reach the host's file manager too: one wrong character can lock you out of the dashboard.</li>
+  <li>Do not install a "fix headers" plugin. The fix is a few characters in one named file.</li>
+</ul>
+<p class="note">Most of these are one space, one closing tag or one re-save. If the brackets name a file you cannot find or a plugin you need, that is what the box below is for. Related: <a href="php-warnings-fix.html">PHP warnings on the site</a>, <a href="login-loop-fix.html">login keeps going back to the login page</a> and <a href="white-screen-fix.html">blank white screen</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<p class="warn"><b>Warning</b>: Cannot modify header information - headers already sent by ' +
+    '(output started at /home/harbor/public_html/wp-content/themes/harbor/functions.php:1) in ' +
+    '/home/harbor/public_html/wp-includes/pluggable.php on line 1450</p>' +
+    '<div class="media"><h3>Log In</h3><p style="font-size:14px;margin:0">Username or Email Address &middot; Password &middot; Log In</p></div>';
+  var fixed = '<div class="media"><h3>Dashboard</h3>' +
+    '<div class="notice">Welcome back. Post updated.</div>' +
+    '<p style="font-size:14px;margin:0">Posts &middot; Pages &middot; Appearance</p></div>';
+  var logBroken = 'Owner: I pasted a snippet into\nfunctions.php and now I cannot log in.\n\n' +
+    'Output started at:\nthemes/harbor/functions.php line 1\n\n' +
+    'First bytes of the file:\nEF BB BF 3C 3F 70 68 70\n(a byte-order mark before <?php)\n\n' +
+    '<span class="bad">The editor saved the file with a BOM,\nso WordPress printed it first.</span>';
+  var logFixed = 'Steps taken:\n1. Copy of functions.php downloaded.\n' +
+    '2. Re-saved as UTF-8 without BOM,\n   closing ?> at the end removed.\n' +
+    '3. Uploaded, browser cache cleared.\n4. Logged in, saved a post.\n\n' +
+    '<span class="good">Login and redirects work, no\nwarning, no WordPress file edited.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'Cannot modify header information - headers already sent' mean in WordPress?","acceptedAnswer":{"@type":"Answer","text":"A file printed something to the page (often a space, blank line or invisible byte-order mark) before WordPress tried to send a redirect or cookie, which must come first. The file and line after 'output started at' is the one that printed."}},
+{"@type":"Question","name":"How do I fix 'headers already sent' in WordPress?","acceptedAnswer":{"@type":"Answer","text":"Open the file named after 'output started at', make sure <?php is the very first thing in it, delete any closing ?> and blank lines at the end, and re-save it as UTF-8 without BOM. If the path is inside a plugin folder, turn that plugin off by renaming its folder and update it."}},
+{"@type":"Question","name":"Should I edit pluggable.php to fix headers already sent?","acceptedAnswer":{"@type":"Answer","text":"No. pluggable.php is only where WordPress noticed the early output. The fault is in the file named in brackets after 'output started at'."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
