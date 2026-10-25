@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Search Console "Couldn't fetch" or "Sitemap could not be read" on WordPress: the fix</title>
+<meta name="description" content="Google Search Console says your WordPress sitemap &quot;Couldn't fetch&quot; or &quot;Sitemap could not be read&quot;. Usually it is the wrong sitemap address, a blank line before the XML, a security block on Googlebot, or the site set to hide from search engines. How to tell which, and fix it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/sitemap-error-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.xmlerr { border:2px solid #e0b4b4; background:#fdf2f2; padding:10px 12px; font-size:13px; margin:0 0 12px; }
+.xmlerr h3 { margin:0 0 6px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress sitemap: "Couldn't fetch" or "Sitemap could not be read"</h1>
+<p class="lede">You add your sitemap in Google Search Console and the Sitemaps report says "Couldn't fetch", "Sitemap could not be read" or "Sitemap is HTML". Google tried to download the list of your pages and either got nothing, got an error page, or got something that is not a valid sitemap. New pages then wait longer to show up in Google. Usually the address is wrong, a plugin prints a blank line before the XML, a security setting blocks Google, or the site is set to hide from search engines. Here is how to tell which.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">search.google.com/search-console/sitemaps</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Which problem is it? (five minutes)</h2>
+<ol>
+  <li><b>Open the exact address you submitted</b> in a private browser window. A "page not found" means the address is wrong for your setup. WordPress's own sitemap is <code>/wp-sitemap.xml</code>; Yoast SEO and Rank Math use <code>/sitemap_index.xml</code> and switch the WordPress one off. Plain <code>/sitemap.xml</code> only works if a plugin or the host makes it.</li>
+  <li><b>If it opens, look at the very top.</b> A browser message such as "XML declaration allowed only at the start of the document" or "error on line 2" means something prints a blank line or text before the sitemap. Google reads that as unreadable.</li>
+  <li><b>If you see your normal home page or a styled web page instead of a list,</b> a caching, redirect or "coming soon" plugin is answering for the sitemap. Search Console calls this "Sitemap is HTML".</li>
+  <li><b>Check Settings, Reading.</b> If "Discourage search engines from indexing this site" is ticked, WordPress turns its own sitemap off, and many SEO plugins tell Google to stay away. This is often left on after a site launch.</li>
+  <li><b>Ask Google directly.</b> In Search Console, paste the sitemap address into URL Inspection and run Test live URL. "Blocked by robots.txt", a 403 or a 5xx here, while the address opens fine for you, means a firewall, security plugin or CDN bot setting is turning Googlebot away.</li>
+  <li><b>Look at the date.</b> A sitemap submitted in the last day or two can show "Couldn't fetch" while Google has simply not read it yet. If steps 1 to 5 pass, wait a few days before changing anything.</li>
+</ol>
+
+<h2>Fix it, safest first</h2>
+<ol>
+  <li><b>Submit the right address.</b> In Search Console, Sitemaps, remove the old entry and submit the one that opened in step 1. One sitemap index is enough; do not submit both the WordPress and the plugin sitemap.</li>
+  <li><b>Get a 404 sitemap working:</b> go to Settings, Permalinks and press Save Changes without changing anything. That rebuilds WordPress's address rules and fixes most sitemaps that return "page not found" right after a plugin was installed or a site was moved. In Yoast or Rank Math, switch the sitemap setting off and on again.</li>
+  <li><b>Untick "Discourage search engines"</b> in Settings, Reading if the site is live, then resubmit.</li>
+  <li><b>Remove the blank line before the XML.</b> It almost always comes from a theme or plugin file with an empty line or a closing <code>?&gt;</code> at the very end, often <code>functions.php</code>. Deactivate plugins one at a time (on a copy or in a quiet hour) until the sitemap's top line starts with <code>&lt;?xml</code>, then update or replace that one. The <a href="headers-already-sent-fix.html">headers already sent guide</a> covers the same stray-output cause.</li>
+  <li><b>Exclude the sitemap from caching and redirects.</b> Add <code>wp-sitemap</code> or <code>sitemap</code> to the caching plugin's never-cache list and clear the cache. Turn off any coming-soon or maintenance mode on a live site.</li>
+  <li><b>Let Googlebot through.</b> In the security plugin or the CDN, allow verified search engine bots and take the sitemap address off any challenge or rate-limit rule. In robots.txt, remove any <code>Disallow</code> line that covers the sitemap, and add a <code>Sitemap:</code> line with its full address.</li>
+  <li><b>Resubmit and re-test.</b> Run URL Inspection's live test on the sitemap again, then resubmit it in the Sitemaps report. The status usually changes to "Success" within a few days.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>"Couldn't fetch", and the address gives "page not found"</td><td>Wrong sitemap address, or address rules not rebuilt</td><td>Submit /wp-sitemap.xml or /sitemap_index.xml; Save Permalinks</td></tr>
+  <tr><td>"Sitemap could not be read", browser says "XML declaration allowed only at the start"</td><td>A blank line or text is printed before the XML</td><td>Find the plugin or theme file with the stray output</td></tr>
+  <tr><td>"Sitemap is HTML"</td><td>A cache, redirect or coming-soon page answers instead</td><td>Exclude the sitemap from caching; turn off coming-soon</td></tr>
+  <tr><td>Sitemap opens for you, live test shows 403, 5xx or robots.txt block</td><td>Googlebot is blocked</td><td>Allow verified bots in the firewall or CDN; fix robots.txt</td></tr>
+  <tr><td>Sitemap gone after launch, Site Health warns about visibility</td><td>"Discourage search engines" is still ticked</td><td>Untick it in Settings, Reading; resubmit</td></tr>
+  <tr><td>"Couldn't fetch" the same day you submitted, everything else passes</td><td>Google has not read it yet</td><td>Wait a few days; do not resubmit repeatedly</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not run two sitemap plugins at once. They fight over the same address and Google gets whichever wins that minute.</li>
+  <li>Do not switch the firewall or security plugin off entirely to let Google in. Allow the verified bots instead; the rest of the protection stays on.</li>
+  <li>Do not resubmit the sitemap every hour. It does not make Google read it sooner, and it hides whether a fix worked.</li>
+</ul>
+<p class="note">Most cases are the wrong address or a forgotten "Discourage search engines" tick, fixed in a few minutes. If the blank line or the bot block will not go away, that is what the box below is for. Related: <a href="not-on-google-fix.html">site not on Google</a>, <a href="search-snippet-fix.html">wrong search snippet</a>, <a href="headers-already-sent-fix.html">headers already sent</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<p style="font-size:18px;margin:0 0 8px;font-weight:600">Submitted sitemaps</p>' +
+    '<p style="font-size:14px;margin:0 0 10px">/sitemap.xml &middot; Type: Unknown &middot; Discovered pages: 0</p>' +
+    '<div class="xmlerr" style="margin:0"><h3>Couldn\'t fetch</h3><p style="margin:0">Sitemap could not be read. General HTTP error: 404 not found</p></div>';
+  var fixed = '<p style="font-size:18px;margin:0 0 8px;font-weight:600">Submitted sitemaps</p>' +
+    '<p style="font-size:14px;margin:0 0 6px">/wp-sitemap.xml &middot; Type: Sitemap index &middot; Discovered pages: 38</p>' +
+    '<p style="font-size:14px;margin:0;color:#1e7a3c">Status: Success. Google has read every page in the list.</p>';
+  var logBroken = 'Owner: new service pages never\nshow up on Google; sitemap says\n"Couldn\'t fetch".\n\n' +
+    'Checks:\n  submitted: /sitemap.xml -> 404\n  /wp-sitemap.xml -> opens, 38 pages\n' +
+    '  Settings, Reading: "Discourage\n    search engines" still ticked\n  live test: robots.txt OK\n\n' +
+    '<span class="bad">Wrong address submitted, and the\nsite still asks Google to stay away.</span>';
+  var logFixed = 'Steps taken:\n1. Unticked "Discourage search\n   engines" (left on since launch).\n' +
+    '2. Removed /sitemap.xml in Search\n   Console, submitted /wp-sitemap.xml.\n' +
+    '3. Added a Sitemap: line to robots.txt.\n4. Live test: available to Google.\n\n' +
+    '<span class="good">Sitemap read, 38 pages discovered;\nnew pages queued for indexing.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does Search Console say my WordPress sitemap couldn't fetch?","acceptedAnswer":{"@type":"Answer","text":"Google could not download the sitemap. The usual causes are a wrong address (WordPress uses /wp-sitemap.xml, Yoast and Rank Math use /sitemap_index.xml), address rules that need rebuilding, a firewall or CDN blocking Googlebot, or a sitemap submitted so recently that Google has not read it yet."}},
+{"@type":"Question","name":"How do I fix Sitemap could not be read in WordPress?","acceptedAnswer":{"@type":"Answer","text":"Open the sitemap in a browser. If it gives page not found, submit the right address and save Settings, Permalinks once. If it shows an XML error at the top, a plugin or theme prints a blank line before the sitemap; find and update that one. Then run URL Inspection's live test and resubmit."}},
+{"@type":"Question","name":"Why is my WordPress sitemap missing?","acceptedAnswer":{"@type":"Answer","text":"WordPress switches its own sitemap off when Settings, Reading has Discourage search engines from indexing this site ticked, and SEO plugins such as Yoast or Rank Math replace it with /sitemap_index.xml. Untick the setting on a live site and submit the address your setup actually serves."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
