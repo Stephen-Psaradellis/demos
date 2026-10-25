@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"This site can't provide a secure connection" (ERR_SSL_PROTOCOL_ERROR): the fix</title>
+<meta name="description" content="ERR_SSL_PROTOCOL_ERROR or This site can't provide a secure connection on your business site? Usually a missing certificate after a host move, www left off the certificate, Cloudflare half set up or old TLS. How to tell which and fix it free.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/ssl-protocol-error-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.wpdie { font-size:14px; color:#1d2327; border:1px solid #c3c4c7; padding:18px; max-width:420px; margin:10px auto; }
+.wpdie a { color:#2271b1; }
+.media h3 { margin:0 0 10px; font-size:18px; font-weight:600; }
+.notice { border-left:4px solid #00a32a; background:#fff; box-shadow:0 1px 1px rgba(0,0,0,.08); padding:8px 12px; margin:0 0 10px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>"This site can't provide a secure connection" (ERR_SSL_PROTOCOL_ERROR)</h1>
+<p class="lede">Customers type your address and Chrome shows "This site can't provide a secure connection. example.com sent an invalid response. ERR_SSL_PROTOCOL_ERROR" (Firefox says SSL_ERROR_RX_RECORD_TOO_LONG, Safari "cannot establish a secure connection"). It is not the red "not private" warning about an expired certificate: here the browser and your server could not even agree how to talk securely. Almost always the server has no working certificate for that exact address, or something in front of it (Cloudflare, a CDN, a new host) is set up halfway.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the visitor sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">https://www.harborbakery.example</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Find out which case it is (ten minutes)</h2>
+<ol>
+  <li><b>Is it everyone, or one computer?</b> Open the site on your phone with Wi-Fi turned off. If it loads there, the problem is the one computer or network: a wrong date and time on the computer, antivirus "HTTPS scanning", a VPN, or an office firewall. If it fails on the phone too, it is the site.</li>
+  <li><b>Does <code>http://</code> (no s) load?</b> If the plain address works and only <code>https://</code> fails, the site itself is up and only the certificate side is missing or broken.</li>
+  <li><b>Did anything change recently?</b> A move to a new host, a domain pointed somewhere new, Cloudflare switched on, or a new <code>www</code> or shop subdomain. Most of these errors start within a day of one of those.</li>
+  <li><b>Run a free outside test.</b> <code>ssllabs.com/ssltest</code> (Qualys SSL Labs) on the exact address. "No secure protocols supported", "Certificate name mismatch" or "Unable to connect to the server" each point at a case in the table below. From a terminal, <code>curl -vI https://example.com</code> prints where the handshake stops.</li>
+  <li><b>Check both names.</b> Test <code>example.com</code> and <code>www.example.com</code> separately. Often one has a certificate and the other was never added.</li>
+</ol>
+
+<h2>The fixes, by case</h2>
+<ol>
+  <li><b>No certificate on the new host:</b> in the host's panel (cPanel "SSL/TLS Status", Plesk "SSL It!", or the host's own SSL page) issue the free Let's Encrypt or AutoSSL certificate for the domain <i>and</i> its www name. It can only be issued after the domain's DNS points at this host, so after a move wait for DNS, then run it. Most hosts finish in minutes.</li>
+  <li><b>Cloudflare in front:</b> in SSL/TLS, Overview, use <b>Full (strict)</b> when the host has a certificate (issue one first, or install Cloudflare's free Origin Certificate on the host). Make sure the DNS records for both the bare name and www are proxied (orange cloud) so Cloudflare's own certificate covers them. A deeper name like <code>shop.www.example.com</code> is not covered by Cloudflare's free certificate.</li>
+  <li><b>Port 443 answering in plain HTTP:</b> that is what "sent an invalid response" and Firefox's RX_RECORD_TOO_LONG usually mean on a VPS. The web server is listening for HTTPS without a certificate configured. Ask the host, or on your own server add the certificate to the site's HTTPS block (Certbot does this for Apache and Nginx) and restart the web server.</li>
+  <li><b>An old server that only speaks old TLS:</b> current browsers refuse TLS 1.0 and 1.1. SSL Labs shows which versions the server offers. The host needs to enable TLS 1.2 and 1.3, or the site needs a current hosting plan.</li>
+  <li><b>One computer only:</b> set the date and time to automatic, turn off the antivirus's HTTPS or web scanning for a test, disconnect the VPN, and clear the browser's SSL state (Windows: Internet Options, Content, Clear SSL state).</li>
+  <li><b>Test</b>: load both <code>https://example.com</code> and <code>https://www.example.com</code> on a phone off Wi-Fi, and run SSL Labs again. A grade A or B with no name mismatch means it is fixed for everyone.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Started right after a move or DNS change</td><td>The new host has no certificate for the name yet</td><td>Issue the free certificate for both names once DNS points there</td></tr>
+  <tr><td>Only www (or only the bare name) fails</td><td>The certificate covers one name, not both</td><td>Reissue it covering both, or redirect the missing name</td></tr>
+  <tr><td>Cloudflare is on, error on a subdomain</td><td>The record is not proxied, or the name is too deep for the free certificate</td><td>Proxy the record; keep names one level deep, or add a certificate for it</td></tr>
+  <tr><td>Firefox: SSL_ERROR_RX_RECORD_TOO_LONG</td><td>Port 443 is serving plain HTTP</td><td>Configure the certificate in the server's HTTPS site and restart it</td></tr>
+  <tr><td>SSL Labs: "No secure protocols supported"</td><td>Server offers only TLS 1.0/1.1 or nothing</td><td>Host enables TLS 1.2 and 1.3</td></tr>
+  <tr><td>Works on the phone, fails on one PC</td><td>Clock, antivirus, VPN or network on that PC</td><td>Fix the clock, turn off HTTPS scanning, try without the VPN</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not tell customers to "click through" or use <code>http://</code>. Forms, logins and card payments on a page without a working certificate are exactly what browsers are warning about, and Chrome labels those pages "Not secure".</li>
+  <li>Do not buy an expensive certificate to fix this. The free Let's Encrypt or Cloudflare certificate is the same encryption; the error is about it being missing or misconfigured, not about its price.</li>
+  <li>Do not switch Cloudflare to "Flexible" as a quick fix on a WordPress site. It often trades this error for an endless redirect loop and leaves the hop to your host unencrypted.</li>
+</ul>
+<p class="note">Most of these are one button in the host panel or one Cloudflare setting. If it is a server you run yourself, or the host keeps saying everything is fine, that is what the box below is for. Related: <a href="not-secure-fix.html">"Not secure" and certificate warnings</a>, <a href="too-many-redirects-fix.html">too many redirects</a> and <a href="site-unreachable-fix.html">site unreachable or DNS errors</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div style="max-width:420px;margin:6px auto;font-size:14px;color:#3c4043">' +
+    '<h3 style="font-size:18px;font-weight:500;margin:0 0 10px">This site can’t provide a secure connection</h3>' +
+    '<p style="margin:0 0 8px"><b>www.harborbakery.example</b> sent an invalid response.</p>' +
+    '<p style="margin:0 0 8px">Try running Windows Network Diagnostics.</p>' +
+    '<p style="margin:0;color:#70757a;font-size:12px">ERR_SSL_PROTOCOL_ERROR</p></div>';
+  var fixed = '<div class="media"><h3>Harbor Bakery</h3>' +
+    '<div class="notice">Fresh sourdough every morning from 7am. Order ahead online.</div>' +
+    '<p style="font-size:14px;margin:0">Menu &middot; Order online &middot; Visit us</p></div>';
+  var logBroken = 'Owner: since we moved hosts, customers\nwho type www get an error page.\n\n' +
+    'harborbakery.example      -> loads\n' +
+    'www.harborbakery.example  -> ERR_SSL_PROTOCOL_ERROR\n\n' +
+    'SSL Labs on www: certificate name\nmismatch, issued for harborbakery.example\nonly.\n\n' +
+    '<span class="bad">The new host issued the free certificate\nbefore www pointed at it, so www was\nleft out.</span>';
+  var logFixed = 'Steps taken:\n1. Confirmed www DNS points at the\n   new host.\n' +
+    '2. Re-ran AutoSSL for harborbakery.example\n   and www.harborbakery.example.\n' +
+    '3. Both names load on a phone off Wi-Fi.\n' +
+    '4. SSL Labs: grade A, both names\n   on the certificate.\n\n' +
+    '<span class="good">Every customer gets the secure site,\nno warnings, nothing bought.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does ERR_SSL_PROTOCOL_ERROR mean?","acceptedAnswer":{"@type":"Answer","text":"The browser and the server could not set up a secure connection. Usually the server has no working certificate for that exact address (common right after moving hosts or adding www or a subdomain), Cloudflare or a CDN is half set up, port 443 is serving plain HTTP, or the server only offers old TLS versions. If it fails on only one computer, check that computer's clock, antivirus HTTPS scanning and VPN."}},
+{"@type":"Question","name":"How do I fix 'This site can't provide a secure connection' on my website?","acceptedAnswer":{"@type":"Answer","text":"Test the site on a phone off Wi-Fi and with SSL Labs. Then issue the host's free Let's Encrypt or AutoSSL certificate for both the bare domain and www after DNS points at the host, set Cloudflare to Full (strict) with proxied records, or have the host enable TLS 1.2 and 1.3."}},
+{"@type":"Question","name":"Do I need to buy an SSL certificate to fix it?","acceptedAnswer":{"@type":"Answer","text":"No. A free Let's Encrypt or Cloudflare certificate gives the same encryption. The error means the certificate is missing or misconfigured for that address, not that it is too cheap."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
