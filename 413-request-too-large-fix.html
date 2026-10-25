@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress "413 Request Entity Too Large": the fix</title>
+<meta name="description" content="WordPress shows &quot;413 Request Entity Too Large&quot; when you upload a theme, plugin, video or big photo. The web server in front of PHP refuses the file before WordPress sees it. How to tell which limit it is (Nginx, Apache, Cloudflare or PHP) and raise the right one.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/413-request-too-large-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress: "413 Request Entity Too Large"</h1>
+<p class="lede">You upload a theme, a plugin, a video or a big batch of photos and get a plain page saying "413 Request Entity Too Large", or the uploader just says "HTTP error". The file never reached WordPress: the web server in front of it (usually Nginx, sometimes Apache or Cloudflare) has its own size limit and refused the upload. Raising WordPress's or PHP's limit alone does not help while that one stays low. Here is how to tell which limit it is and raise the right one.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">example-bakery.com/wp-admin/update.php?action=upload-theme</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Which limit is it? (five minutes)</h2>
+<ol>
+  <li><b>Read the bottom line of the error page.</b> "nginx" means the Nginx limit (<code>client_max_body_size</code>, 1 MB unless someone changed it). "Apache" points to <code>LimitRequestBody</code>. A Cloudflare-branded page means the upload went over Cloudflare's plan limit (100 MB on Free and Pro).</li>
+  <li><b>Check what WordPress thinks the limit is.</b> Go to Media, Add New. It prints "Maximum upload file size". If that says 64 MB and a 5 MB file still gets a 413, the server in front of PHP is the low one, not PHP.</li>
+  <li><b>Try a small file.</b> A 200 KB photo that uploads fine while a 3 MB one fails confirms it is a size limit, not a permission or security block (that is a <a href="forbidden-403-fix.html">403</a> or a <a href="406-not-acceptable-fix.html">406</a>).</li>
+  <li><b>Note when it started.</b> A 413 right after moving host, adding a CDN or switching to a new server panel almost always means the new layer came with the default 1 MB limit.</li>
+</ol>
+
+<h2>Fix it, safest first</h2>
+<ol>
+  <li><b>Upload a different way for today.</b> A theme or plugin zip can go up by SFTP or the host's File Manager into <code>wp-content/themes</code> or <code>wp-content/plugins</code>, then be activated in the dashboard. A big video is better on YouTube or Vimeo and embedded anyway; it keeps the site fast.</li>
+  <li><b>Ask the host to raise the web server limit.</b> On shared or managed hosting you usually cannot change Nginx yourself. One line to support does it: "Please raise client_max_body_size (and PHP upload_max_filesize / post_max_size) to 64M for my site." Most hosts do it the same day.</li>
+  <li><b>On your own server (Nginx):</b> add <code>client_max_body_size 64M;</code> inside the <code>http</code> or the site's <code>server</code> block, test with <code>nginx -t</code>, then reload Nginx. A panel such as Plesk, CloudPanel or RunCloud has the same setting in its site settings.</li>
+  <li><b>On Apache:</b> look for a <code>LimitRequestBody</code> line in the site config or <code>.htaccess</code> and raise or remove it.</li>
+  <li><b>Raise PHP's limits to match.</b> <code>upload_max_filesize</code> and <code>post_max_size</code> (a little larger) in the host's PHP settings or <code>php.ini</code>. If the server limit is fixed but PHP is still 2 MB, the upload fails with a different message, covered in the <a href="upload-error-fix.html">upload error guide</a>.</li>
+  <li><b>Over Cloudflare's 100 MB:</b> upload that file by SFTP or through a hostname that is not proxied by Cloudflare. Cloudflare's limit cannot be raised on the Free or Pro plan.</li>
+  <li><b>Re-test with the same file</b> and check Media, Add New shows the new maximum.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>"413 Request Entity Too Large" with "nginx" at the bottom</td><td>Nginx's upload limit, often the 1 MB default</td><td>Raise client_max_body_size (host support or server config)</td></tr>
+  <tr><td>413 page from Apache</td><td>LimitRequestBody is set low</td><td>Raise or remove it in the site config or .htaccess</td></tr>
+  <tr><td>Cloudflare-branded 413</td><td>Upload over the plan's 100 MB limit</td><td>Upload by SFTP or a non-proxied hostname</td></tr>
+  <tr><td>"HTTP error" in the media uploader on big files only</td><td>Often the same 413 hidden behind the uploader</td><td>Check the error in the browser's network tab; raise the server limit</td></tr>
+  <tr><td>"The uploaded file exceeds the upload_max_filesize directive"</td><td>PHP's limit, not the web server's</td><td>Raise upload_max_filesize and post_max_size</td></tr>
+  <tr><td>413 started right after a host move or new CDN</td><td>New layer came with default limits</td><td>Ask the host to match the old limits</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not install an "increase upload size" plugin and expect it to fix a 413. Those plugins change PHP's limit; the web server refuses the file before PHP ever runs.</li>
+  <li>Do not set the limits to gigabytes "to be safe". A big limit lets anyone push huge requests at the site. 64 MB covers themes, plugins and photos.</li>
+  <li>Do not keep re-uploading the same file in the hope it goes through. A 413 is a fixed rule, not a hiccup.</li>
+</ul>
+<p class="note">Most 413s are one line from the host's support team, or one line in the Nginx config. If you cannot reach the server settings or the error stays after the change, that is what the box below is for. Related: <a href="upload-error-fix.html">upload errors</a>, <a href="incompatible-archive-fix.html">incompatible archive</a>, <a href="link-expired-fix.html">the link you followed has expired</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<p style="font-size:22px;margin:0 0 8px;font-weight:600;text-align:center">413 Request Entity Too Large</p>' +
+    '<hr style="border:0;border-top:1px solid #ccc;margin:10px 0"><p style="font-size:14px;margin:0;text-align:center">nginx</p>';
+  var fixed = '<p style="font-size:18px;margin:0 0 8px;font-weight:600">Theme installed successfully.</p>' +
+    '<p style="font-size:14px;margin:0 0 6px">Unpacking the package... Installing the theme... Done.</p>' +
+    '<p style="font-size:14px;margin:0;color:#1e7a3c">Media, Add New: Maximum upload file size: 64 MB.</p>';
+  var logBroken = 'Owner: the new theme zip (4.8 MB)\nwill not upload; plain error page.\n\n' +
+    'Checks:\n  error page footer: nginx\n  WordPress max upload: 64 MB\n  200 KB photo: uploads fine\n' +
+    '  started: after the move to a\n    new VPS panel last week\n\n' +
+    '<span class="bad">Nginx still on its 1 MB default;\nPHP was never the problem.</span>';
+  var logFixed = 'Steps taken:\n1. client_max_body_size 64M; added\n   to the site server block.\n' +
+    '2. nginx -t passed, Nginx reloaded.\n3. PHP upload_max_filesize 64M,\n   post_max_size 72M (already set).\n' +
+    '4. Same 4.8 MB zip uploaded again.\n\n' +
+    '<span class="good">Theme installed; uploads up to\n64 MB work again.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 413 Request Entity Too Large mean in WordPress?","acceptedAnswer":{"@type":"Answer","text":"The web server in front of WordPress, usually Nginx, refused the upload because it is bigger than its own size limit. WordPress and PHP never saw the file, so raising only the PHP or WordPress upload limit does not fix it."}},
+{"@type":"Question","name":"How do I fix 413 Request Entity Too Large on Nginx?","acceptedAnswer":{"@type":"Answer","text":"Add client_max_body_size 64M; to the http or server block, test the config with nginx -t and reload Nginx. On shared or managed hosting, ask support to raise client_max_body_size together with PHP's upload_max_filesize and post_max_size."}},
+{"@type":"Question","name":"Why does an upload size plugin not fix the 413 error?","acceptedAnswer":{"@type":"Answer","text":"Those plugins change PHP's upload limit. A 413 comes from the web server or a CDN such as Cloudflare before PHP runs, so the server limit has to be raised, or the file uploaded by SFTP instead."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
