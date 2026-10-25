@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress "REST API encountered an error" / loopback request failed: the fix</title>
+<meta name="description" content="Site Health says the REST API encountered an error and your site could not complete a loopback request? Read the cURL or HTTP code, then fix the plugin, firewall, basic auth or host loopback behind it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/rest-api-loopback-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.xmlerr { border:2px solid #e0b4b4; background:#fdf2f2; padding:10px 12px; font-size:13px; margin:0 0 12px; }
+.xmlerr h3 { margin:0 0 6px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress Site Health: "The REST API encountered an error" and "Your site could not complete a loopback request"</h1>
+<p class="lede">Tools, Site Health lists two critical issues that usually arrive together. They look alarming, and they matter: the block editor, scheduled posts, plugin and theme file editing, and automatic updates all rely on your site being able to call itself. Your content is fine. Something between the site and its own address is refusing the call. Here is how to find what, and the fix for each case.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">harborbakery.example/wp-admin/site-health.php</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Find out which case it is (five minutes)</h2>
+<ol>
+  <li><b>Read the exact error under each issue.</b> Click the issue in Site Health. The line after "Error:" names the cause: <code>cURL error 28</code> (time-out), <code>cURL error 7</code> or <code>Could not resolve host</code> (the server cannot find or reach its own address), <code>401</code>/<code>403</code> (something is refusing the call), or <code>500</code> (PHP crashed while answering).</li>
+  <li><b>Open the REST API yourself.</b> Visit <code>/wp-json/</code> on your site. A long page of JSON means the API works from outside, so the problem is the server calling itself. A 404 means pretty permalinks or the server rules are wrong. A 403 or a login box means a security layer.</li>
+  <li><b>Is the site behind a password?</b> Staging sites and "coming soon" setups often use HTTP basic auth. Your browser knows the password; the server calling itself does not, so every loopback gets 401.</li>
+  <li><b>Did it start after a plugin, a move or a new firewall?</b> Security plugins, "disable REST API" plugins, Cloudflare rules and a recent domain or host change are the usual causes.</li>
+</ol>
+
+<h2>The fixes, by case</h2>
+<ol>
+  <li><b>cURL error 28 (timed out):</b> the self-call took longer than 10 seconds. Often a plugin starts a PHP session (<code>session_start()</code>) and holds it, so the second request waits for the first. Find the plugin with the Health Check &amp; Troubleshooting plugin's troubleshooting mode, which disables plugins for your login only. A slow site can also do it: see the slow-admin fixes.</li>
+  <li><b>401 on a password-protected site:</b> allow the server's own IP past the basic-auth rule, or switch the protection off on the live site. A "coming soon" plugin that blocks <code>/wp-json/</code> for logged-out visitors needs its REST option turned on.</li>
+  <li><b>403 from a security plugin or firewall:</b> a setting such as "disable REST API" or "block XML-RPC and REST" is on, or ModSecurity / Cloudflare blocks the request. Allow logged-in REST requests in the plugin and whitelist the server's own IP in the firewall rather than turning protection off.</li>
+  <li><b>cURL error 7 or "could not resolve host":</b> the server cannot reach its own domain. Common right after a move: DNS points at the new host but the server still resolves the name to the old IP, or the host blocks connections from the server to itself. Your host can add the domain to the server's hosts file or allow the loopback; this is a one-line ticket.</li>
+  <li><b>404 on /wp-json/:</b> go to Settings, Permalinks and click Save without changing anything. That rewrites the server rules. On Nginx, the host must have the standard WordPress <code>try_files</code> rule.</li>
+  <li><b>cURL error 60 (SSL certificate):</b> the server's own certificate bundle is out of date or the site's certificate is incomplete. See the cURL error 60 fix.</li>
+  <li><b>500 or a PHP error in the reply:</b> a plugin or theme crashes when called by the API. Turn on <code>WP_DEBUG_LOG</code>, run the Site Health test again, and read <code>wp-content/debug.log</code> for the file named.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>cURL error 28: Operation timed out</td><td>The self-call waited over 10 seconds</td><td>Find the plugin holding a PHP session</td></tr>
+  <tr><td>Unexpected result 401</td><td>Basic auth or "coming soon" blocks the server</td><td>Allow the server's IP or the REST path</td></tr>
+  <tr><td>Unexpected result 403</td><td>Security plugin or firewall refuses it</td><td>Allow logged-in REST, whitelist own IP</td></tr>
+  <tr><td>cURL error 7 / could not resolve host</td><td>Server cannot reach its own domain</td><td>Host fixes the loopback or hosts file</td></tr>
+  <tr><td>/wp-json/ gives 404</td><td>Rewrite rules are missing</td><td>Re-save Permalinks; Nginx try_files</td></tr>
+  <tr><td>Unexpected result 500</td><td>A plugin crashes on the API call</td><td>Read debug.log, update or replace it</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not hide the warnings with a plugin that silences Site Health. Scheduled posts and automatic security updates still fail underneath.</li>
+  <li>Do not switch off your firewall or security plugin for good. Allow the one request instead.</li>
+  <li>Do not install a "disable REST API" plugin to make the error go away. The block editor, contact forms and WooCommerce all need the REST API.</li>
+  <li>Do not edit WordPress core files. Nothing in core is broken.</li>
+</ul>
+<p class="note">Most cases are one plugin setting or one firewall rule. If both issues are still red, that is what the box below is for. Related: <a href="curl-error-28-fix.html">cURL error 28</a>, <a href="curl-error-60-fix.html">cURL error 60</a>, <a href="scheduled-post-fix.html">Missed scheduled posts</a>, <a href="json-response-fix.html">"Not a valid JSON response"</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<p style="font-size:15px;margin:0 0 10px"><b>Site Health Status</b> &middot; Should be improved</p>' +
+    '<div class="xmlerr"><h3>2 critical issues</h3>The REST API encountered an error<br>' +
+    'Your site could not complete a loopback request</div>';
+  var fixed = '<p style="font-size:15px;margin:0 0 10px"><b>Site Health Status</b> &middot; Good</p>' +
+    '<p style="font-size:14px;margin:0 0 8px">0 critical issues</p>' +
+    '<p style="font-size:14px;margin:0">REST API available &middot; Loopback request works &middot; Scheduled events run</p>';
+  var logBroken = 'Owner: two red issues in Site Health,\nscheduled posts missed twice.\n\n' +
+    '/wp-json/ from outside: 200, JSON.\n\n' +
+    'Site Health detail:\n  "Error: cURL error 28: Operation\n   timed out after 10001 ms"\n\n' +
+    'Troubleshooting mode, plugins off:\n  both checks pass.\n\n' +
+    '<span class="bad">One plugin holds a PHP session open,\nso the site waits on itself.</span>';
+  var logFixed = 'Steps taken:\n1. Plugins back one by one: fails\n   with "Visitor Counter".\n' +
+    '2. Its "start session on every page"\n   option switched off.\n' +
+    '3. Site Health re-run: both pass.\n' +
+    '4. Missed posts published; cron\n   catching up.\n\n' +
+    '<span class="good">No firewall disabled, no core file\ntouched.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'The REST API encountered an error' mean in WordPress Site Health?","acceptedAnswer":{"@type":"Answer","text":"WordPress tried to call its own REST API at /wp-json/ and the call failed. The error line names why: a time-out (cURL error 28), a block by basic auth, a security plugin or firewall (401 or 403), the server not reaching its own domain (cURL error 7), or a plugin crash (500)."}},
+{"@type":"Question","name":"How do I fix 'Your site could not complete a loopback request'?","acceptedAnswer":{"@type":"Answer","text":"Use the Health Check and Troubleshooting plugin to test with plugins off; if the check passes, re-enable them one at a time to find the one that blocks or slows the self-call, often by holding a PHP session. If it still fails, ask your host to allow the server to connect to its own domain and whitelist its own IP in the firewall."}},
+{"@type":"Question","name":"Is the loopback request error serious?","acceptedAnswer":{"@type":"Answer","text":"It can be. Scheduled posts, automatic updates, background tasks and editing plugin or theme files from the dashboard all depend on the site calling itself, so they fail quietly while the error stays. The site's content and visitors are not affected."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
