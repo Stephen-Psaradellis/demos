@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"This block contains unexpected or invalid content": the WordPress fix</title>
+<meta name="description" content="WordPress editor says &quot;This block contains unexpected or invalid content&quot;? The saved block HTML no longer matches what the block expects. What causes it, when Attempt Block Recovery is safe, and how to fix it without losing content.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/block-invalid-content-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>"This block contains unexpected or invalid content"</h1>
+<p class="lede">You open a page in the WordPress editor and one or more blocks show a grey box: "This block contains unexpected or invalid content", with an Attempt Block Recovery button. The page itself usually still looks fine to visitors. What happened is that the block's saved HTML no longer matches what the block's code expects to see, so the editor refuses to guess. Nothing is lost yet. Here is how to find out why and fix it without throwing content away.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">example-bakery.com/wp-admin/post.php?post=12&amp;action=edit</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Why it happened (five minutes)</h2>
+<ol>
+  <li><b>Did a plugin or theme update just now?</b> If the broken blocks are all one kind (a button, a gallery, a pricing table from one plugin) and it started after an update, the plugin changed the HTML its block saves and did not teach the editor to read the old version. This is the most common cause.</li>
+  <li><b>Was the page edited as code?</b> Hand edits in the Code editor (the three-dot menu, Code editor), HTML pasted from another site, or a find-and-replace tool run on the database can change a block's markup so it no longer matches.</li>
+  <li><b>Who last edited it?</b> On a multisite network, or for Author and Editor roles where unfiltered HTML is turned off, WordPress strips some attributes (inline scripts, some <code>style</code> or <code>data-</code> values) on save. The block comes back different from what it saved.</li>
+  <li><b>Is it a different message?</b> "Your site doesn't include support for the ... block" means the plugin that made the block is deactivated or deleted. That is not this error: reactivate the plugin instead.</li>
+</ol>
+
+<h2>Fix it, safest first</h2>
+<ol>
+  <li><b>Keep a copy first.</b> Open the block's three-dot menu (or the page's Code editor) and copy the HTML into a text file. Revisions in the right sidebar also hold every saved version.</li>
+  <li><b>Look before you recover.</b> In the block's menu choose <b>Resolve</b>. It shows the current HTML next to what the block would make of it. If the two look the same apart from class names or spacing, recovery is safe.</li>
+  <li><b>Click Attempt Block Recovery.</b> It rebuilds the block from its current settings. Check the block, then Update. If something is missing, press Undo (Ctrl+Z) or restore the revision.</li>
+  <li><b>If recovery drops content, convert instead.</b> <b>Convert to HTML</b> keeps the exact markup as a Custom HTML block, so the page looks the same and nothing is lost. You can rebuild it as a normal block later.</li>
+  <li><b>If one plugin's blocks broke after an update,</b> update that plugin again (the fix is often already out), or roll it back to the last version that worked and tell its support. Recovering every block by hand fixes the pages but not the next post.</li>
+  <li><b>If a role strips the markup,</b> make that edit as an Administrator, or move the script or custom attribute into a plugin or the theme instead of the post.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Same block type broken on many pages after an update</td><td>The plugin changed its saved HTML without a fallback</td><td>Update or roll back the plugin; then recover</td></tr>
+  <tr><td>One block broken after editing in Code editor</td><td>Hand edit no longer matches the block</td><td>Resolve, then recover or Convert to HTML</td></tr>
+  <tr><td>Block breaks every time an Editor saves it</td><td>WordPress strips attributes for that role</td><td>Save as an Administrator, move the code out of the post</td></tr>
+  <tr><td>"Your site doesn't include support for the ... block"</td><td>The block's plugin is off or deleted</td><td>Reactivate the plugin</td></tr>
+  <tr><td>"This block has encountered an error and cannot be previewed"</td><td>The block's JavaScript crashed, not its content</td><td>See <a href="editor-unexpected-error-fix.html">the editor has encountered an unexpected error</a></td></tr>
+  <tr><td>Update button fails with "Updating failed"</td><td>The save itself is blocked</td><td>See <a href="publishing-failed-fix.html">publishing failed</a></td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not click recovery on every block and Update without looking. Recovery can drop text, links or images the block no longer understands.</li>
+  <li>Do not delete the block and retype it before keeping a copy of its HTML.</li>
+  <li>Do not switch the whole site to the Classic Editor to hide the message. The blocks are still mismatched underneath.</li>
+</ul>
+<p class="note">Most cases are one plugin update or one recovery click. If dozens of pages are affected or recovery keeps losing content, that is what the box below is for. Related: <a href="editor-unexpected-error-fix.html">editor unexpected error</a>, <a href="publishing-failed-fix.html">publishing failed</a>, <a href="changes-not-showing-fix.html">changes not showing</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<p style="font-size:18px;margin:0 0 8px;font-weight:600">Holiday Orders</p>' +
+    '<div style="border:1px solid #ccc;background:#f6f7f7;padding:12px;font-size:14px;margin:0 0 8px">' +
+    'This block contains unexpected or invalid content.<br><span style="display:inline-block;margin-top:8px;' +
+    'border:1px solid #2271b1;color:#2271b1;padding:4px 10px;border-radius:3px">Attempt Block Recovery</span></div>' +
+    '<p style="font-size:14px;margin:0;color:#b3261e">Same box on 14 pages, all on the "Order now" buttons.</p>';
+  var fixed = '<p style="font-size:18px;margin:0 0 8px;font-weight:600">Holiday Orders</p>' +
+    '<p style="margin:0 0 8px"><span style="display:inline-block;background:#7a3e9d;color:#fff;padding:8px 16px;' +
+    'border-radius:6px;font-size:14px">Order now</span></p>' +
+    '<p style="font-size:14px;margin:0;color:#1e7a3c">Buttons edit normally again on all 14 pages.</p>';
+  var logBroken = 'Owner: every "Order now" button\nshows the invalid content box.\n\n' +
+    'Checks:\n  broken blocks: all one button\n    plugin, 14 pages\n  started: after that plugin\n' +
+    '    updated yesterday\n  Resolve: new version adds a\n    wrapper div the old HTML lacks\n\n' +
+    '<span class="bad">Plugin changed its saved HTML\nwith no fallback for old posts.</span>';
+  var logFixed = 'Steps taken:\n1. HTML of each block copied out.\n' +
+    '2. Plugin updated to its patch\n   release (fallback restored).\n3. Pages reloaded: 12 fine.\n' +
+    '4. 2 pages: Resolve, recover,\n   checked, Update.\n\n' +
+    '<span class="good">All 14 pages edit cleanly, no\ncontent lost.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does \"This block contains unexpected or invalid content\" mean?","acceptedAnswer":{"@type":"Answer","text":"The block's saved HTML no longer matches the HTML its code would produce, so the WordPress editor will not load it as a normal block. The usual causes are a plugin update that changed the block's markup, hand edits in the Code editor, or WordPress stripping attributes for a user role without unfiltered HTML."}},
+{"@type":"Question","name":"Is Attempt Block Recovery safe?","acceptedAnswer":{"@type":"Answer","text":"Usually, but check first. Choose Resolve in the block menu to compare the current HTML with the recovered version. If recovery drops content, press Undo or restore a revision, and use Convert to HTML to keep the exact markup."}},
+{"@type":"Question","name":"Will visitors see the error?","acceptedAnswer":{"@type":"Answer","text":"Normally not. The message appears only in the editor; the front end shows the HTML that was saved. It still needs fixing before the block can be edited again."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
