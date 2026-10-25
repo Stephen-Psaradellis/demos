@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress Media Library not loading (spinner, empty grid): the fix</title>
+<meta name="description" content="WordPress Media Library stuck on a spinner, showing an empty grid, or 'An error occurred in the upload'? Usually one plugin, a broken admin-ajax response or a permissions problem. Find which and fix it in minutes.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/media-library-not-loading-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.xmlerr { border:2px solid #e0b4b4; background:#fdf2f2; padding:10px 12px; font-size:13px; margin:0 0 12px; }
+.xmlerr h3 { margin:0 0 6px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress Media Library not loading: spinner forever, or an empty grid</h1>
+<p class="lede">You open Media, Library and the grid spins forever, or it says "No media items found" when you know the photos are there. The "Add Media" button in a post may show the same empty box. Your files are almost never lost. The page that lists them is failing, and the cause is usually one of four things. Here is how to tell which, and the fix for each.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">harborbakery.example/wp-admin/upload.php</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Find out which case it is (five minutes)</h2>
+<ol>
+  <li><b>Switch to list view.</b> On Media, Library click the list icon next to the grid icon (or open <code>/wp-admin/upload.php?mode=list</code>). If your files show up in the list but not the grid, the files and database are fine and the grid's background request is failing.</li>
+  <li><b>Look at the files themselves.</b> Open one image's address directly, for example <code>/wp-content/uploads/2026/10/photo.jpg</code>. If it loads, the files are there. If it gives 403 or 404, it is a permissions or path problem, not the library.</li>
+  <li><b>Watch the background request.</b> In Chrome press F12, open Network, reload the Media page and click the request to <code>admin-ajax.php</code> (action <code>query-attachments</code>). A good one returns a list in square brackets. A PHP warning, a blank reply, a 500 or a 403 is your clue.</li>
+  <li><b>Did it start after an update?</b> A plugin or theme updated the same day is the usual suspect, especially media, optimisation, security and page-builder plugins.</li>
+</ol>
+
+<h2>The fixes, by case</h2>
+<ol>
+  <li><b>A plugin breaks the request:</b> deactivate all plugins, check the grid, then turn them back on one at a time until it breaks again. The Health Check &amp; Troubleshooting plugin does this for your login only, so visitors see nothing change.</li>
+  <li><b>The reply starts with a PHP warning or a blank line:</b> the grid cannot read a reply that has anything before the opening <code>[</code>. Turn off on-screen errors (<code>define('WP_DEBUG_DISPLAY', false);</code> in <code>wp-config.php</code>) and remove stray spaces or blank lines before <code>&lt;?php</code> in <code>functions.php</code> or a recently edited plugin file.</li>
+  <li><b>admin-ajax.php returns 403:</b> a security plugin, the host's firewall (ModSecurity) or Cloudflare is blocking it. Find the blocked request in the plugin's or host's log and allow it; do not switch the firewall off for good.</li>
+  <li><b>Images give 403 or 404 directly:</b> folders in <code>wp-content/uploads</code> should be 755 and files 644. Also check Settings, Media: the "Store uploads in this folder" path should be empty or <code>wp-content/uploads</code>, not an old server path left over from a move.</li>
+  <li><b>It spins only on big libraries:</b> the request runs out of time or memory. Raise <code>WP_MEMORY_LIMIT</code> to 256M and ask the host about the PHP time limit; list view works meanwhile.</li>
+  <li><b>Moved the site recently:</b> image addresses may still point at the old domain or <code>http://</code>. A search-and-replace of the old address in the database (with a backup first) fixes it.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Grid spins forever, list view works</td><td>The grid's admin-ajax request fails</td><td>Find the plugin, or clean the reply</td></tr>
+  <tr><td>"No media items found" but files exist</td><td>The request returned something that is not a list</td><td>Check admin-ajax in the Network tab</td></tr>
+  <tr><td>admin-ajax.php gives 403</td><td>A firewall or security plugin blocks it</td><td>Allow that request in the firewall log</td></tr>
+  <tr><td>Thumbnails broken, direct image link 403/404</td><td>Wrong folder permissions or upload path</td><td>755 folders, 644 files, reset Settings, Media path</td></tr>
+  <tr><td>Started right after an update</td><td>That plugin or theme broke it</td><td>Roll it back or wait for its fix</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not re-upload all your images. They are still in <code>wp-content/uploads</code>; re-uploading makes duplicates and fills the disk.</li>
+  <li>Do not set folders to 777 to make it work. That lets anyone on a shared server write into your site.</li>
+  <li>Do not delete "unused" media with a cleanup plugin while the library is broken. It may see every image as unattached.</li>
+  <li>Do not leave all plugins switched off on a live shop or booking site while you test. Use the troubleshooting mode instead.</li>
+</ul>
+<p class="note">Most cases are one plugin found or one warning removed. If the library still will not load, that is what the box below is for. Related: <a href="images-not-showing-fix.html">Images not showing</a>, <a href="upload-error-fix.html">Upload errors</a>, <a href="json-response-fix.html">"Not a valid JSON response"</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<p style="font-size:15px;margin:0 0 10px"><b>Media Library</b> &middot; Add New Media File</p>' +
+    '<div class="xmlerr"><h3>Loading media items...</h3>The grid keeps spinning. After a minute: ' +
+    '"No media items found."</div>';
+  var fixed = '<p style="font-size:15px;margin:0 0 10px"><b>Media Library</b> &middot; Add New Media File</p>' +
+    '<p style="font-size:14px;margin:0 0 8px">Showing 80 of 412 media items</p>' +
+    '<p style="font-size:14px;margin:0">croissants.jpg &middot; storefront.jpg &middot; menu-fall.pdf &middot; ...</p>';
+  var logBroken = 'Owner: media library shows nothing\nsince yesterday, photos still on site.\n\n' +
+    'List view: 412 items, all listed.\nDirect image link: 200 OK.\n\n' +
+    'admin-ajax.php?action=query-attachments\nreply begins:\n  "Warning: Undefined array key\n   in .../image-tools/sizes.php"\n  then [ {...}, ... ]\n\n' +
+    '<span class="bad">A plugin warning printed before the\nlist, so the grid cannot read it.</span>';
+  var logFixed = 'Steps taken:\n1. Troubleshooting mode: grid loads\n   with plugins off.\n' +
+    '2. Plugins back one by one: breaks\n   with "Image Tools" (updated\n   yesterday).\n' +
+    '3. Rolled back to the previous\n   version; WP_DEBUG_DISPLAY off.\n' +
+    '4. Grid and Add Media both load.\n\n' +
+    '<span class="good">All 412 items back; no file moved\nor re-uploaded.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is my WordPress Media Library not loading?","acceptedAnswer":{"@type":"Answer","text":"The grid loads your files through a background request to admin-ajax.php. If a plugin breaks that request, prints a PHP warning before the reply, or a firewall blocks it, the grid spins forever or shows 'No media items found' even though the files are still there."}},
+{"@type":"Question","name":"How do I fix the WordPress Media Library stuck on a spinner?","acceptedAnswer":{"@type":"Answer","text":"Switch to list view to confirm the files are there, then deactivate plugins and re-enable them one at a time to find the one that breaks the grid. Turn off on-screen PHP errors with WP_DEBUG_DISPLAY false, and allow admin-ajax.php in any firewall that blocks it."}},
+{"@type":"Question","name":"Are my images deleted if the Media Library is empty?","acceptedAnswer":{"@type":"Answer","text":"Almost never. The files stay in wp-content/uploads. Open one image's address directly or use list view; if they show there, only the library page is failing and nothing needs to be re-uploaded."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
