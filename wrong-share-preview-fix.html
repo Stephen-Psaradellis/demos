@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Facebook or LinkedIn shows the wrong picture or old title for your link: the fix</title>
+<meta name="description" content="You share your website on Facebook, LinkedIn or in a text and the preview shows the wrong image, no image, or last year's title? The preview comes from og: tags and the platform's cache. How to read the tags, fix them in WordPress and make each platform fetch again.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/wrong-share-preview-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Your link shows the wrong picture or an old title when shared</h1>
+<p class="lede">You paste your website into Facebook, LinkedIn, WhatsApp or a text message and the preview card shows your logo cropped badly, a random photo from the footer, no picture at all, or a title you changed months ago. The card is not taken from the page you see. It is built from a few hidden <code>og:</code> tags in the page's code, and each platform keeps its own copy for days or weeks. Fix the tags, then make each platform fetch again.</p>
+
+<div class="switch" role="group" aria-label="Show the preview">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What people see when the link is shared</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">facebook.com - new post</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Why it happened (five minutes)</h2>
+<ol>
+  <li><b>Read what the platforms read.</b> Paste your address into Facebook's <a href="https://developers.facebook.com/tools/debug/">Sharing Debugger</a> or LinkedIn's <a href="https://www.linkedin.com/post-inspector/">Post Inspector</a>. Both show the title, description and image they found, plus any warnings. This is the test that matters: your own browser shows the page, not the card.</li>
+  <li><b>Is there an <code>og:image</code> at all?</b> In the page source (Ctrl+U) search for <code>og:image</code>. With none, each platform guesses, and it often picks a logo, an icon or the first picture in the footer.</li>
+  <li><b>Two sets of tags?</b> An SEO plugin (Yoast, Rank Math, All in One SEO) plus a theme or a "social share" plugin can each print their own <code>og:</code> tags. Platforms usually take the first one, which may be the stale one.</li>
+  <li><b>Tags right, card still old?</b> Then it is the cache. Facebook and LinkedIn keep a copy of the card for about a week; WhatsApp and iMessage keep their own copy too. Nothing changes until they fetch again.</li>
+  <li><b>Image set but not shown?</b> It is too small (under 200 by 200 pixels), too large (over 8 MB), on an <code>http://</code> address, or a security plugin or Cloudflare rule turns the platform's fetcher away.</li>
+</ol>
+
+<h2>Fix it, safest first</h2>
+<ol>
+  <li><b>Set one share image for the whole site.</b> Yoast: SEO, Settings, Site basics, "Site image". Rank Math: Titles &amp; Meta, Global Meta, "OpenGraph Thumbnail". Use a 1200 by 630 pixel JPG or PNG with the important part in the middle, so square crops still work.</li>
+  <li><b>Set it per page and post.</b> In the editor, the SEO plugin's Social tab takes a title, description and image for that page. With nothing set, most plugins fall back to the featured image, so give every post one.</li>
+  <li><b>Remove the duplicate tags.</b> If the page source shows two <code>og:image</code> lines, turn off the Open Graph or social option in the theme or the extra plugin and leave the SEO plugin in charge.</li>
+  <li><b>Clear your own caches,</b> then view the page source again and check the new tags are there: a caching plugin or Cloudflare can keep serving the old code to the platforms.</li>
+  <li><b>Make each platform fetch again.</b> Facebook Sharing Debugger: Scrape Again (twice for a new image, the first fetch can come back without it). LinkedIn Post Inspector: Inspect. WhatsApp and iMessage can hold the old card a while; sharing the address with <code>?v=2</code> on the end makes them fetch a fresh one.</li>
+  <li><b>Confirm.</b> The debugger should show your title, description and image with no <code>og:image</code> warnings.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Random photo, logo or icon in the card</td><td>No <code>og:image</code>, the platform guessed</td><td>Set a site image and a per-page social image</td></tr>
+  <tr><td>Old title or picture after you changed it</td><td>The platform's cached copy</td><td>Scrape Again / Inspect, or share with <code>?v=2</code></td></tr>
+  <tr><td>Debugger shows two images or the wrong one</td><td>Two plugins or the theme print og: tags</td><td>Leave one in charge, switch the other off</td></tr>
+  <tr><td>No picture, warning about image size</td><td>Image under 200 px, over 8 MB, or an odd ratio</td><td>Upload a 1200 x 630 JPG or PNG</td></tr>
+  <tr><td>Debugger: "Could not retrieve data" or 403</td><td>A firewall or security plugin blocks the fetcher</td><td>Allow facebookexternalhit and LinkedInBot in the security rules</td></tr>
+  <tr><td>Fine on Facebook, wrong in texts</td><td>WhatsApp or iMessage cached an older card</td><td>Wait it out, or share the <code>?v=2</code> address</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not install another plugin "to fix sharing". More plugins printing tags is usually the cause, not the cure.</li>
+  <li>Do not delete and re-post the link over and over. The platform reuses its cached card until it fetches again.</li>
+  <li>Do not put a phone number or text near the edges of the share image. Each platform crops the card differently.</li>
+</ul>
+<p class="note">Most cases are one image setting and one Scrape Again. If the tags are printed twice, a firewall turns the fetchers away, or you would rather not touch it, that is what the box below is for. Related: <a href="search-snippet-fix.html">wrong Google snippet</a>, <a href="page-title-fix.html">page title</a>, <a href="changes-not-showing-fix.html">changes not showing</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  function card(bg, img, title, desc) {
+    return '<div style="border:1px solid #dfe3e8;border-radius:8px;overflow:hidden;max-width:420px">' +
+      '<div style="height:120px;background:' + bg + ';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;text-align:center;padding:0 8px">' + img + '</div>' +
+      '<div style="padding:10px 12px;background:#f0f2f5"><div style="font-size:12px;color:#666">EXAMPLE-BAKERY.COM</div>' +
+      '<div style="font-weight:600;font-size:15px">' + title + '</div><div style="font-size:13px;color:#555">' + desc + '</div></div></div>';
+  }
+  var broken = card("#9aa3ad", "footer payment icons", "Example Bakery - Summer Menu 2024", "Just another WordPress site") +
+    '<p style="font-size:14px;margin:10px 0 0;color:#b3261e">Wrong picture, last year&#39;s title.</p>';
+  var fixed = card("#b5651d", "fresh bread, 1200 x 630", "Example Bakery - Fresh Bread Daily", "Order cakes and bread online, open 7 to 3.") +
+    '<p style="font-size:14px;margin:10px 0 0;color:#1e7a3c">Current title, chosen picture.</p>';
+  var logBroken = 'Owner: shares show the wrong\npicture and an old menu title.\n\n' +
+    'Checks:\n  Sharing Debugger: og:image\n    missing, image guessed\n  page source: og:title from\n' +
+    '    theme AND SEO plugin\n  cached card: 9 months old\n\n' +
+    '<span class="bad">Platforms guess the image and\nkeep the stale card.</span>';
+  var logFixed = 'Steps taken:\n1. SEO plugin: site image\n   1200x630 set.\n' +
+    '2. Theme Open Graph off.\n3. Page cache cleared.\n4. Scrape Again x2 + Inspect.\n\n' +
+    '<span class="good">One set of tags, fresh card\non Facebook and LinkedIn.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does Facebook show the wrong image when I share my website?","acceptedAnswer":{"@type":"Answer","text":"Facebook builds the preview from the og:image tag in your page's code. With no og:image it guesses, often picking a logo or footer icon. Set a 1200 x 630 share image in your SEO plugin, then use the Sharing Debugger's Scrape Again."}},
+{"@type":"Question","name":"I changed the title but the old one still shows. Why?","acceptedAnswer":{"@type":"Answer","text":"Facebook, LinkedIn, WhatsApp and iMessage cache the preview card. Ask Facebook and LinkedIn to fetch again with the Sharing Debugger and Post Inspector; for messaging apps, sharing the address with ?v=2 on the end fetches a fresh card."}},
+{"@type":"Question","name":"Why are there two og:image tags on my page?","acceptedAnswer":{"@type":"Answer","text":"Two tools are printing Open Graph tags, usually an SEO plugin and the theme or a social sharing plugin. Turn the option off in one of them so only one set remains."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
