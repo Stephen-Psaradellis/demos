@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Website emails going to spam or junk: the SPF, DKIM and DMARC fix</title>
+<meta name="description" content="Your contact form, order or booking emails arrive, but in the spam or junk folder? Gmail and Outlook check SPF, DKIM and DMARC on your domain. How to read the verdict, fix the three DNS records and send through a real mail service.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/emails-to-spam-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>Your website's emails land in spam or junk</h1>
+<p class="lede">The contact form works, orders go through, password resets are sent, but customers find the email in their spam or junk folder, or Gmail shows a red "Be careful with this message" banner. Since 2024 Gmail, Yahoo and Outlook check three DNS records on your domain (SPF, DKIM and DMARC) before trusting a message. Mail that fails them is filed as spam, or refused. Here is how to read the verdict and fix it.</p>
+
+<div class="switch" role="group" aria-label="Show the inbox">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the customer sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">mail.google.com - inbox</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Why it happened (five minutes)</h2>
+<ol>
+  <li><b>Read the verdict Gmail wrote.</b> Send a test from your site to a Gmail address, open it, then the three dots, "Show original". The top lines say <code>SPF: PASS</code> or <code>FAIL</code>, <code>DKIM</code> and <code>DMARC</code>. Each FAIL is one reason it went to spam.</li>
+  <li><b>Who actually sent it?</b> By default WordPress sends with PHP <code>mail()</code> from your web host's server, while the From line says your domain. To Gmail that is a stranger's server using your name, so SPF fails.</li>
+  <li><b>Is there an SPF record?</b> Look up your domain's TXT records (any DNS lookup tool, or your DNS host's panel). One record should start <code>v=spf1</code> and name every service that sends for you. Two <code>v=spf1</code> records count as none.</li>
+  <li><b>Is mail signed (DKIM)?</b> Your mail service gives you a DKIM record to add (a TXT or CNAME such as <code>google._domainkey</code>). Without it there is no signature to check.</li>
+  <li><b>Is there a DMARC record?</b> A TXT record at <code>_dmarc.yourdomain.com</code> starting <code>v=DMARC1</code>. Gmail and Yahoo require one from anyone sending in volume, and its absence counts against you.</li>
+  <li><b>Does the From address match the site?</b> A form that sends "From: the customer's own Gmail address" fails every check, because Gmail knows your server is not Gmail.</li>
+</ol>
+
+<h2>Fix it, safest first</h2>
+<ol>
+  <li><b>Send through a real mail service.</b> Install one SMTP plugin (WP Mail SMTP, FluentSMTP or Post SMTP) and connect it to the mailbox you already pay for (Google Workspace, Microsoft 365, Zoho) or a sending service (Brevo, Mailgun, SendGrid, Amazon SES). The plugin's test email should show "sent".</li>
+  <li><b>Fix SPF.</b> Keep exactly one TXT record starting <code>v=spf1</code>, list each service with its own <code>include:</code> (for example <code>include:_spf.google.com</code>), and end it with <code>~all</code>. Merge two records into one.</li>
+  <li><b>Turn on DKIM.</b> Copy the DKIM record from the mail service into your DNS, then press "Verify" or "Start authentication" in the service's admin.</li>
+  <li><b>Add DMARC.</b> Start gentle: a TXT record at <code>_dmarc</code> with <code>v=DMARC1; p=none; rua=mailto:you@yourdomain.com</code>. Move to <code>p=quarantine</code> once a couple of weeks of reports show your real mail passing.</li>
+  <li><b>Fix the form's From and Reply-To.</b> From: an address on your own domain (for example <code>website@yourdomain.com</code>). Reply-To: the customer's address, so replying still reaches them.</li>
+  <li><b>Confirm.</b> Send another test to Gmail and "Show original" again: SPF, DKIM and DMARC should all say PASS. DNS changes can take up to an hour to show.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Form emails always in spam</td><td>Sent by the web host's PHP mail, SPF fails</td><td>SMTP plugin through your mailbox or a sending service</td></tr>
+  <tr><td>"Show original": SPF FAIL or SOFTFAIL</td><td>The sending server is not in your SPF record</td><td>Add the service's <code>include:</code> to the one SPF record</td></tr>
+  <tr><td>SPF PermError</td><td>Two SPF records, or more than 10 lookups</td><td>Merge into one record, drop services you no longer use</td></tr>
+  <tr><td>DKIM: none or FAIL</td><td>Mail is not signed for your domain</td><td>Add the service's DKIM record, then verify it</td></tr>
+  <tr><td>DMARC: FAIL, or no DMARC at all</td><td>The From domain does not match a passing SPF or DKIM, or no record</td><td>Add a <code>_dmarc</code> record, send From your own domain</td></tr>
+  <tr><td>Red "Be careful with this message" banner</td><td>Gmail could not confirm who sent it</td><td>All three checks to PASS</td></tr>
+  <tr><td>Outlook or Hotmail bounces with 550 5.7.515</td><td>Microsoft now refuses unauthenticated bulk mail</td><td>SPF, DKIM and DMARC, same as above</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not add a second SPF record for the new service. Edit the one you have; two records break both.</li>
+  <li>Do not start DMARC at <code>p=reject</code>. One forgotten sender (an invoicing tool, a newsletter) would have its mail refused.</li>
+  <li>Do not ask customers to "check spam and mark as not spam". It helps that one inbox, not the next customer.</li>
+  <li>Do not send the form email "From" the visitor's address. That is exactly what spoofed mail looks like to Gmail.</li>
+</ul>
+<p class="note">Most cases are one SMTP plugin and three DNS records. If you are not sure which services send for your domain, the DNS host is confusing, or you would rather not touch it, that is what the box below is for. Related: <a href="emails-not-sending-fix.html">emails not arriving at all</a>, <a href="contact-form-spam-fix.html">spam coming in through your contact form</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  function row(folder, color, from, subj, banner) {
+    return '<div style="font-size:12px;color:#666;margin-bottom:6px">Folder: <b style="color:' + color + '">' + folder + '</b></div>' +
+      '<div style="border:1px solid #dfe3e8;border-radius:8px;padding:10px 12px;max-width:420px">' +
+      (banner ? '<div style="background:#fce8e6;color:#b3261e;font-size:13px;padding:6px 8px;border-radius:6px;margin-bottom:8px">' + banner + '</div>' : '') +
+      '<div style="font-size:13px;color:#555">' + from + '</div><div style="font-weight:600;font-size:15px">' + subj + '</div>' +
+      '<div style="font-size:13px;color:#555">Thanks for your order, we will have it ready by 10am...</div></div>';
+  }
+  var broken = row("Spam", "#b3261e", "Example Bakery &lt;orders@example-bakery.com&gt;", "Your cake order #1042",
+    "Be careful with this message. Gmail could not verify that it came from example-bakery.com.") +
+    '<p style="font-size:14px;margin:10px 0 0;color:#b3261e">Order confirmation filed as spam.</p>';
+  var fixed = row("Inbox", "#1e7a3c", "Example Bakery &lt;orders@example-bakery.com&gt;", "Your cake order #1042", "") +
+    '<p style="font-size:14px;margin:10px 0 0;color:#1e7a3c">Delivered to the inbox, no warning.</p>';
+  var logBroken = 'Owner: customers say our order\nemails are in their spam.\n\n' +
+    'Checks (Gmail, Show original):\n  SPF:   FAIL (host server not\n         in the record)\n' +
+    '  DKIM:  none\n  DMARC: FAIL, no _dmarc record\n  sent by PHP mail() on the host\n\n' +
+    '<span class="bad">Gmail cannot tell it is really\nfrom the bakery.</span>';
+  var logFixed = 'Steps taken:\n1. WP Mail SMTP via the\n   Workspace mailbox.\n' +
+    '2. One SPF record + Google\n   include.\n3. DKIM record added, verified.\n4. _dmarc p=none + reports.\n\n' +
+    '<span class="good">SPF, DKIM, DMARC: PASS.\nOrders land in the inbox.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why do my website's emails go to spam?","acceptedAnswer":{"@type":"Answer","text":"Gmail, Yahoo and Outlook check SPF, DKIM and DMARC on your domain. Most websites send through the web host's PHP mail, which is not listed in the domain's SPF record and does not sign the mail, so the checks fail and the message is filed as spam. Sending through an SMTP plugin and a real mail service, plus the three DNS records, fixes it."}},
+{"@type":"Question","name":"How do I check SPF, DKIM and DMARC on an email?","acceptedAnswer":{"@type":"Answer","text":"Open the email in Gmail, choose the three dots, then Show original. The top of the page lists SPF, DKIM and DMARC with PASS or FAIL for each."}},
+{"@type":"Question","name":"Can I have two SPF records?","acceptedAnswer":{"@type":"Answer","text":"No. Two TXT records starting v=spf1 make SPF fail with a PermError. Merge them into one record with an include: for each service that sends mail for you."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
