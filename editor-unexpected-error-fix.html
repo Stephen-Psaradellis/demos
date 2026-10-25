@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress "The editor has encountered an unexpected error": the fix</title>
+<meta name="description" content="The WordPress block editor shows 'The editor has encountered an unexpected error' with Attempt Recovery buttons. Find the plugin, theme or browser cause and fix it without losing the post.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/editor-unexpected-error-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.xmlerr { border:2px solid #e0b4b4; background:#fdf2f2; padding:10px 12px; font-size:13px; margin:0 0 12px; }
+.xmlerr h3 { margin:0 0 6px; font-size:14px; }
+.btns span { display:inline-block; border:1px solid #2271b1; color:#2271b1; border-radius:3px; padding:3px 8px; margin:6px 6px 0 0; font-size:12px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress: "The editor has encountered an unexpected error"</h1>
+<p class="lede">You open a post or page and the block editor shows a grey box: "The editor has encountered an unexpected error", with the buttons Attempt Recovery, Copy Post Text and Copy Error. A piece of JavaScript in the editor crashed. The cause is almost always a plugin, the theme, a browser extension or a stale cached script, not your post. Here is how to find which, without losing what you wrote.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">harborbakery.example/wp-admin/post.php?post=412&amp;action=edit</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>First, keep the post safe (one minute)</h2>
+<ol>
+  <li><b>Click "Copy Post Text"</b> and paste it into a text file. The post is saved in the database and is almost never lost, but this costs nothing.</li>
+  <li><b>Click "Copy Error"</b> and paste that too. The first line names the script that crashed, often with a plugin's folder name in it, such as <code>/wp-content/plugins/some-plugin/</code>.</li>
+  <li><b>Try "Attempt Recovery".</b> It rebuilds blocks the editor could not read. If the error comes back on every load, the cause is not the post; go on below.</li>
+</ol>
+
+<h2>Find the cause, fastest first</h2>
+<ol>
+  <li><b>Another browser or a private window.</b> If the editor works there, the cause is on your computer: an ad blocker, grammar or password extension, or a stale cache. Clear the browser cache or switch that extension off for your site.</li>
+  <li><b>Read the copied error.</b> A plugin's folder name in it is your answer. Update that plugin, or deactivate it and reload the editor.</li>
+  <li><b>Clear every cache.</b> A caching or "optimise JavaScript" plugin, the host's cache and Cloudflare can serve an old editor script after a WordPress update. Purge them all, then reload with Ctrl+F5.</li>
+  <li><b>Plugins one by one.</b> Deactivate all plugins (or use the Health Check plugin's Troubleshooting mode, which does this only for you, not your visitors), then switch them back on one at a time and reload the editor each time. The one that brings the error back is the cause.</li>
+  <li><b>The theme.</b> If all plugins are off and it still fails, switch to a default theme such as Twenty Twenty-Four for a minute. A theme that adds its own editor scripts can crash the editor after a WordPress update.</li>
+  <li><b>Only one post fails.</b> A single block in it is broken, often from a plugin you removed. Open the post with the Code editor (the three-dot menu, Code editor), find the block whose plugin is gone, and remove or convert it.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Error in one browser only</td><td>A browser extension or cached script</td><td>Clear cache, switch the extension off for the site</td></tr>
+  <tr><td>Copied error names a plugin folder</td><td>That plugin's editor script crashed</td><td>Update or deactivate that plugin</td></tr>
+  <tr><td>Started right after a WordPress update</td><td>A plugin, theme or cache is out of step</td><td>Purge caches, update plugins and theme</td></tr>
+  <tr><td>Every post fails, every browser</td><td>A plugin or the theme</td><td>Plugins one by one, then a default theme</td></tr>
+  <tr><td>Only one post fails</td><td>One broken block in that post</td><td>Code editor, remove or convert that block</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not delete and rewrite the post. The content is in the database; the editor is what broke.</li>
+  <li>Do not install the Classic Editor plugin as the fix and stop there. It hides the crash, and the plugin that caused it may break something visitors see next.</li>
+  <li>Do not deactivate plugins on a busy shop during opening hours without Troubleshooting mode; visitors see the site change too.</li>
+  <li>Do not roll WordPress back to an old version. Update the plugin or theme that is behind instead.</li>
+</ul>
+<p class="note">Most cases are one cache purge or one plugin. If the editor still crashes, that is what the box below is for. Related: <a href="publishing-failed-fix.html">"Updating failed" / "Publishing failed"</a>, <a href="json-response-fix.html">"The response is not a valid JSON response"</a>, <a href="changes-not-showing-fix.html">changes not showing</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="xmlerr"><h3>The editor has encountered an unexpected error.</h3>' +
+    '<div class="btns"><span>Attempt Recovery</span><span>Copy Post Text</span><span>Copy Error</span></div></div>';
+  var fixed = '<p style="font-size:20px;margin:0 0 8px;font-weight:600">Autumn menu is here</p>' +
+    '<p style="font-size:14px;margin:0 0 8px">Pumpkin loaf, apple hand pies and our new rye sourdough...</p>' +
+    '<p style="font-size:13px;margin:0;color:#1e7a3c">Saved &middot; Update</p>';
+  var logBroken = 'Owner: every post opens to\n"The editor has encountered an\nunexpected error". Same in Chrome\nand Firefox.\n\n' +
+    'Copy Error, first line:\n  TypeError: ... at\n  /wp-content/plugins/gallery-plus/\n  build/blocks.js\n\n' +
+    '<span class="bad">gallery-plus 2.1 editor script is\nolder than WordPress 6.6 expects.</span>';
+  var logFixed = 'Steps taken:\n1. Post text copied (just in case).\n' +
+    '2. gallery-plus updated to 2.4.\n3. Cache plugin + Cloudflare purged.\n' +
+    '4. Editor reloaded with Ctrl+F5.\n\n' +
+    '<span class="good">Editor loads; all 38 posts open,\ngalleries intact, nothing lost.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'The editor has encountered an unexpected error' mean in WordPress?","acceptedAnswer":{"@type":"Answer","text":"A JavaScript error crashed the block editor. The usual causes are a plugin or theme script that is out of step with WordPress, a stale cached script, or a browser extension. The post itself is still saved in the database."}},
+{"@type":"Question","name":"Will I lose my post?","acceptedAnswer":{"@type":"Answer","text":"Almost never. The post is stored in the database. Click Copy Post Text to keep a copy, then find the plugin, theme or browser cause and the post opens again as it was."}},
+{"@type":"Question","name":"How do I find which plugin causes the editor error?","acceptedAnswer":{"@type":"Answer","text":"Click Copy Error and look for a plugin folder name in the first line. If there is none, use the Health Check plugin's Troubleshooting mode to switch plugins off only for you, then turn them back on one at a time and reload the editor each time."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
