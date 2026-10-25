@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"Another update is currently in progress" in WordPress: the fix</title>
+<meta name="description" content="WordPress says Another update is currently in progress and will not update. An earlier update left its lock behind. Wait 15 minutes, or remove the core_updater.lock row, then find why the update stopped.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/another-update-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.wpdie { font-size:14px; color:#1d2327; border:1px solid #c3c4c7; padding:18px; max-width:420px; margin:10px auto; }
+.wpdie a { color:#2271b1; }
+.media h3 { margin:0 0 10px; font-size:18px; font-weight:600; }
+.notice { border-left:4px solid #00a32a; background:#fff; box-shadow:0 1px 1px rgba(0,0,0,.08); padding:8px 12px; margin:0 0 10px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>"Another update is currently in progress" in WordPress</h1>
+<p class="lede">You click Update Now and WordPress stops at once: "Another update is currently in progress." Nobody else is updating. When an update starts, WordPress writes a lock into the database so two updates cannot run at the same time, and removes it when it finishes. If the earlier update was cut off (a timeout, a closed tab, a server limit), the lock stays behind and blocks every update after it. The lock is safe to clear once you know no update is really running; the real job is finding why the last one stopped.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">harborbakery.example/wp-admin/update-core.php?action=do-core-upgrade</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Find out which case it is (five minutes)</h2>
+<ol>
+  <li><b>Wait 15 minutes and try once more.</b> WordPress treats a core update lock older than 15 minutes as abandoned and replaces it by itself. If the message is gone after that, an update was cut off once and you are done (read step 4 so it does not happen again).</li>
+  <li><b>Is the site showing "Briefly unavailable for scheduled maintenance"?</b> Then the update stopped halfway and also left a <code>.maintenance</code> file in the site's main folder. Delete that file first (see the <a href="maintenance-mode-fix.html">maintenance mode fix</a>).</li>
+  <li><b>Still blocked after 15 minutes?</b> Look in the database: in phpMyAdmin (host panel), open the <code>wp_options</code> table (your prefix may differ, such as <code>wpk3_options</code>) and search <code>option_name</code> for <code>core_updater.lock</code>. A row there is the leftover lock; its value is the time it was set. Automatic background updates use a second lock, <code>auto_updater.lock</code>.</li>
+  <li><b>Why did the last update stop?</b> Check the host's PHP error log for the minute of the failed update. "Maximum execution time exceeded", "Allowed memory size exhausted" or "Could not create directory" each name the real cause.</li>
+</ol>
+
+<h2>The fixes, by case</h2>
+<ol>
+  <li><b>Take a database backup first</b> (the host panel's backup, or phpMyAdmin Export). You are about to delete one row, and a backup makes that reversible.</li>
+  <li><b>Remove the lock with WP-CLI</b>, if your host has it: <code>wp option delete core_updater.lock</code>. For the background updater: <code>wp option delete auto_updater.lock</code>.</li>
+  <li><b>Or remove it in phpMyAdmin:</b> in the options table, delete only the row whose <code>option_name</code> is <code>core_updater.lock</code>. Touch nothing else.</li>
+  <li><b>Delete a leftover <code>.maintenance</code> file</b> in the main folder if the site still shows the maintenance message.</li>
+  <li><b>Fix what stopped it</b>, or the next update will leave the lock again: a timeout needs a longer PHP time limit (<a href="max-execution-time-fix.html">max execution time fix</a>), a memory error a higher limit (<a href="memory-exhausted-fix.html">memory exhausted fix</a>), a folder error the right owner and permissions (<a href="install-update-failed-fix.html">install or update failed</a>).</li>
+  <li><b>Run the update again</b> from Dashboard, Updates, on a fresh page, and leave the tab open until it says WordPress was updated. Then check Dashboard, Updates shows the new version.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Message right after a failed or closed update</td><td>The lock from that update is still there</td><td>Wait 15 minutes, then update again</td></tr>
+  <tr><td>Message for hours or days</td><td>The lock row was never cleared</td><td>Back up, delete <code>core_updater.lock</code></td></tr>
+  <tr><td>Message plus "Briefly unavailable for scheduled maintenance"</td><td>The update stopped halfway</td><td>Delete <code>.maintenance</code>, clear the lock, update again</td></tr>
+  <tr><td>Comes back after every update attempt</td><td>Each update dies on a server limit</td><td>Raise the time or memory limit, fix folder permissions</td></tr>
+  <tr><td>Automatic updates stopped, manual ones work</td><td>The background updater's lock is stuck</td><td>Delete <code>auto_updater.lock</code></td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not delete the lock while an update may really be running (another admin, the host's own updater). Wait the 15 minutes first.</li>
+  <li>Do not empty or edit other rows in the options table. Your whole site's settings live there.</li>
+  <li>Do not re-install WordPress over the top or delete <code>wp-admin</code>. The lock is one database row.</li>
+  <li>Do not install an "unlock updates" plugin from outside wordpress.org. Deleting one row needs no new code on your site.</li>
+</ul>
+<p class="note">Most of these are a 15-minute wait or one row deleted. If the lock keeps coming back and the error log does not say why, that is what the box below is for. Related: <a href="maintenance-mode-fix.html">stuck in maintenance mode</a>, <a href="auto-update-failed-fix.html">automatic update failed</a> and <a href="install-update-failed-fix.html">install or update failed</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="media"><h3>Update WordPress</h3>' +
+    '<p style="font-size:14px;margin:0">Another update is currently in progress.</p></div>';
+  var fixed = '<div class="media"><h3>Update WordPress</h3>' +
+    '<div class="notice">WordPress has been updated successfully.</div>' +
+    '<p style="font-size:14px;margin:0">Welcome to the new version &middot; Go to Dashboard</p></div>';
+  var logBroken = 'Owner: the update failed last night\nand now it will not even start.\n\n' +
+    'wp_options, option_name =\ncore_updater.lock\nvalue: set 14 hours ago\n\n' +
+    'PHP error log, same minute:\nMaximum execution time of 30\nseconds exceeded\n\n' +
+    '<span class="bad">The update timed out and never\nremoved its lock.</span>';
+  var logFixed = 'Steps taken:\n1. Database backup taken.\n' +
+    '2. wp option delete core_updater.lock\n' +
+    '3. Host raised max_execution_time\n   to 120 seconds.\n' +
+    '4. Update run again on a fresh page,\n   tab left open to the end.\n\n' +
+    '<span class="good">Updated, lock cleared by WordPress\nitself, no other rows touched.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'Another update is currently in progress' mean in WordPress?","acceptedAnswer":{"@type":"Answer","text":"An earlier update set a lock in the database (the core_updater.lock option) and was cut off before it removed it, so WordPress thinks an update is still running and refuses to start another."}},
+{"@type":"Question","name":"How do I fix 'Another update is currently in progress'?","acceptedAnswer":{"@type":"Answer","text":"Wait 15 minutes and try again; WordPress replaces a core lock older than that. If it stays, back up the database and delete the core_updater.lock row from the options table, with WP-CLI (wp option delete core_updater.lock) or phpMyAdmin, then fix why the update stopped and run it again."}},
+{"@type":"Question","name":"Why does the update lock keep coming back?","acceptedAnswer":{"@type":"Answer","text":"Each update is dying on a server limit before it finishes: a PHP time limit, a memory limit or a folder WordPress cannot write to. The PHP error log for that minute names which one."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
