@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress "There has been an error cropping your image": why the crop fails, and the fix</title>
+<meta name="description" content="WordPress says &quot;There has been an error cropping your image&quot; when the server has no image tool (GD or Imagick), the photo is too big for its memory, or the file is HEIC or WebP. How to tell which, and fix it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/crop-image-error-fix.html">
+<style>
+:root { --brand:#7a3e9d; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.site { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.site .bar { background:#23282d; color:#fff; font-size:13px; padding:8px 12px; overflow-wrap:anywhere; }
+.site .body { padding:18px 16px; min-height:190px; background:#fff; position:relative; }
+.xmlerr { border:2px solid #e0b4b4; background:#fdf2f2; padding:10px 12px; font-size:13px; margin:0 0 12px; }
+.xmlerr h3 { margin:0 0 6px; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WordPress: "There has been an error cropping your image"</h1>
+<p class="lede">You pick a logo or header image in the Customizer (or a site icon under Settings), drag the crop box, click Crop Image, and WordPress answers "There has been an error cropping your image." The upload itself worked; the server failed when it tried to cut and save the new copy. Usually the server has no image tool switched on, the picture is too big for the memory it has, or the file type is one the server cannot edit. Here is how to tell which in a few minutes.</p>
+
+<div class="switch" role="group" aria-label="Show the site">
+  <button type="button" id="b-broken" aria-pressed="true">Broken</button>
+  <button type="button" id="b-fixed" aria-pressed="false">Fixed</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>What the owner sees</h2>
+    <div class="site">
+      <div class="bar" id="site-bar">harborbakery.example/wp-admin/customize.php</div>
+      <div class="body" id="site-body"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Which problem is it? (five minutes)</h2>
+<ol>
+  <li><b>Try Skip Cropping.</b> The same screen has a Skip Cropping button. If that works, your site is fine and only the editing step fails. If even an image that is already the right size fails, read on.</li>
+  <li><b>Check the image tool.</b> Go to Tools, Site Health, Info, Media Handling. "Active editor" should say <code>WP_Image_Editor_Imagick</code> or <code>WP_Image_Editor_GD</code>. If it is empty, or "GD version" and "Imagick version" both say not available, the server has no way to edit images, and that is the whole problem.</li>
+  <li><b>Check the size of the picture.</b> A phone photo of 4000 by 3000 pixels or more, or a file over a few MB, can run the server out of memory mid-crop. Shrink it to about 2000 pixels on the long side and try again. If the small copy crops, memory was the cause.</li>
+  <li><b>Check the file type.</b> iPhone HEIC files, and WebP or AVIF on older servers, upload but cannot be edited. Save the image as a PNG or JPG (Preview on a Mac, Photos or Paint on Windows) and upload that.</li>
+  <li><b>Check for a security block.</b> If small JPGs fail too and the image tool is present, open your browser's developer tools (F12), Network tab, and crop again. A 403 on <code>admin-ajax.php</code> means a security plugin or the host's firewall blocked the crop request.</li>
+</ol>
+
+<h2>Fix it, safest first</h2>
+<ol>
+  <li><b>Upload a picture already the right size</b> and use Skip Cropping. The Customizer tells you the size it wants (for example 250 by 250 for a logo, 512 by 512 for a site icon). Crop it on your computer first. This is the quickest fix and needs no server change.</li>
+  <li><b>Switch on an image tool.</b> In cPanel, Select PHP Version, Extensions, tick <code>gd</code> or <code>imagick</code> and save. On other hosts, ask support: "please enable the PHP GD or Imagick extension". Then check Site Health again.</li>
+  <li><b>Give WordPress more memory.</b> If only big images fail, ask the host to raise the PHP memory limit to 256M, or add <code>define( 'WP_MEMORY_LIMIT', '256M' );</code> to <code>wp-config.php</code> above the "stop editing" line, after a backup.</li>
+  <li><b>Convert the file</b> to PNG (logos, anything with transparency) or JPG (photos) when it was HEIC, WebP or AVIF.</li>
+  <li><b>Check the uploads folder can be written.</b> If the crop fails and Media Library shows a blank thumbnail for the new upload, the server could not save the cropped copy. The <a href="upload-error-fix.html">upload errors guide</a> covers folder permissions.</li>
+  <li><b>Security plugin block:</b> look in the plugin's firewall log for the blocked <code>admin-ajax.php</code> request and allow it, or pause the firewall for the minute it takes to crop, then switch it back on.</li>
+</ol>
+
+<h2>What you see, what it means, what it needs</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>What it means</th><th>Usual fix</th></tr>
+  <tr><td>Every crop fails, Site Health shows no active editor</td><td>No GD or Imagick on the server</td><td>Enable the PHP gd or imagick extension</td></tr>
+  <tr><td>Small images crop, phone photos fail</td><td>Server runs out of memory on big images</td><td>Shrink the image, or raise the memory limit</td></tr>
+  <tr><td>Only HEIC, WebP or AVIF files fail</td><td>Server cannot edit that format</td><td>Save as PNG or JPG first</td></tr>
+  <tr><td>403 on admin-ajax.php in the Network tab</td><td>Security plugin or firewall blocked the crop</td><td>Allow the request, or pause the firewall briefly</td></tr>
+  <tr><td>Crop fails and the new upload has no thumbnail</td><td>Uploads folder cannot be written</td><td>Fix folder permissions (host or File Manager)</td></tr>
+</table>
+</div>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not set the uploads folder to 777 to make it work. It lets anyone on a shared server write there.</li>
+  <li>Do not install several "image fixer" plugins at once; one bad one can break every upload. Fix the server tool instead.</li>
+  <li>Do not keep re-uploading the same huge photo; each try leaves another copy in the Media Library.</li>
+</ul>
+<p class="note">Most cases are a smaller picture with Skip Cropping, or the host switching on GD. If the host is not helping, that is what the box below is for. Related: <a href="upload-error-fix.html">upload errors</a>, <a href="favicon-fix.html">site icon (favicon)</a>, <a href="memory-exhausted-fix.html">memory exhausted</a>.</p>
+</div>
+
+<script>
+(function () {
+  var body = document.getElementById("site-body"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<p style="font-size:18px;margin:0 0 8px;font-weight:600">Crop Image</p>' +
+    '<p style="font-size:14px;margin:0 0 10px">harbor-logo-IMG_4412.jpg &middot; 4032 &times; 3024</p>' +
+    '<div class="xmlerr" style="margin:0"><p style="margin:0">There has been an error cropping your image.</p></div>';
+  var fixed = '<p style="font-size:18px;margin:0 0 8px;font-weight:600">Site Identity</p>' +
+    '<p style="font-size:14px;margin:0 0 6px">Logo: harbor-logo.png &middot; 500 &times; 500</p>' +
+    '<p style="font-size:14px;margin:0;color:#1e7a3c">Logo cropped and published. Shows on every page.</p>';
+  var logBroken = 'Owner: logo crop fails in\nthe Customizer every time.\n\n' +
+    'Checks:\n  Site Health > Media Handling\n    Active editor: (none)\n    GD: not available\n    Imagick: not available\n' +
+    '  image: 4032 x 3024 JPG, 5.8 MB\n\n' +
+    '<span class="bad">Server has no image tool, so\nno crop can ever succeed.</span>';
+  var logFixed = 'Steps taken:\n1. Host enabled PHP gd extension.\n' +
+    '2. Site Health: WP_Image_Editor_GD.\n3. Logo saved as 500 x 500 PNG.\n' +
+    '4. Cropped, published, checked\n   on phone and desktop.\n\n' +
+    '<span class="good">Logo live; thumbnails for new\nuploads now made as well.</span>';
+  function show(isFixed) {
+    body.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logFixed : logBroken;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does WordPress say there has been an error cropping your image?","acceptedAnswer":{"@type":"Answer","text":"The upload worked but the server failed to cut and save the cropped copy. The usual causes are no image tool on the server (GD or Imagick), a picture too large for the memory available, a file type the server cannot edit such as HEIC or WebP, or a security plugin blocking the request."}},
+{"@type":"Question","name":"How do I fix the logo crop error in the WordPress Customizer?","acceptedAnswer":{"@type":"Answer","text":"Crop the logo to the size the Customizer asks for on your computer, upload it, and click Skip Cropping. To fix cropping itself, check Tools, Site Health, Info, Media Handling and ask the host to enable the PHP GD or Imagick extension if no editor is active."}},
+{"@type":"Question","name":"Does a big photo cause the cropping error?","acceptedAnswer":{"@type":"Answer","text":"Often. Phone photos of 12 megapixels or more can run PHP out of memory while cropping. Shrink the image to about 2000 pixels on the long side, or ask the host to raise the PHP memory limit to 256M."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v7';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
