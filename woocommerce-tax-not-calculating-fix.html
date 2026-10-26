@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WooCommerce tax not calculating at checkout: how to fix it</title>
+<meta name="description" content="WooCommerce checkout shows Tax $0.00 or no tax line? Two checks find the cause: whether tax is on and which address it uses, and whether a rate row matches the product and address. Then fix the class, state codes, ZIPs or tax status.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/woocommerce-tax-not-calculating-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.ed { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; min-height:210px; background:#f1f3f5; padding:12px; }
+.rows { display:flex; flex-direction:column; gap:8px; }
+.row { background:#fff; border:1px solid #cfd6de; border-left:4px solid #65bc7b; border-radius:4px; padding:8px 10px; }
+.row b { display:block; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WooCommerce tax not calculating at checkout</h1>
+<p class="lede">The cart and checkout show <b>Tax: $0.00</b>, or no tax line at all, even though you set up tax rates. Or tax shows for some customers and not others, or only after the address is typed in full. Every order placed like this is one you owe the tax on yourself. WooCommerce adds tax only when taxes are switched on, the product is taxable, and a rate row matches the address it is told to use. Below is a rebuilt example (not a real client), the two checks that find which of those failed, and the fix for each one.</p>
+
+<div class="switch" role="group" aria-label="Show the checkout before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Checkout totals</h2>
+    <div class="ed" id="ed"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Check 1: is tax on, and which address does it use</h2>
+<p>Go to <b>WooCommerce &gt; Settings &gt; General</b> and make sure <b>Enable tax rates and calculations</b> is ticked; without it the Tax tab does not even appear. Then open <b>WooCommerce &gt; Settings &gt; Tax</b> and note two settings: <b>Calculate tax based on</b> (customer shipping address, billing address, or shop base address) and <b>Display prices during cart and checkout</b>. If an automated tax service (WooCommerce Tax, TaxJar, Avalara) is switched on, it replaces your rate tables, so its own connection status matters more than the rows.</p>
+
+<h2>Check 2: does a rate row match this product and this address</h2>
+<p>Open one product that showed no tax and look at <b>Product data &gt; General</b>: <b>Tax status</b> should be <b>Taxable</b> and note its <b>Tax class</b> (Standard, Reduced rate, Zero rate or your own). Then open that class's table under the Tax tab and compare its rows with a real customer address: country code, state code, ZIP or postcode, city. Check one with a real order: in a private window, add that product and enter the address in full at checkout. Note whether tax appears before or after you type the ZIP.</p>
+
+<h2>What each answer means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td>No Tax tab, or Enable tax rates is unticked</td><td>Taxes are off for the whole store</td><td>Tick it in Settings &gt; General and save, then set up the rates</td></tr>
+  <tr><td>The Standard rates table is empty, or the rates are in a different class</td><td>No row exists for the class the products use</td><td>Add the rows to the class your products are in, or set the products to the class that has rows</td></tr>
+  <tr><td>One product, or all variations of it, show no tax</td><td>Tax status is <b>None</b> or <b>Shipping only</b>, or the variation's class is set to Zero rate (variations can override the parent)</td><td>Set Tax status to Taxable; for variations set Tax class to <b>Same as parent</b>; bulk edit fixes many at once</td></tr>
+  <tr><td>Rows exist but nothing matches</td><td>The state is typed as a name instead of a code (<code>California</code> instead of <code>CA</code>), the country code is wrong, ZIPs are in one field without the <code>;</code> separator, or a city row restricts it</td><td>Use two-letter codes, separate ZIPs with <code>;</code> or use ranges like <code>90001...90899</code> and wildcards like <code>902*</code>; leave City blank unless you need it</td></tr>
+  <tr><td>Tax is right on shipping orders but zero on local pickup or virtual products</td><td><b>Calculate tax based on</b> is the shipping address, and those orders have none</td><td>Set it to billing address, or set the pickup location's address; WooCommerce uses the shop base address for pickup only when told to</td></tr>
+  <tr><td>Tax shows only after the full address is typed</td><td>Normal: WooCommerce cannot match a ZIP row until it has the ZIP. A cart estimate uses the shop base address or none</td><td>Set <b>Default customer location</b> to Shop base address or Geolocate so the cart shows an estimate</td></tr>
+  <tr><td>An automated tax service is on and tax is zero</td><td>The service is disconnected, the store address is not one it supports, or the nexus/state is not registered in it</td><td>Reconnect it, check its supported countries and add the states where you collect tax; switch it off to fall back to your own table</td></tr>
+  <tr><td>Tax is missing from shipping cost only</td><td>The rate row's <b>Shipping</b> box is unticked, or Shipping tax class is set to a class with no rows</td><td>Tick Shipping on the rows that should tax it, or set Shipping tax class to "based on cart items"</td></tr>
+  <tr><td>You see tax, customers do not</td><td>A page cache serves an old checkout, or the customer is a tax-exempt role (some B2B plugins zero it)</td><td>Exclude Cart and Checkout from every cache and purge; check the customer's role and any exemption plugin</td></tr>
+</table>
+</div>
+
+<h2>Check it worked</h2>
+<p>In a private window, add a taxable product, go to checkout and enter a full address in each state or country you collect tax for. The tax line should match the rate you set. Then place one real order and open it in WooCommerce &gt; Orders: the tax line must be on the order itself, not only on the checkout screen. Orders already placed without tax are not fixed by this; they stay as they were.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not add the tax into the product price by hand to make it show. You then charge tax on tax once rates start working, and your reports lose the tax figure.</li>
+  <li>Do not put a single <code>*</code> rate for every country to make a number appear. You will charge tax to customers you should not, which is harder to undo than missing it.</li>
+  <li>Do not run two tax services at once (a plugin plus your own table). One overrides the other and you cannot tell which number is real.</li>
+</ul>
+<p class="note">Which rate you must charge, and where, is a question for your accountant; this page only gets WooCommerce to apply the rates you give it. If you would rather someone else finds and fixes the setup, that is what the box below is for. Related: <a href="woocommerce-checkout-fix.html">WooCommerce checkout not working</a> and <a href="woocommerce-no-shipping-options-fix.html">WooCommerce "No shipping options were found"</a>.</p>
+</div>
+
+<script>
+(function () {
+  var ed = document.getElementById("ed"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="rows"><div class="row" style="border-left-color:#999"><b>Subtotal</b>$48.00</div><div class="row" style="border-left-color:#999"><b>Shipping</b>Flat rate $6.00</div><div class="row" style="border-left-color:#b3261e"><b>Tax</b>$0.00</div><div class="row" style="border-left-color:#999"><b>Total</b>$54.00</div></div>';
+  var fixed = '<div class="rows"><div class="row"><b>Subtotal</b>$48.00</div><div class="row"><b>Shipping</b>Flat rate $6.00</div><div class="row"><b>Tax (8.25%)</b>$4.46</div><div class="row"><b>Total</b>$58.46</div></div>';
+  var logBefore = 'Shop: tea seller, WooCommerce\nCustomer: Austin, TX 78701\n\nTax on: yes, based on shipping address\nStandard rates: empty\nRows were added to "Reduced rate"\nState typed as "Texas", not TX\nRow Shipping box: unticked\n\n' +
+    '<span class="bad">No row matches:\nevery Texas order untaxed.</span>';
+  var logAfter = 'Steps taken:\n1. Moved the rows to Standard.\n2. State column: TX.\n' +
+    '3. Ticked Shipping on the row.\n4. Checkout excluded from the cache.\n\n' +
+    '<span class="good">Tax line on checkout and\non the order; test order refunded.</span>';
+  function show(isFixed) {
+    ed.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is WooCommerce not charging tax?","acceptedAnswer":{"@type":"Answer","text":"Taxes are switched off, the product's tax status is not Taxable, or no rate row in the product's tax class matches the customer's address. Tick Enable tax rates in Settings > General, set the product to Taxable, and check the rows use two-letter state codes and the right class."}},
+{"@type":"Question","name":"Why does WooCommerce show tax only after the customer enters their ZIP?","acceptedAnswer":{"@type":"Answer","text":"A rate row with a ZIP code can only match once the ZIP is known. Set Default customer location to Shop base address or Geolocate so the cart shows an estimate before checkout."}},
+{"@type":"Question","name":"Why is tax zero on local pickup orders in WooCommerce?","acceptedAnswer":{"@type":"Answer","text":"Tax is calculated from the shipping address and a pickup order has none. Change Calculate tax based on to billing address, or give the pickup location an address."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v8';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>. Checking other people\'s sites? <a href="https://addons.mozilla.org/en-US/firefox/addon/local-site-audit-pitch/">Free Firefox add-on</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
