@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WooCommerce sale price not showing: how to fix it</title>
+<meta name="description" content="WooCommerce sale price not showing, the scheduled sale never started, or the shop still shows the full price? Two checks find whether it is the sale dates, a variation, a cache or a pricing plugin. Then fix it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/woocommerce-sale-price-not-showing-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.ed { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; min-height:210px; background:#f1f3f5; padding:12px; }
+.rows { display:flex; flex-direction:column; gap:8px; }
+.row { background:#fff; border:1px solid #cfd6de; border-left:4px solid #65bc7b; border-radius:4px; padding:8px 10px; }
+.row b { display:block; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WooCommerce sale price not showing</h1>
+<p class="lede">You typed a sale price, maybe scheduled it for the weekend, and the shop still shows the full price: no crossed-out price, no <b>Sale!</b> badge, or the sale shows on the product page but the cart charges the old price. Customers who came for the sale leave. Two checks tell you whether WooCommerce thinks the sale is on, and if it does, what is showing the old price.</p>
+
+<div class="switch" role="group" aria-label="Show the product page before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Product page</h2>
+    <div class="ed" id="ed"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Check 1: is the sale really on for this product</h2>
+<p>Open the product and go to <b>Product data &gt; General</b>. The <b>Sale price</b> must be lower than the <b>Regular price</b>; a sale price equal to or above it is ignored. If you clicked <b>Schedule</b>, read the two dates: the sale starts at 00:00 on the From date and ends at the end of the To date, in the time zone set under <b>Settings &gt; General &gt; Timezone</b>, so a sale dated today can still be hours away. For a variable product the General tab has no price at all: open <b>Variations</b> and expand each one, because every variation carries its own sale price and dates.</p>
+
+<h2>Check 2: is something showing an old price</h2>
+<p>Open the product in a private window (logged out) and add it to the cart. If the cart has the sale price but the shop page does not, a page cache or CDN is serving a copy saved before the sale. If both show the full price but the admin shows the sale, go to <b>WooCommerce &gt; Status &gt; Tools</b> and run <b>Clear transients</b> and <b>Regenerate the product lookup tables</b>. If the price changes depending on who is logged in or what is in the cart, a pricing, role-based or discount plugin is overriding it; deactivate it on a staging copy and look again.</p>
+
+<h2>What each answer means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td>No sale shown, and the sale price is equal to or higher than the regular price</td><td>WooCommerce only treats a lower price as a sale</td><td>Swap the numbers: Regular is the full price, Sale is the lower one</td></tr>
+  <tr><td>A scheduled sale did not start (or did not end) on time</td><td>The site time zone is UTC or another city, or WP-Cron never ran the scheduled job on a quiet site</td><td>Set Timezone to your city; check Tools &gt; Scheduled Actions for the woocommerce_scheduled_sales job and run it; use a real server cron if WP-Cron is disabled</td></tr>
+  <tr><td>Variable product shows the full price range, no sale</td><td>The sale price was set on some variations or none; the range only shows a sale where a variation has one</td><td>Open Variations and set the sale price on each one (or use the bulk action Set sale prices)</td></tr>
+  <tr><td>Shop page full price, cart sale price</td><td>A page cache, CDN or host cache saved the page before the sale</td><td>Purge the cache, and purge it again when a scheduled sale starts and ends</td></tr>
+  <tr><td>Admin shows the sale, shop and cart do not</td><td>Stale price transients or product lookup table after an import or bulk edit</td><td>WooCommerce &gt; Status &gt; Tools: Clear transients, then Regenerate the product lookup tables</td></tr>
+  <tr><td>Price shown differs by customer or cart</td><td>A dynamic pricing, wholesale or role-based price plugin sets its own price and ignores the sale</td><td>Set the sale inside that plugin, or exclude the product from its rules</td></tr>
+  <tr><td>Sale price works but no crossed-out price or Sale! badge</td><td>The theme or a page builder template removed the sale flash or prints only the current price</td><td>Switch to Storefront on staging to confirm, then restore the price output in the theme or builder widget</td></tr>
+  <tr><td>Sale price reverts after a few hours</td><td>A POS, marketplace or spreadsheet sync writes the regular price back</td><td>Set the sale in the system that owns the price, or stop that sync overwriting prices</td></tr>
+</table>
+</div>
+
+<h2>Check it worked</h2>
+<p>In a private window, the shop page and product page should show the regular price crossed out next to the sale price, with the Sale! badge if your theme uses one. Add it to the cart: the line total should use the sale price. For a scheduled sale, check again just after the start time and just after the end time.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not lower the Regular price to fake a sale. When the sale ends you have to remember every product you changed, and customers never see a saving.</li>
+  <li>Do not turn caching off for good. Purge it when prices change.</li>
+  <li>Do not stack a discount plugin on top of WooCommerce sale prices without testing the cart. Two discounts on one item can sell below cost.</li>
+</ul>
+<p class="note">If you would rather someone else finds why the sale is not showing and fixes it, that is what the box below is for. Related: <a href="woocommerce-coupon-not-working-fix.html">coupon not working</a>, <a href="woocommerce-cannot-be-purchased-fix.html">product cannot be purchased</a>, <a href="woocommerce-out-of-stock-fix.html">product says out of stock</a>.</p>
+</div>
+
+<script>
+(function () {
+  var ed = document.getElementById("ed"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="rows"><div class="row" style="border-left-color:#999"><b>Linen tote</b>$40.00</div><div class="row" style="border-left-color:#b3261e"><b>Weekend sale</b>No sale price, no Sale! badge</div><div class="row" style="border-left-color:#999"><b>Cart</b>$40.00</div></div>';
+  var fixed = '<div class="rows"><div class="row"><b>Linen tote</b><s>$40.00</s> $30.00</div><div class="row"><b>Weekend sale</b>Sale! badge showing</div><div class="row"><b>Cart</b>$30.00</div></div>';
+  var logBefore = 'Shop: bags, WooCommerce\n\nSale price: $30, scheduled Sat-Sun\nSite timezone: UTC+0\n  (shop is in Chicago)\nScheduled sale action: pending\nProduct page: cached Friday\n\n' +
+    '<span class="bad">Sale started 6 hours late, page showed $40 all Saturday.</span>';
+  var logAfter = 'Steps taken:\n1. Timezone set to Chicago.\n2. Scheduled sale action run.\n3. Cache purged at sale\n   start and end.\n' +
+    '4. Tested logged out and in the cart.\n\n' +
+    '<span class="good">$30 with the old price crossed out.</span>';
+  function show(isFixed) {
+    ed.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is my WooCommerce sale price not showing?","acceptedAnswer":{"@type":"Answer","text":"The sale price must be lower than the regular price, a scheduled sale must have started in the site's own time zone, and on a variable product each variation needs its own sale price. If the admin shows the sale but the shop does not, a page cache, stale transients or a pricing plugin is showing the old price."}},
+{"@type":"Question","name":"Why did my WooCommerce scheduled sale not start?","acceptedAnswer":{"@type":"Answer","text":"Scheduled sales start at 00:00 on the From date in the time zone under Settings > General, and they are switched on by a scheduled action run through WP-Cron. Set the right time zone and check Tools > Scheduled Actions for woocommerce_scheduled_sales."}},
+{"@type":"Question","name":"Why does the WooCommerce cart show a different price from the product page?","acceptedAnswer":{"@type":"Answer","text":"Usually a page cache saved the product page before the price changed, while the cart is calculated live. Purge the cache. If the cart is the wrong one, a discount or role-based pricing plugin is overriding the sale price."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v8';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>. Checking other people\'s sites? <a href="https://addons.mozilla.org/en-US/firefox/addon/local-site-audit-pitch/">Free Firefox add-on</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
