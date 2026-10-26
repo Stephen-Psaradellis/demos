@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WooCommerce Stripe payment failed: how to fix it</title>
+<meta name="description" content="WooCommerce Stripe checkout says There was an error processing your payment, cards are declined, or the card field never appears? Two checks find whether Stripe refused the charge or the request never reached it. Then fix it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/woocommerce-stripe-payment-failed-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.ed { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; min-height:210px; background:#f1f3f5; padding:12px; }
+.rows { display:flex; flex-direction:column; gap:8px; }
+.row { background:#fff; border:1px solid #cfd6de; border-left:4px solid #65bc7b; border-radius:4px; padding:8px 10px; }
+.row b { display:block; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WooCommerce Stripe payment failed</h1>
+<p class="lede">Customers reach checkout, enter a card, and get <b>There was an error processing your payment. Please try again</b>, or <b>Your card was declined</b> on cards that work everywhere else, or the card field never appears at all. Each failed checkout is a lost sale. Two checks tell you whether Stripe saw the payment and refused it, or whether the request never reached Stripe.</p>
+
+<div class="switch" role="group" aria-label="Show the checkout before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Checkout</h2>
+    <div class="ed" id="ed"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Check 1: did Stripe see the payment</h2>
+<p>Open your Stripe Dashboard, make sure the <b>Test mode</b> switch matches what the shop uses, and go to <b>Payments</b>, filter <b>Failed</b> or <b>Incomplete</b>. Find the attempt by time or amount. If it is there, Stripe's own reason is on it: a bank decline code (<code>insufficient_funds</code>, <code>do_not_honor</code>), <b>Blocked by Radar</b>, a failed security check (CVC or postcode), or <b>requires authentication</b> where 3D Secure was never completed. If there is no attempt at all, the payment never left your site, so go to Check 2.</p>
+
+<h2>Check 2: what does the shop log say</h2>
+<p>In WordPress, go to <b>WooCommerce &gt; Settings &gt; Payments &gt; Stripe</b>, turn on <b>Log debug messages</b>, and place one test order logged out in a private window. Then read <b>WooCommerce &gt; Status &gt; Logs</b> and pick the newest <code>woocommerce-gateway-stripe</code> log. An <code>Invalid API Key</code> or <code>No such customer</code> line means the keys are wrong or from the other mode. No log line at all, with a red error in the browser console (F12), means a script on the checkout page stopped the card form before it could talk to Stripe.</p>
+
+<h2>What each answer means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td>Card field missing or blank</td><td>Stripe's script blocked by a script-delay or combine setting, a console error from another plugin, or the page not on HTTPS</td><td>Exclude Stripe and WooCommerce checkout scripts from delay and combine, fix the console error, force HTTPS on checkout</td></tr>
+  <tr><td>Invalid API Key in the log</td><td>Keys pasted from the wrong mode, an old key that was rolled, or test mode left on</td><td>Reconnect the account from the Stripe settings page, or paste the live publishable and secret keys together</td></tr>
+  <tr><td>Declined in Stripe with a bank code</td><td>The customer's bank refused it</td><td>Nothing to fix on the site; the message should ask them to use another card or call their bank</td></tr>
+  <tr><td>Blocked by Radar</td><td>A Radar rule blocks the country, a failed CVC or postcode, or a high risk score</td><td>Review the rule in Radar &gt; Rules; collect the billing postcode at checkout so the check can pass</td></tr>
+  <tr><td>Incomplete, requires authentication</td><td>The 3D Secure pop-up never opened or was closed, often because a script error or a page reload killed it</td><td>Fix the console error, exclude checkout from caching, update the Stripe plugin</td></tr>
+  <tr><td>Paid in Stripe, order stays Pending or Failed</td><td>The webhook does not reach the site, or its signing secret is wrong</td><td>Add the webhook URL shown in the plugin settings to Stripe, paste its signing secret, and allow it through the firewall</td></tr>
+  <tr><td>Apple Pay or Google Pay button missing</td><td>The domain is not registered for Apple Pay, or the browser has no saved card</td><td>Register the domain in the plugin or Stripe settings, and test on a device with a card in the wallet</td></tr>
+  <tr><td>"Error processing" only for some currencies or amounts</td><td>The currency is not enabled on the account, or the total is below Stripe's minimum charge</td><td>Check the currency settings and the minimum amount for that currency</td></tr>
+</table>
+</div>
+
+<h2>Check it worked</h2>
+<p>In test mode, pay with Stripe's test card <code>4242 4242 4242 4242</code> and the 3D Secure test card <code>4000 0025 0000 3155</code>: both orders should reach Processing and appear as Succeeded in Stripe. Then switch to live mode and make one small real purchase and refund it. Watch the next few real orders in Stripe's Payments list.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not turn off Radar or the CVC and postcode checks to make declines go away. Fraud and chargebacks cost more than the sale.</li>
+  <li>Do not leave test mode on in a live shop. Real customers' cards are refused and no money is taken.</li>
+  <li>Do not paste your secret key into support forums or chat. Roll it in Stripe if it was ever shared.</li>
+</ul>
+<p class="note">If you would rather someone else finds why Stripe payments fail and fixes it, that is what the box below is for. Related: <a href="woocommerce-checkout-fix.html">checkout not working</a>, <a href="woocommerce-pending-payment-fix.html">orders stuck on Pending payment</a>, <a href="woocommerce-no-payment-methods-fix.html">no available payment methods</a>.</p>
+</div>
+
+<script>
+(function () {
+  var ed = document.getElementById("ed"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="rows"><div class="row" style="border-left-color:#999"><b>Order total</b>$64.00</div><div class="row" style="border-left-color:#b3261e"><b>Card</b>Field blank, nothing to type in</div><div class="row" style="border-left-color:#b3261e"><b>Place order</b>There was an error processing your payment</div></div>';
+  var fixed = '<div class="rows"><div class="row"><b>Order total</b>$64.00</div><div class="row"><b>Card</b>Card number, expiry, CVC</div><div class="row"><b>Place order</b>Thank you. Your order has been received.</div></div>';
+  var logBefore = 'Shop: candles, WooCommerce + Stripe\n\nStripe Payments: no attempt\nShop log: no Stripe line\nConsole: Stripe script delayed\n  until first click\nWebhook: secret from old key\n\n' +
+    '<span class="bad">Card form never loads.</span>';
+  var logAfter = 'Steps taken:\n1. Excluded Stripe scripts from\n   script delay.\n2. Reconnected Stripe, new\n   webhook secret saved.\n' +
+    '3. Test card + 3D Secure card,\n   then one live order refunded.\n\n' +
+    '<span class="good">Paid, order Processing.</span>';
+  function show(isFixed) {
+    ed.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does WooCommerce Stripe say there was an error processing your payment?","acceptedAnswer":{"@type":"Answer","text":"Either Stripe refused the charge (a bank decline, a Radar block, or 3D Secure not completed), which shows on the attempt in the Stripe Dashboard, or the request never reached Stripe because of wrong API keys or a script error on the checkout page, which shows in the WooCommerce Stripe log and the browser console."}},
+{"@type":"Question","name":"Why is the Stripe card field not showing on WooCommerce checkout?","acceptedAnswer":{"@type":"Answer","text":"Stripe's card form is drawn by a script. An optimisation plugin that delays or combines scripts, a JavaScript error from another plugin, or a checkout page not served over HTTPS stops it. Exclude the Stripe and checkout scripts and fix the console error."}},
+{"@type":"Question","name":"Why are WooCommerce orders paid in Stripe still pending?","acceptedAnswer":{"@type":"Answer","text":"The order status is updated by Stripe's webhook. If the webhook URL is missing in Stripe, its signing secret is wrong, or a firewall blocks it, the payment succeeds in Stripe but the order never moves to Processing."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v8';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>. Checking other people\'s sites? <a href="https://addons.mozilla.org/en-US/firefox/addon/local-site-audit-pitch/">Free Firefox add-on</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
