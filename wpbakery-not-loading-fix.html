@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WPBakery Page Builder not loading or not showing: how to get the editor back</title>
+<meta name="description" content="The WPBakery Page Builder button is gone, the frontend editor spins forever, or the page shows raw [vc_row] codes? Find the cause in two checks: the block editor took over, Role Manager, an old bundled version, PHP limits, a plugin or a firewall rule.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/wpbakery-not-loading-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.ed { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; min-height:210px; background:#f1f3f5; padding:12px; }
+.raw { background:#fff; border-radius:6px; padding:12px; font-family:ui-monospace, Consolas, monospace; font-size:12px; color:#555; overflow-wrap:anywhere; }
+.rows { display:flex; flex-direction:column; gap:8px; }
+.row { background:#fff; border:1px solid #cfd6de; border-left:4px solid #0473aa; border-radius:4px; padding:8px 10px; }
+.row b { display:block; font-size:14px; }
+.bar { background:#0473aa; color:#fff; font-weight:600; border-radius:4px; padding:6px 10px; margin-bottom:8px; font-size:13px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WPBakery Page Builder won't load (or the button is gone)</h1>
+<p class="lede">You open a page and the blue "WPBakery Page Builder" button is missing, or the Backend Editor shows an empty grey box, or the Frontend Editor spins forever. Sometimes the page itself shows raw codes like <code>[vc_row][vc_column]</code> instead of the design. WPBakery usually comes bundled with a theme bought on ThemeForest, so it often lags years behind WordPress, and most of these failures trace back to that, to one setting, or to a background request being cut off. Visitors may still see the site normally. Below is a rebuilt example (not a real client), two checks, and the fix for each cause.</p>
+
+<div class="switch" role="group" aria-label="Show the editor before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Edit Page</h2>
+    <div class="ed" id="ed"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Check 1: which version, and is it allowed here?</h2>
+<p>In the dashboard go to <b>Plugins</b> and note the WPBakery Page Builder version, then <b>Dashboard &gt; Updates</b> for your WordPress version. Then open <b>WPBakery Page Builder &gt; Role Manager</b> and, for your role (Administrator, Editor), look at <b>Post types</b>, and <b>WPBakery Page Builder &gt; General Settings</b> for the "Disable Gutenberg Editor" box.</p>
+<ul>
+  <li><b>The button is missing entirely:</b> the block editor took over the page, or Role Manager does not allow the builder on this post type or role. First two rows of the table.</li>
+  <li><b>The button is there but the editor never finishes loading:</b> an old bundled version, PHP limits, a plugin, a speed setting or a firewall. Check 2 tells you which.</li>
+</ul>
+
+<h2>Check 2: the browser's Console and Network tabs</h2>
+<p>On a computer, open the stuck editor, press <b>F12</b> (or right-click and choose Inspect), open the <b>Console</b> tab and reload. Read the first red line and the file name next to it. Then open the <b>Network</b> tab, type <code>admin-ajax</code> or <code>post.php</code> in the filter box, press Update on the page, and read the Status column of the rows that appear.</p>
+
+<h2>What each answer means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td>The page opens in the block editor (white canvas, "+" buttons) and there is no WPBakery button at all</td><td>Since WordPress 5.0 the block editor opens pages by default, and WPBakery is a classic-editor tool</td><td>Tick <b>Disable Gutenberg Editor</b> under <b>WPBakery Page Builder &gt; General Settings</b> and save (older versions: install the free Classic Editor plugin). Reopen the page: the Backend Editor and Frontend Editor buttons are back above the content box</td></tr>
+  <tr><td>Classic editor shows, but still no builder button, or only for some post types or users</td><td><b>Role Manager</b> limits the builder to certain post types or roles; a theme update or migration can reset it</td><td><b>WPBakery Page Builder &gt; Role Manager</b>: for each role that edits pages, set <b>Post types</b> to Custom and tick Pages, Posts and any portfolio or product type you build with; set <b>Backend editor</b> to Enabled. Save</td></tr>
+  <tr><td>Console shows <code>.live is not a function</code>, <code>.size is not a function</code>, <code>jQuery is not defined</code> or errors in <code>js_composer</code> files; empty grey box or endless spinner</td><td>A WPBakery version made before WordPress 5.5 changed jQuery. A bundled copy only updates when the theme does</td><td>Update the theme first (from the ThemeForest download or the theme's own updater), then update WPBakery from the theme's "Install plugins" screen. If the theme is abandoned, a WPBakery licence lets you update the plugin directly. As a stopgap only, the free "Enable jQuery Migrate Helper" plugin can bring the editor back. More in <a href="outdated-php-fix.html">running an outdated PHP</a> and <a href="another-update-fix.html">updates stuck</a></td></tr>
+  <tr><td>The page shows raw codes like <code>[vc_row]</code> or <code>[vc_column_text]</code> to visitors</td><td>WPBakery is deactivated, or the theme that bundled it was switched, so nothing turns the codes into a layout</td><td>Reactivate WPBakery under <b>Plugins</b> (or switch the theme back). If you are moving away from WPBakery, the codes have to be rebuilt in the new editor page by page; do not delete the plugin until every page is rebuilt</td></tr>
+  <tr><td><code>admin-ajax.php</code> or <code>post.php</code> status 500, or a white box with "Allowed memory size"; long pages fail to save or lose rows at the bottom</td><td>The server stops the editor: too little memory, too little time, or too few input fields allowed for a long page</td><td>Add <code>define('WP_MEMORY_LIMIT', '256M');</code> to <code>wp-config.php</code> above "That's all, stop editing", and ask the host (or use its "PHP options" screen) for <code>max_execution_time</code> 120 and <code>max_input_vars</code> 3000 or more. More in <a href="memory-exhausted-fix.html">"Allowed memory size exhausted"</a> and <a href="max-execution-time-fix.html">"Maximum execution time exceeded"</a></td></tr>
+  <tr><td>Status 403 when you press Update, or a host or Cloudflare page saying the request was blocked</td><td>A firewall rule (ModSecurity, Wordfence, Cloudflare's WAF) read the page's code as an attack</td><td>Ask the host to check the firewall log for your IP at that minute and allow that one rule for <code>post.php</code> and <code>admin-ajax.php</code>; in Wordfence use "Allowlist" on the blocked request. Do not switch the whole firewall off. See also <a href="forbidden-403-fix.html">403 Forbidden</a></td></tr>
+  <tr><td>Console errors from files named like <code>rocket-loader</code>, <code>autoptimize</code> or <code>wp-rocket</code>, or the Frontend Editor alone hangs</td><td>A speed setting delays or combines scripts, including the editor's own; the Frontend Editor also needs the page to load inside a frame</td><td>Turn off Cloudflare's Rocket Loader (Speed &gt; Optimization) and exclude logged-in users from JavaScript delay and combine in your speed plugin. If a security plugin sets <code>X-Frame-Options: DENY</code>, change it to SAMEORIGIN</td></tr>
+  <tr><td>None of the above; it started after installing or updating a plugin</td><td>A plugin (old add-on packs for WPBakery most often) breaks the editor's scripts</td><td>Deactivate plugins in halves until the editor opens; the last half you switched off holds the culprit. More in <a href="plugin-fatal-error-fix.html">a plugin broke the site</a></td></tr>
+</table>
+</div>
+
+<h2>Check it worked</h2>
+<p>Open two or three pages in both the Backend Editor and the Frontend Editor, including the longest one, change a word, press Update, and reload the public page to see it. Empty your cache plugin and the host's cache if the change does not show (<a href="changes-not-showing-fix.html">changes not showing on the live site</a>). Look at the Console once more: no red lines from <code>js_composer</code>.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not delete WPBakery to "start fresh". Your layouts are stored as those <code>[vc_...]</code> codes inside each page, and without the plugin every page shows them as raw text.</li>
+  <li>Do not install a "nulled" WPBakery from a download site to get a newer version. They are a common way sites get hacked (<a href="hacked-redirect-fix.html">hacked site redirecting</a>); update through the theme or a licence.</li>
+  <li>Do not keep pressing Update on a long page that loses rows: each save can drop more of it. Fix <code>max_input_vars</code> first, then restore the page from its revisions.</li>
+  <li>Do not switch the security firewall off for the whole site. Allow the one rule for the one request.</li>
+</ul>
+<p class="note">Most of these take ten minutes once you know which one it is. If you would rather someone else finds and fixes it, that is what the box below is for. Related: <a href="elementor-loading-fix.html">Elementor stuck on the loading screen</a>, <a href="divi-builder-loading-fix.html">Divi Builder won't load</a> and <a href="memory-exhausted-fix.html">"Allowed memory size exhausted"</a>.</p>
+</div>
+
+<script>
+(function () {
+  var ed = document.getElementById("ed"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="raw">[vc_row][vc_column][vc_column_text]Spring classes start May 4. Beginner wheel throwing, Saturdays 10am.[/vc_column_text][vc_btn title="Book a seat"][/vc_column][/vc_row]</div>';
+  var fixed = '<div class="bar">WPBakery Page Builder</div><div class="rows"><div class="row"><b>Text block</b>Spring classes start May 4...</div><div class="row"><b>Button</b>Book a seat</div></div>';
+  var logBefore = 'Site: pottery studio, WordPress 6.x\n  + theme from 2019, WPBakery 6.0\n\n' +
+    'Editor: block editor, no WPBakery\n  button; codes shown as text\n\n' +
+    'Console (classic editor):\n  TypeError: .live is not a function\n  js_composer ... backend.min.js\n\n' +
+    '<span class="bad">New class dates could not go up.</span>';
+  var logAfter = 'Steps taken:\n1. Theme updated, then WPBakery\n   from its Install plugins screen.\n' +
+    '2. General Settings: Disable\n   Gutenberg Editor ticked.\n' +
+    '3. Role Manager: Pages + Posts\n   for Administrator and Editor.\n\n' +
+    '<span class="good">Backend and Frontend editors open;\nno red lines in the Console.</span>';
+  function show(isFixed) {
+    ed.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is the WPBakery Page Builder button missing?","acceptedAnswer":{"@type":"Answer","text":"Usually the block editor has taken over the page, or Role Manager does not allow WPBakery on that post type or role. Tick Disable Gutenberg Editor under WPBakery Page Builder > General Settings, then check Role Manager > Post types for your role."}},
+{"@type":"Question","name":"Why does the WPBakery editor not load?","acceptedAnswer":{"@type":"Answer","text":"Most often it is an old WPBakery bundled with a theme, written before WordPress 5.5 changed jQuery; the Console shows errors like '.live is not a function'. Update the theme, then WPBakery. Other causes are low PHP limits, a plugin conflict, a speed setting that delays scripts, or a firewall rule blocking the save."}},
+{"@type":"Question","name":"Why does my page show [vc_row] codes?","acceptedAnswer":{"@type":"Answer","text":"WPBakery stores layouts as shortcodes like [vc_row] inside each page. When the plugin is deactivated or the theme that bundled it is switched, nothing turns those codes into a layout. Reactivate the plugin or switch the theme back."}},
+{"@type":"Question","name":"How do I update WPBakery that came with my theme?","acceptedAnswer":{"@type":"Answer","text":"A bundled copy updates with the theme: update the theme from its download or updater, then update WPBakery from the theme's Install plugins screen. A separate WPBakery licence lets you update the plugin directly."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v8';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>. Checking other people\'s sites? <a href="https://addons.mozilla.org/en-US/firefox/addon/local-site-audit-pitch/">Free Firefox add-on</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
