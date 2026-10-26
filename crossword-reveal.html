@@ -110,7 +110,14 @@ function draw() {
 function step(n) {
   const k = clueAt(cur.r, cur.c, cur.dir); if (!k) return;
   const cs = cellsOf(k), i = cs.findIndex(([a, b]) => a === cur.r && b === cur.c), j = i + n;
-  if (j >= 0 && j < cs.length) [cur.r, cur.c] = cs[j];
+  if (j >= 0 && j < cs.length) { [cur.r, cur.c] = cs[j]; return; }
+  if (n > 0) { // past the last square: go to the next clue that still has an empty square
+    const ks = liveClues(), at = ks.indexOf(k);
+    for (let s = 1; s <= ks.length; s++) {
+      const q = ks[(at + s) % ks.length], gap = cellsOf(q).find(([a, b]) => !entry[a][b]);
+      if (gap) { [cur.r, cur.c] = gap; cur.dir = q.dir; return; }
+    }
+  }
 }
 function after() {
   while (PUZ.clues.some(k => k.stage === stage + 1) && PUZ.unlock(stage)) {
@@ -124,7 +131,7 @@ function after() {
 function key(e) {
   const k = e.key;
   if (k === "Escape") { rebus = !rebus; draw(); e.preventDefault(); return; }
-  if (k === "Enter") { if (rebus) { rebus = false; step(1); after(); } e.preventDefault(); return; }
+  if (k === "Enter") { if (rebus) { rebus = false; after(); step(1); after(); } e.preventDefault(); return; }
   const mv = {ArrowRight:[0,1,"a"],ArrowLeft:[0,-1,"a"],ArrowDown:[1,0,"d"],ArrowUp:[-1,0,"d"]}[k];
   if (mv) { e.preventDefault(); const r = cur.r + mv[0], c = cur.c + mv[1];
     if (r >= 0 && r < R && c >= 0 && c < C && visible(r, c)) { cur.r = r; cur.c = c; }
@@ -135,7 +142,7 @@ function key(e) {
     msg.textContent = ""; draw(); return; }
   if (/^[a-z]$/i.test(k)) { e.preventDefault(); const L = k.toUpperCase();
     if (rebus) entry[cur.r][cur.c] = (entry[cur.r][cur.c] + L).slice(0, 6);
-    else { entry[cur.r][cur.c] = L; step(1); }
+    else { entry[cur.r][cur.c] = L; after(); step(1); }
     after(); }
 }
 document.addEventListener("keydown", e => { if (e.target !== kb) key(e); });
