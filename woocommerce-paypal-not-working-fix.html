@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WooCommerce PayPal not working: button missing or orders stuck, how to fix it</title>
+<meta name="description" content="WooCommerce PayPal button not showing, a 'Something went wrong' error at checkout, or paid orders stuck on Pending payment? Two checks find whether PayPal saw the payment and whether it could tell your shop. Then fix it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/woocommerce-paypal-not-working-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.ed { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; min-height:210px; background:#f1f3f5; padding:12px; }
+.rows { display:flex; flex-direction:column; gap:8px; }
+.row { background:#fff; border:1px solid #cfd6de; border-left:4px solid #65bc7b; border-radius:4px; padding:8px 10px; }
+.row b { display:block; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WooCommerce PayPal not working: no button, an error, or orders stuck</h1>
+<p class="lede">The PayPal button is missing from checkout, or customers click it and get <b>Something went wrong</b>, or they pay and the order sits on <b>Pending payment</b> while the money is in your PayPal account. Each of these has a short list of causes. Two checks tell you whether PayPal ever saw the payment, and whether it was able to tell your shop afterwards.</p>
+
+<div class="switch" role="group" aria-label="Show checkout before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Customer sees</h2>
+    <div class="ed" id="ed"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Check 1: did PayPal see the payment?</h2>
+<p>Log in to your PayPal business account and open <b>Activity</b>. Look for the customer's name or amount at the time they tried. If the payment is there and completed, the money arrived and only the shop was not told: go to Check 2. If nothing is there, the problem is on the checkout page itself. Open checkout in a private window, press F12, and look at the <b>Console</b> tab while the page loads and when you click the PayPal button. A red error mentioning <code>paypal.com/sdk</code> means the PayPal script was blocked or delayed. Also check you are not in <b>sandbox</b> mode with live customers, or live mode with sandbox test logins.</p>
+
+<h2>Check 2: can PayPal reach your shop?</h2>
+<p>With the official <b>WooCommerce PayPal Payments</b> plugin, go to <b>WooCommerce &gt; Settings &gt; Payments &gt; PayPal</b> and open the connection or webhooks section. It shows whether webhooks are subscribed; if not, use the button there to resubscribe. Webhooks are the messages PayPal sends back to say a payment completed. They are refused when the site is behind a maintenance mode, a password, a firewall that blocks PayPal, or a security plugin that blocks <code>wp-json</code>. Then open <b>WooCommerce &gt; Status &gt; Logs</b> and read the newest PayPal log for an error line at the time of the failed order.</p>
+
+<h2>What each answer means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td>No PayPal button at all</td><td>A speed plugin delays or combines JavaScript, or the shop currency or country is one PayPal does not offer that button for</td><td>Exclude the PayPal script and the checkout page from the speed plugin's delay and combine options; check the shop currency is supported</td></tr>
+  <tr><td>Button shows, then "Something went wrong"</td><td>Live and sandbox mixed up, an expired connection after a PayPal password or account change, or a theme that changes the checkout fields</td><td>Disconnect and reconnect PayPal in the plugin settings in the right mode; test with a default theme</td></tr>
+  <tr><td>Paid in PayPal, order stuck on Pending payment</td><td>Webhooks not subscribed, or blocked by a firewall, maintenance mode or security plugin</td><td>Resubscribe webhooks, allow PayPal through, then mark the stuck orders as Processing after matching each to the PayPal payment</td></tr>
+  <tr><td>Orders stuck, shop still on the old "PayPal Standard"</td><td>The old gateway relies on IPN messages, which many hosts and firewalls now drop</td><td>Move to WooCommerce PayPal Payments and turn off PayPal Standard</td></tr>
+  <tr><td>Card fields missing, only the yellow button</td><td>Your PayPal account has not been approved for the advanced card fields, or that option is switched off</td><td>Check eligibility in the plugin's settings; the standard button still takes cards through PayPal's own window</td></tr>
+  <tr><td>Works for you, fails for some customers</td><td>A cached checkout page serving an old payment token, or a country PayPal declines for your account</td><td>Exclude cart and checkout from every cache; read the reason in PayPal Activity for those attempts</td></tr>
+  <tr><td>Two PayPal buttons, or both plugins active</td><td>Two PayPal plugins fighting over the same checkout</td><td>Keep one PayPal plugin, deactivate the other</td></tr>
+</table>
+</div>
+
+<h2>Check it worked</h2>
+<p>In a private window, put a cheap product in the cart and pay with PayPal. If you want to test without real money, switch the plugin to sandbox mode and use a PayPal sandbox buyer login, then switch back to live before you open the shop again. The order should move to <b>Processing</b> on its own within a minute, and the PayPal log should show the webhook arriving. Clear the site and host cache afterwards.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not refund and re-charge customers whose orders are stuck on Pending payment. Check PayPal Activity first; the money is often already there.</li>
+  <li>Do not leave the plugin in sandbox mode on the live shop. Customers cannot pay with real PayPal accounts in sandbox.</li>
+  <li>Do not paste your PayPal password or API keys into a support forum or a chat with someone you do not know.</li>
+</ul>
+<p class="note">If you would rather someone else finds why PayPal fails and fixes it, that is what the box below is for. Related: <a href="woocommerce-pending-payment-fix.html">orders stuck on pending payment</a>, <a href="woocommerce-stripe-payment-failed-fix.html">Stripe payment failed</a>, <a href="woocommerce-no-payment-methods-fix.html">no payment methods at checkout</a>.</p>
+</div>
+
+<script>
+(function () {
+  var ed = document.getElementById("ed"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="rows"><div class="row" style="border-left-color:#999"><b>Checkout</b>Billing details filled in</div><div class="row" style="border-left-color:#b3261e"><b>Payment</b>PayPal button missing</div><div class="row" style="border-left-color:#b3261e"><b>Yesterday\'s order</b>Paid in PayPal, Pending payment in shop</div></div>';
+  var fixed = '<div class="rows"><div class="row"><b>Checkout</b>Billing details filled in</div><div class="row"><b>Payment</b>PayPal and Pay Later buttons show</div><div class="row"><b>Test order</b>Processing, PayPal payment matched</div></div>';
+  var logBefore = 'Shop: candle maker, WooCommerce\n\nPayPal Activity: 2 completed,\n  shop shows Pending\nConsole: paypal.com/sdk delayed\n  by speed plugin\nWebhooks: not subscribed\n\n' +
+    '<span class="bad">No button, orders stuck.</span>';
+  var logAfter = 'Steps taken:\n1. Excluded PayPal script from\n   JS delay.\n2. Resubscribed webhooks.\n' +
+    '3. Matched 2 stuck orders,\n   one test order, cache cleared.\n\n' +
+    '<span class="good">Button shows, orders complete.</span>';
+  function show(isFixed) {
+    ed.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is the PayPal button not showing in WooCommerce checkout?","acceptedAnswer":{"@type":"Answer","text":"Most often a speed or caching plugin delays or combines JavaScript and the PayPal script never loads. It can also be a shop currency or country that PayPal does not offer that button for, or two PayPal plugins active at once. Exclude the PayPal script and checkout page from JavaScript delay and caching."}},
+{"@type":"Question","name":"Why are WooCommerce PayPal orders stuck on pending payment?","acceptedAnswer":{"@type":"Answer","text":"PayPal took the money but its webhook, the message that tells the shop the payment completed, did not arrive. Webhooks are not subscribed, or a firewall, maintenance mode or security plugin blocks them. The old PayPal Standard gateway relies on IPN messages, which are often dropped. Resubscribe webhooks in WooCommerce PayPal Payments and check PayPal Activity before refunding anyone."}},
+{"@type":"Question","name":"What does Something went wrong mean at WooCommerce PayPal checkout?","acceptedAnswer":{"@type":"Answer","text":"Usually the plugin is connected in sandbox while customers use real accounts, or the connection expired after a PayPal account change, or the theme alters checkout fields. Reconnect PayPal in the right mode, test with a default theme, and read WooCommerce > Status > Logs for the error line."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v8';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>. Checking other people\'s sites? <a href="https://addons.mozilla.org/en-US/firefox/addon/local-site-audit-pitch/">Free Firefox add-on</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
