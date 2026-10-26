@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WooCommerce My Account or order received page 404: how to fix it</title>
+<meta name="description" content="WooCommerce My Account links like Orders, Downloads or Edit address, the Lost password page or the order received page show 404 Not Found? Two checks find whether the endpoints or the page settings are broken. Then fix it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/woocommerce-account-pages-404-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.ed { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; min-height:210px; background:#f1f3f5; padding:12px; }
+.rows { display:flex; flex-direction:column; gap:8px; }
+.row { background:#fff; border:1px solid #cfd6de; border-left:4px solid #65bc7b; border-radius:4px; padding:8px 10px; }
+.row b { display:block; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WooCommerce My Account pages or order received page show 404</h1>
+<p class="lede">The My Account page opens, but clicking <b>Orders</b>, <b>Downloads</b>, <b>Addresses</b> or <b>Account details</b> gives <b>Page not found</b>. Or the <b>Lost password</b> link 404s, or customers pay and land on a 404 instead of the <b>Order received</b> thank-you page. These are WooCommerce <i>endpoints</i>: extra addresses added to the end of a page, such as <code>/my-account/orders/</code>. Two checks tell you whether WordPress forgot those addresses or the page they hang off is set wrong.</p>
+
+<div class="switch" role="group" aria-label="Show the account page before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Customer clicks</h2>
+    <div class="ed" id="ed"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Check 1: save the permalinks once</h2>
+<p>In WordPress, go to <b>Settings &gt; Permalinks</b> and click <b>Save Changes</b> without changing anything. This rebuilds the list of addresses WordPress knows, including every WooCommerce endpoint. Then open the broken link again in a private window. If it works now, the list had gone stale, usually after a plugin update, a site move or a change to the account page's slug. If it still 404s, go to Check 2.</p>
+
+<h2>Check 2: are the pages and endpoints set right</h2>
+<p>Go to <b>WooCommerce &gt; Settings &gt; Advanced</b>. Under <b>Page setup</b>, <b>My account page</b> and <b>Checkout page</b> must point at the real, published pages, not a deleted copy or a draft. Below that, under <b>Account endpoints</b> and <b>Checkout endpoints</b>, each box (<code>orders</code>, <code>downloads</code>, <code>edit-address</code>, <code>lost-password</code>, <code>order-received</code>) must hold a plain word. An empty box, a space, or two endpoints using the same word all break that link. Then open the My Account page in the editor: it must contain the <b>My account</b> block or the <code>[woocommerce_my_account]</code> shortcode. A page builder layout with only a login form does not draw the endpoints.</p>
+
+<h2>What each answer means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td>Works after saving permalinks</td><td>Stale rewrite rules after an update, a migration, or renaming the account page</td><td>Nothing more; save permalinks again after the next site move</td></tr>
+  <tr><td>Every account tab 404s, the dashboard works</td><td>My account page in Advanced settings points at an old or duplicate page</td><td>Pick the real page, save, then save permalinks</td></tr>
+  <tr><td>One tab 404s</td><td>Its endpoint box is empty, or another endpoint or a page uses the same word</td><td>Restore the default word (for example <code>orders</code>) or rename the clashing page</td></tr>
+  <tr><td>Tabs open but show the dashboard text only</td><td>The page uses a builder login widget instead of the My account block or shortcode</td><td>Put the block or <code>[woocommerce_my_account]</code> on the page</td></tr>
+  <tr><td>Order received 404 after paying</td><td>Checkout page setting wrong, or the order-received endpoint cleared, or the checkout page is a child page that was moved</td><td>Fix the Checkout page and endpoint, save permalinks; orders were taken, check them in WooCommerce &gt; Orders</td></tr>
+  <tr><td>404 only on the live site, fine on staging</td><td>A security or redirect plugin, or a server rule, catching addresses it does not know</td><td>Exclude <code>/my-account/</code> and <code>/checkout/</code> from the plugin's rules</td></tr>
+  <tr><td>404 only in another language</td><td>A translation plugin translated the page slug but not the endpoints</td><td>Translate the endpoints in the translation plugin's WooCommerce settings, then save permalinks</td></tr>
+  <tr><td>Plain permalinks setting (<code>?p=123</code>)</td><td>Endpoints need pretty permalinks to make tidy addresses</td><td>Choose Post name, save, and set a redirect from any old addresses that were shared</td></tr>
+</table>
+</div>
+
+<h2>Check it worked</h2>
+<p>Log in as a test customer in a private window and click every tab on My Account, then log out and use Lost password. Place one test order (cash on delivery or the gateway's test mode) and confirm it lands on the Order received page with the order number. Clear the site and host cache afterwards so no one is served the old 404.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not delete and recreate the My Account page without updating <b>Page setup</b>. The new page gets a new address and every endpoint stays broken.</li>
+  <li>Do not cache the My Account or Checkout pages. Customers would see each other's account pages or a stale 404.</li>
+  <li>Do not install a redirect plugin to send the 404s to the home page. It hides the problem and customers still cannot see their orders.</li>
+</ul>
+<p class="note">If you would rather someone else finds why the account pages 404 and fixes it, that is what the box below is for. Related: <a href="pages-404-fix.html">pages show 404</a>, <a href="woocommerce-checkout-fix.html">checkout not working</a>, <a href="login-loop-fix.html">login keeps sending you back</a>.</p>
+</div>
+
+<script>
+(function () {
+  var ed = document.getElementById("ed"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="rows"><div class="row" style="border-left-color:#999"><b>My account</b>Hello Dana, dashboard shows</div><div class="row" style="border-left-color:#b3261e"><b>Orders</b>404 Page not found</div><div class="row" style="border-left-color:#b3261e"><b>After paying</b>404 instead of Order received</div></div>';
+  var fixed = '<div class="rows"><div class="row"><b>My account</b>Hello Dana, dashboard shows</div><div class="row"><b>Orders</b>Order #1042, Processing</div><div class="row"><b>After paying</b>Thank you. Your order has been received.</div></div>';
+  var logBefore = 'Shop: bakery, WooCommerce\n\nAccount page: renamed to\n  /account/ last week\nRewrite rules: still /my-account/\nCheckout endpoint: blank\n\n' +
+    '<span class="bad">Every tab 404s.</span>';
+  var logAfter = 'Steps taken:\n1. Restored order-received\n   endpoint word.\n2. Saved permalinks.\n' +
+    '3. Clicked every tab, one test\n   order, cache cleared.\n\n' +
+    '<span class="good">All tabs and thank-you load.</span>';
+  function show(isFixed) {
+    ed.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why do WooCommerce My Account tabs show 404?","acceptedAnswer":{"@type":"Answer","text":"The tabs are endpoints added to the end of the My Account page address. WordPress returns 404 when its saved list of addresses is stale, when the My account page setting points at the wrong page, or when an endpoint box in WooCommerce Advanced settings is empty or clashes with another page. Saving Settings > Permalinks once fixes the first case."}},
+{"@type":"Question","name":"Why does the WooCommerce order received page show 404 after payment?","acceptedAnswer":{"@type":"Answer","text":"The thank-you page is the order-received endpoint of the Checkout page. If the Checkout page setting is wrong, the endpoint box is blank, or the rewrite rules are stale, customers land on a 404 even though the order was placed. Fix the setting and save permalinks."}},
+{"@type":"Question","name":"Why does the WooCommerce lost password link go to a 404?","acceptedAnswer":{"@type":"Answer","text":"Lost password is the lost-password endpoint of the My Account page. A cleared endpoint box, a wrong My account page setting or a security plugin catching the address causes the 404."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v8';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>. Checking other people\'s sites? <a href="https://addons.mozilla.org/en-US/firefox/addon/local-site-audit-pitch/">Free Firefox add-on</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
