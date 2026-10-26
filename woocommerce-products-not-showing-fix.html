@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WooCommerce products not showing on the shop page: how to fix it</title>
+<meta name="description" content="WooCommerce shop says No products were found matching your selection, or a category is empty? Two checks find the cause: one product's status and visibility, and a logged-out test. Then fix stock, the Shop page, lookup tables or the cache.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/woocommerce-products-not-showing-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.ed { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; min-height:210px; background:#f1f3f5; padding:12px; }
+.rows { display:flex; flex-direction:column; gap:8px; }
+.row { background:#fff; border:1px solid #cfd6de; border-left:4px solid #65bc7b; border-radius:4px; padding:8px 10px; }
+.row b { display:block; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WooCommerce products not showing on the shop page</h1>
+<p class="lede">The shop page says <b>"No products were found matching your selection"</b>, or a category page is empty, or a product you just added shows in the dashboard but not to customers. Nobody can buy what they cannot see. The cause is nearly always one of a few things: the product's own status or visibility, stock settings, the page WooCommerce thinks is the shop, a lookup table that was never rebuilt after an import, or a cached copy of the page. Below is a rebuilt example (not a real client), the two checks that find the cause, and the fix for each one.</p>
+
+<div class="switch" role="group" aria-label="Show the shop page before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Shop page</h2>
+    <div class="ed" id="ed"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Check 1: open one missing product in the dashboard</h2>
+<p>Go to <b>Products &gt; All Products</b> and find a product customers cannot see. Look at four things in its row and edit screen: the <b>status</b> (Published, not Draft, Pending or Private), the <b>Catalog visibility</b> in the Publish box (it should say "Shop and search results"), the <b>stock status</b>, and whether it has a <b>price</b>. Then open its own page with the <b>View</b> link while logged out, in a private window. If the product page opens but the shop page leaves it out, the problem is visibility or the shop's lists; if the product page itself is missing, it is the status.</p>
+
+<h2>Check 2: compare logged in, logged out, and the settings pages</h2>
+<p>In a private window, logged out, open the shop page and one category. If you see products as an admin but customers see none, the page they get is a <b>cached copy</b> or a plugin hides products from visitors. Then open <b>WooCommerce &gt; Settings &gt; Products</b> and check which page is set as the <b>Shop page</b>, and <b>WooCommerce &gt; Settings &gt; Products &gt; Inventory</b> for "Hide out of stock items from the catalog".</p>
+
+<h2>What each answer means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td>The product is Draft, Pending, Private or Scheduled</td><td>Only published products appear in the shop; a CSV import or a bulk edit often leaves them as drafts</td><td>Tick the products in <b>All Products</b>, choose <b>Edit</b> from Bulk actions, set Status to Published and update. Check the publish date is not in the future</td></tr>
+  <tr><td>Catalog visibility says "Hidden" or "Search results only"</td><td>The product is set to stay out of the shop lists on purpose</td><td>Edit the product, click <b>Edit</b> next to Catalog visibility in the Publish box, choose "Shop and search results" and update</td></tr>
+  <tr><td>Only out-of-stock products are missing</td><td>"Hide out of stock items from the catalog" is ticked, or stock was imported as 0</td><td>Untick that option in <b>Settings &gt; Products &gt; Inventory</b>, or set the right stock numbers (or allow backorders) on the products</td></tr>
+  <tr><td>The whole shop page is empty, or shows a plain page with no products</td><td>The page set as the Shop page is wrong, deleted or in the trash, or a page builder replaced the shop with a static layout</td><td>In <b>Settings &gt; Products</b>, pick the right Shop page (it can be empty: WooCommerce fills it). If a builder template is used for it, make sure it holds the products widget or loop</td></tr>
+  <tr><td>Products show, but category pages or filters return "No products were found"</td><td>The product lookup tables or term counts are out of date, usually after an import, a migration or a database restore</td><td>In <b>WooCommerce &gt; Status &gt; Tools</b>, run "Regenerate the product lookup tables", "Recount terms" and "Clear transients". Check each product is in the category (not only "Uncategorized")</td></tr>
+  <tr><td>Admins see products, logged-out visitors see none or an old list</td><td>A cached copy of the shop page from before the products were published (caching plugin, the host's cache or Cloudflare)</td><td>Purge every cache layer and reload logged out. If it comes back, set the cache to expire shop and category pages when a product is saved</td></tr>
+  <tr><td>Products vanished after installing or updating a plugin (members, B2B, wholesale, a filter plugin)</td><td>That plugin hides products from guests or certain roles, or its filter query breaks the shop list</td><td>Check the plugin's visibility rules first. Use the Health Check plugin's troubleshooting mode to switch plugins off for yourself only and find the one that hides them</td></tr>
+  <tr><td>Products show in the dashboard but each product page gives a 404</td><td>Permalinks were not refreshed after a change to the product base or a migration</td><td>Open <b>Settings &gt; Permalinks</b> and click Save without changing anything. See <a href="pages-404-fix.html">404 errors</a> if it stays</td></tr>
+</table>
+</div>
+
+<h2>Check it worked</h2>
+<p>In a private window, logged out, open the shop page, two categories and a search for one product name. Every product you meant to sell should appear with a price and an Add to cart or Select options button. Then do the same on a phone, since mobile visitors can get a different cached copy.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not re-import the whole catalog to "refresh" it. You get duplicates; fix the status, visibility or lookup tables instead.</li>
+  <li>Do not delete and recreate the Shop page while the shop is live without setting it again in WooCommerce's settings straight after.</li>
+  <li>Do not switch plugins off one by one on the live shop while customers browse it. Use troubleshooting mode or a staging copy.</li>
+</ul>
+<p class="note">Most of these take a few minutes once you know which one it is. If you would rather someone else finds and fixes it, that is what the box below is for. Related: <a href="woocommerce-add-to-cart-fix.html">WooCommerce Add to cart not working</a> and <a href="woocommerce-checkout-fix.html">WooCommerce checkout not working</a>.</p>
+</div>
+
+<script>
+(function () {
+  var ed = document.getElementById("ed"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="rows"><div class="row" style="border-left-color:#999"><b>Shop</b>No products were found matching your selection.</div><div class="row" style="border-left-color:#b3261e"><b>Category: Candles</b>0 products</div></div>';
+  var fixed = '<div class="rows"><div class="row"><b>Soy candle, cedar</b>$22.00 - Add to cart</div><div class="row"><b>Soy candle, fig</b>$22.00 - Add to cart</div><div class="row"><b>Category: Candles</b>14 products</div></div>';
+  var logBefore = 'Shop: candles, WooCommerce\n\nProducts in dashboard: 14\nStatus: Draft (CSV import)\nLookup tables: not rebuilt\nLogged-out shop: empty\n\n' +
+    '<span class="bad">Customers see an empty shop.</span>';
+  var logAfter = 'Steps taken:\n1. Bulk edit: 14 products to\n   Published.\n' +
+    '2. Status > Tools: regenerated\n   lookup tables, recounted terms.\n3. Purged cache, retested\n   logged out and on a phone.\n\n' +
+    '<span class="good">All 14 products show in the\nshop and the category.</span>';
+  function show(isFixed) {
+    ed.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does my WooCommerce shop say No products were found matching your selection?","acceptedAnswer":{"@type":"Answer","text":"Usually the products are not published (left as drafts by an import), hidden by catalog visibility or the hide-out-of-stock setting, or the product lookup tables were not rebuilt. Check one product's status and visibility, then run Regenerate the product lookup tables in WooCommerce > Status > Tools."}},
+{"@type":"Question","name":"Why do I see WooCommerce products but my customers do not?","acceptedAnswer":{"@type":"Answer","text":"Admins often bypass the page cache and some plugins hide products from guests. Purge every cache, test logged out in a private window, and check membership or wholesale plugins' visibility rules."}},
+{"@type":"Question","name":"Why are WooCommerce category pages empty after an import?","acceptedAnswer":{"@type":"Answer","text":"The lookup tables and term counts are out of date or the products are only in Uncategorized. Run Regenerate the product lookup tables and Recount terms in WooCommerce > Status > Tools, and check each product's categories."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v8';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>. Checking other people\'s sites? <a href="https://addons.mozilla.org/en-US/firefox/addon/local-site-audit-pitch/">Free Firefox add-on</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
