@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WooCommerce variations not showing: how to fix it</title>
+<meta name="description" content="WooCommerce variation dropdowns missing, options greyed out, or Add to cart says Please select some product options? Two checks find whether it is the variations themselves, their price and stock, or the theme and scripts. Then fix it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/woocommerce-variations-not-showing-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.ed { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; min-height:210px; background:#f1f3f5; padding:12px; }
+.rows { display:flex; flex-direction:column; gap:8px; }
+.row { background:#fff; border:1px solid #cfd6de; border-left:4px solid #65bc7b; border-radius:4px; padding:8px 10px; }
+.row b { display:block; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WooCommerce variations not showing</h1>
+<p class="lede">You set up a variable product with sizes or colours, and the product page shows no dropdowns, shows them with options greyed out, or the customer picks a size and Add to cart still says <b>Please select some product options before adding this product to your cart</b>. Nobody can buy it. Two checks tell you whether the variations themselves are incomplete, or whether the page is failing to run the script that handles them.</p>
+
+<div class="switch" role="group" aria-label="Show the product page before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Product page</h2>
+    <div class="ed" id="ed"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Check 1: is every variation complete</h2>
+<p>Open the product. In <b>Product data &gt; Attributes</b>, each attribute you sell by (Size, Colour) must have <b>Used for variations</b> ticked, or it never becomes a dropdown. Then open <b>Variations</b> and expand each one. A variation shows on the page only if it is <b>Enabled</b>, has a <b>Regular price</b>, and is in stock (or allows backorders). A variation with no price is silently skipped, and if every one is skipped the product shows no dropdowns at all. Also check each variation's attributes are set to real values; a combination with no variation behind it cannot be bought.</p>
+
+<h2>Check 2: is the page script running</h2>
+<p>Open the product logged out, in a private window, and pick each option. If the dropdowns appear but choosing one never shows a price or enables the button, the variation script did not run: open the browser console (F12) and look for a red error. A JavaScript error from another plugin, an optimisation plugin that delays or combines scripts, or a theme or page builder product template that leaves out the variation form all stop it. Products with more than 30 variations load their data on demand, so a security plugin, firewall or cache blocking <code>?wc-ajax=</code> requests breaks them too.</p>
+
+<h2>What each answer means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td>No dropdowns, product shows "out of stock" or no price</td><td>Every variation lacks a price, is disabled or is out of stock</td><td>Give each variation a Regular price and stock (Variations bulk actions: Set regular prices, Set status - In stock)</td></tr>
+  <tr><td>One attribute missing from the dropdowns</td><td>Used for variations not ticked on that attribute, or no variation uses it</td><td>Tick Used for variations, save, then Generate variations or add the missing ones</td></tr>
+  <tr><td>Some options missing or greyed out</td><td>Those combinations have no variation, no price, or no stock</td><td>Create the missing combinations and price them, or restock them</td></tr>
+  <tr><td>"Please select some product options" after picking</td><td>The variation script did not run, or the chosen combination matches no variation</td><td>Fix the console error, exclude WooCommerce scripts from delay/combine in the optimisation plugin, and check the combination exists</td></tr>
+  <tr><td>Works on Storefront, not on your theme</td><td>The theme or builder template prints its own form without the variation markup</td><td>Update the theme, use the builder's WooCommerce add-to-cart widget, or remove the outdated template override</td></tr>
+  <tr><td>Large product (30+ variations) never shows a price</td><td>Variation data loads on demand, and a firewall, cache or security rule blocks the request</td><td>Allow wc-ajax requests and exclude them from caching</td></tr>
+  <tr><td>Variations vanished after an import</td><td>The importer created the parent but the variation rows failed or lost their attribute values</td><td>Re-import variations with the parent SKU and attribute columns, then Regenerate the product lookup tables</td></tr>
+  <tr><td>Swatches plugin shows nothing</td><td>The swatch plugin is out of date, or the attribute type is set to swatches but not configured</td><td>Update it, or set the attribute type back to Select to confirm the variations work</td></tr>
+</table>
+</div>
+
+<h2>Check it worked</h2>
+<p>In a private window, every size or colour you sell appears in the dropdowns. Picking a full combination shows that variation's price and stock and enables Add to cart, and the cart line names the chosen options. Try one combination you do not sell: it should be unavailable, not silently add the wrong item.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not split each size into its own simple product to get round it. Stock, reviews and search all fragment.</li>
+  <li>Do not delete and regenerate all variations on a live product with orders. Past orders point at the old variations; fix the broken ones instead.</li>
+  <li>Do not turn off the optimisation plugin for the whole site. Exclude WooCommerce's scripts from it.</li>
+</ul>
+<p class="note">If you would rather someone else finds why the options are not showing and fixes it, that is what the box below is for. Related: <a href="woocommerce-add-to-cart-fix.html">add to cart not working</a>, <a href="woocommerce-cannot-be-purchased-fix.html">product cannot be purchased</a>, <a href="woocommerce-out-of-stock-fix.html">product says out of stock</a>.</p>
+</div>
+
+<script>
+(function () {
+  var ed = document.getElementById("ed"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="rows"><div class="row" style="border-left-color:#999"><b>Wool beanie</b>$18.00 - $24.00</div><div class="row" style="border-left-color:#b3261e"><b>Colour</b>No dropdown shown</div><div class="row" style="border-left-color:#b3261e"><b>Add to cart</b>Please select some product options</div></div>';
+  var fixed = '<div class="rows"><div class="row"><b>Wool beanie</b>Navy, Large - $24.00</div><div class="row"><b>Colour</b>Navy, Grey, Rust</div><div class="row"><b>Add to cart</b>Added: Wool beanie - Navy, Large</div></div>';
+  var logBefore = 'Shop: knitwear, WooCommerce\n\nAttribute Colour: Used for\n  variations not ticked\nVariations: 6, 2 with no price\nConsole: TypeError in a\n  delayed script\n\n' +
+    '<span class="bad">No colour choice, button refuses.</span>';
+  var logAfter = 'Steps taken:\n1. Ticked Used for variations.\n2. Priced the 2 empty variations.\n3. Excluded WooCommerce scripts\n   from script delay.\n' +
+    '4. Tested logged out, each combo.\n\n' +
+    '<span class="good">All options pick and add to cart.</span>';
+  function show(isFixed) {
+    ed.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why are my WooCommerce variations not showing?","acceptedAnswer":{"@type":"Answer","text":"A variation only shows when its attribute has Used for variations ticked and the variation is enabled, has a regular price and is in stock. If every variation lacks a price the product shows no dropdowns at all. If the variations are complete, a JavaScript error, script-delay plugin or theme template is stopping the variation form."}},
+{"@type":"Question","name":"What does 'Please select some product options before adding this product to your cart' mean?","acceptedAnswer":{"@type":"Answer","text":"WooCommerce did not receive a chosen variation. Either the combination picked has no matching variation, or the variation script on the page did not run, usually because of a console error, an optimisation plugin delaying WooCommerce scripts, or a theme template without the variation markup."}},
+{"@type":"Question","name":"Why are some WooCommerce variation options greyed out?","acceptedAnswer":{"@type":"Answer","text":"Greyed-out options are combinations with no variation, no price, or no stock. Create and price the missing combinations, or restock them, and they become selectable."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v8';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>. Checking other people\'s sites? <a href="https://addons.mozilla.org/en-US/firefox/addon/local-site-audit-pitch/">Free Firefox add-on</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
