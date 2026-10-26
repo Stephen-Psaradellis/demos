@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WooCommerce "no available payment methods" at checkout: how to fix it</title>
+<meta name="description" content="WooCommerce checkout says &quot;Sorry, it seems that there are no available payment methods&quot;? Two checks find the cause: which gateways are really enabled and set up, and which rule hides them for this customer. Then fix the gateway, its country, currency or shipping limits.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/woocommerce-no-payment-methods-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.ed { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; min-height:210px; background:#f1f3f5; padding:12px; }
+.rows { display:flex; flex-direction:column; gap:8px; }
+.row { background:#fff; border:1px solid #cfd6de; border-left:4px solid #65bc7b; border-radius:4px; padding:8px 10px; }
+.row b { display:block; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WooCommerce checkout: "no available payment methods"</h1>
+<p class="lede">A customer fills in the checkout and, where the card box should be, sees <b>"Sorry, it seems that there are no available payment methods. Please contact us if you require assistance or wish to make alternate arrangements."</b> (older versions add "for your state" or "for your location"). The order cannot be placed, so every visitor who sees it is a lost sale. WooCommerce shows this message when it has checked every payment method and none is allowed for this cart, address and currency. Below is a rebuilt example (not a real client), the two checks that find which rule is hiding them, and the fix for each one.</p>
+
+<div class="switch" role="group" aria-label="Show the checkout before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Checkout page</h2>
+    <div class="ed" id="ed"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Check 1: which methods are really on and set up</h2>
+<p>Go to <b>WooCommerce &gt; Settings &gt; Payments</b>. Note each method whose toggle is on, and any that say <b>Action needed</b>, <b>Finish set up</b> or <b>Test mode</b>. A method that is switched on but has no account connected, or has live keys missing, is skipped at checkout without any warning. Also check <b>Plugins</b>: if a payment plugin was deactivated by an update or an expired licence, its method disappears from the list altogether.</p>
+
+<h2>Check 2: what is different about this customer</h2>
+<p>Open the shop in a private window, add one product and go to checkout. Change one thing at a time and watch the payment box: the <b>billing country</b>, the <b>shipping method</b>, and the cart total (add a second product). If a method appears for one country or one shipping method and not another, a limit on that method is the cause. Then look at <b>WooCommerce &gt; Status &gt; Logs</b> for a log named after your gateway (for example <code>stripe</code> or <code>ppcp</code>) or <code>fatal-errors</code> from the time of the failed checkout.</p>
+
+<h2>What each answer means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td>No method has its toggle on, or the only one on says Finish set up</td><td>Nothing is ready to take payment</td><td>Finish connecting your card gateway (Stripe, WooPayments, PayPal) with the live account, or switch on a simple method like Direct bank transfer while you do</td></tr>
+  <tr><td>The gateway is connected but in test or sandbox mode</td><td>Test keys only work for test cards, and some gateways hide themselves from customers who are not admins in test mode</td><td>Turn test mode off and enter the live keys from your gateway's dashboard</td></tr>
+  <tr><td>Methods appear for one country and not another</td><td>The gateway does not support that country, or WooCommerce's <b>Selling location</b> or a "Conditional payments" rule excludes it</td><td>Check the gateway's supported countries, WooCommerce &gt; Settings &gt; General selling locations, and any payment-rules plugin</td></tr>
+  <tr><td>Nothing shows after you changed the store currency</td><td>Many methods only work in certain currencies (PayPal does not support every currency; local methods like iDEAL or Klarna need EUR or a matching currency)</td><td>Set the store currency back, or enable a method that supports the new one; multi-currency plugins need the gateway allowed for each currency</td></tr>
+  <tr><td>Cash on delivery shows only with some shipping methods</td><td>Its <b>Enable for shipping methods</b> list names only certain methods, and it is off for virtual orders unless ticked</td><td>Add the missing shipping methods to that list, or clear it to allow all</td></tr>
+  <tr><td>Methods vanish above or below a cart total</td><td>A minimum or maximum order amount set in the gateway (common for Klarna, Afterpay, financing) or in a rules plugin</td><td>Raise or remove the limit, and keep one method that has no limit</td></tr>
+  <tr><td>The checkout uses the new Checkout block and a method that works in admin preview is missing</td><td>The gateway plugin is out of date and does not support the block checkout</td><td>Update the gateway plugin. If it still has no block support, edit the Checkout page and switch it to the classic checkout shortcode</td></tr>
+  <tr><td>A fatal-errors or gateway log entry at the time of the checkout</td><td>The gateway plugin is failing, often after a WooCommerce or PHP update</td><td>Update the gateway plugin, or roll back the last update; the log line names the plugin</td></tr>
+  <tr><td>It works for you but customers still see the message</td><td>A page cache is serving an old copy of the checkout</td><td>Exclude Cart, Checkout and My account from every cache (plugin, host and CDN), then purge</td></tr>
+</table>
+</div>
+
+<h2>Check it worked</h2>
+<p>In a private window, place a real order of a cheap product with a real card (or the cheapest live method), for at least two addresses your customers use. Refund it afterwards. A test order in test mode does not prove customers can pay.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not edit the message text to hide it. The order still cannot be paid; customers just lose the reason.</li>
+  <li>Do not install a second card gateway on top of a broken first one. Two card boxes on one checkout can conflict and break both.</li>
+  <li>Do not leave Direct bank transfer as the only method for long. It works, but most shoppers leave instead of paying by bank.</li>
+</ul>
+<p class="note">Most of these take a few minutes once you know which one it is. If you would rather someone else finds and fixes it, that is what the box below is for. Related: <a href="woocommerce-checkout-fix.html">WooCommerce checkout not working</a> and <a href="woocommerce-pending-payment-fix.html">WooCommerce orders stuck on pending payment</a>.</p>
+</div>
+
+<script>
+(function () {
+  var ed = document.getElementById("ed"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="rows"><div class="row" style="border-left-color:#999"><b>Billing: Canada</b>Shipping: Local pickup</div><div class="row" style="border-left-color:#b3261e"><b>Payment</b>Sorry, it seems that there are no available payment methods.</div><div class="row" style="border-left-color:#999"><b>Place order</b>Button greyed out</div></div>';
+  var fixed = '<div class="rows"><div class="row"><b>Billing: Canada</b>Shipping: Local pickup</div><div class="row"><b>Payment</b>Credit card, PayPal, Cash on pickup</div><div class="row"><b>Place order</b>Order placed and paid</div></div>';
+  var logBefore = 'Shop: candle maker, WooCommerce\n\nStripe: on, test mode, no live keys\nPayPal: on, store currency CAD ok,\n  but plugin deactivated by update\nCash on delivery: only for Flat rate\nCustomer chose: Local pickup\n\n' +
+    '<span class="bad">Every method skipped:\nno way to pay.</span>';
+  var logAfter = 'Steps taken:\n1. Stripe: live keys in, test mode off.\n2. Reactivated and updated PayPal.\n' +
+    '3. Cash on delivery: added Local pickup.\n4. Checkout excluded from the cache.\n\n' +
+    '<span class="good">Three ways to pay;\ntest order paid and refunded.</span>';
+  function show(isFixed) {
+    ed.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does WooCommerce say there are no available payment methods?","acceptedAnswer":{"@type":"Answer","text":"Every payment method was skipped for this cart: none is switched on and fully set up, or each one is limited by country, currency, shipping method or order amount. Check WooCommerce > Settings > Payments, then change the billing country and shipping method at checkout to find the limit."}},
+{"@type":"Question","name":"Why is my Stripe or PayPal option not showing at WooCommerce checkout?","acceptedAnswer":{"@type":"Answer","text":"The gateway is in test mode, missing live keys, deactivated, out of date for the Checkout block, or does not support the store currency or the customer's country. Finish the live set-up, update the plugin and check its supported currencies."}},
+{"@type":"Question","name":"Why does cash on delivery not show in WooCommerce?","acceptedAnswer":{"@type":"Answer","text":"Its Enable for shipping methods setting lists only some shipping methods, or the order is virtual. Add the customer's shipping method to the list or clear it to allow all."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v8';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>. Checking other people\'s sites? <a href="https://addons.mozilla.org/en-US/firefox/addon/local-site-audit-pitch/">Free Firefox add-on</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
