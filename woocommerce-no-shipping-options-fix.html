@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WooCommerce "No shipping options were found": how to fix it</title>
+<meta name="description" content="Customers see &quot;No shipping options were found&quot; or &quot;There are no shipping options available&quot; at the cart or checkout? Find out which zone the address lands in, then fix the zone, the method, the shipping class, the product weight or a cached cart.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/woocommerce-no-shipping-options-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.ed { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; min-height:210px; background:#f1f3f5; padding:12px; }
+.raw { background:#fff; border-radius:6px; padding:12px; font-family:ui-monospace, Consolas, monospace; font-size:12px; color:#555; overflow-wrap:anywhere; }
+.spin { display:flex; align-items:center; justify-content:center; min-height:180px; color:var(--muted); font-weight:600; }
+.rows { display:flex; flex-direction:column; gap:8px; }
+.row { background:#fff; border:1px solid #cfd6de; border-left:4px solid #65bc7b; border-radius:4px; padding:8px 10px; }
+.row b { display:block; font-size:14px; }
+.bar { background:#198fd9; color:#fff; font-weight:600; border-radius:4px; padding:6px 10px; margin-bottom:8px; font-size:13px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WooCommerce "No shipping options were found"</h1>
+<p class="lede">A customer adds something to the cart, types their address, and the cart or checkout says <b>"No shipping options were found for [address]"</b> or <b>"There are no shipping options available. Please ensure that your address has been entered correctly"</b>. They cannot place the order, and you only find out when someone emails you or sales stop. Almost always the shop has no shipping method that matches that address and those products. Below is a rebuilt example (not a real client), the two checks that find the cause, and the fix for each one.</p>
+
+<div class="switch" role="group" aria-label="Show the checkout before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Checkout</h2>
+    <div class="ed" id="ed"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Check 1: which zone does the address land in?</h2>
+<p>Open <b>WooCommerce &gt; Settings &gt; Shipping &gt; Shipping zones</b>. WooCommerce reads the list from the top and uses the <b>first</b> zone whose regions match the customer's address (country, state, or ZIP / postcode). Only the methods in that one zone are offered. If no zone matches, the "Rest of the world" zone at the bottom is used (it may be called "Locations not covered by your other zones"). Take the address that failed and work out which zone it hits first, and whether that zone has at least one <b>enabled</b> method.</p>
+
+<h2>Check 2: turn on shipping debug mode</h2>
+<p>Go to <b>WooCommerce &gt; Settings &gt; Shipping &gt; Shipping options</b> (sometimes <b>Shipping settings</b>), tick <b>Enable debug mode</b> and save. Then, logged in as an admin, add the same product to the cart and enter the failing address. The cart now shows which zone matched and which methods were checked. This also turns off WooCommerce's shipping cache while it is on, so a cached answer cannot fool you. Turn it off again when you are done.</p>
+
+<h2>What each answer means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td>Debug shows "Rest of the world" (or no zone) for an address you do ship to</td><td>The address matches no zone: a ZIP code range typed wrong, a state missing from the region list, or the customer's country not added</td><td>Edit the zone and add the missing country or state. ZIP ranges use <code>90210...90299</code> (three dots) and wildcards like <code>902*</code>, one per line. Then test that exact address again</td></tr>
+  <tr><td>The right zone matched, but it lists no methods, or the method's switch is off</td><td>The zone exists but has no enabled shipping method</td><td>Open the zone, click <b>Add shipping method</b>, add Flat rate (or Free shipping / Local pickup) and make sure its toggle is on</td></tr>
+  <tr><td>A small zone higher up (for example "Local delivery: 3 ZIP codes") catches addresses meant for a bigger zone below it</td><td>Zone order: the first match wins, even if it only has Local pickup or a method with conditions the cart does not meet</td><td>Drag the zones so the most specific ones (ZIP lists) are at the top and broad ones (whole country) below, and give every zone a method that always applies</td></tr>
+  <tr><td>Only Free shipping is in the zone, and it fails for small carts</td><td>Free shipping set to "requires a minimum order amount" or "a valid free shipping coupon"; below that, there is nothing to offer</td><td>Add a Flat rate method next to Free shipping so carts under the minimum still have an option. To hide the flat rate when free shipping applies, use a small snippet or plugin, not by removing it</td></tr>
+  <tr><td>Fails only for some products; those products have a shipping class</td><td>The Flat rate method has a cost per shipping class and the product's class has none, or a plugin hides methods for that class</td><td>In the Flat rate settings, give every shipping class a cost (0 is fine). Check the product's <b>Shipping</b> tab: class and weight. A plugin such as conditional shipping or "hide methods" can also remove the only method: check its rules</td></tr>
+  <tr><td>You use live rates (UPS, FedEx, USPS, ShipStation, Canada Post) and the methods are blank</td><td>The carrier returned nothing: the product has no weight or size, the account key expired, or the carrier's API refused the request</td><td>Give every product a weight and dimensions, reconnect the carrier account, and read the carrier plugin's log in <b>WooCommerce &gt; Status &gt; Logs</b>. Add a Flat rate fallback so a carrier outage does not block every order</td></tr>
+  <tr><td>Physical products, but only some carts fail after a product edit</td><td>A product is ticked <b>Virtual</b> or <b>Downloadable</b> by mistake, or a mixed cart has one product in a class no method covers</td><td>Untick Virtual on physical products, set the class and weight, and test a cart with only that product</td></tr>
+  <tr><td>Worked yesterday, fails today with no settings change; works when logged in as admin</td><td>A cached cart or checkout page, or WooCommerce's stored shipping rates for the session</td><td>Exclude cart, checkout and my-account from every cache (plugin, host, Cloudflare), then clear WooCommerce transients in <b>WooCommerce &gt; Status &gt; Tools</b>. See <a href="woocommerce-checkout-fix.html">WooCommerce checkout not working</a></td></tr>
+  <tr><td>"Please ensure that your address has been entered correctly" even for a correct address</td><td>The shop ships to fewer countries than the customer can pick, or "Ship to specific countries" leaves theirs out</td><td>Check <b>Settings &gt; General</b>: <b>Selling location(s)</b> and <b>Shipping location(s)</b>. Every country you ship to must be in both, and in a zone</td></tr>
+</table>
+</div>
+
+<h2>Check it worked</h2>
+<p>Log out (or use a private window), add each kind of product to the cart, and enter one real address from every zone you serve, including one under any free-shipping minimum. Each should show at least one shipping price. Then turn debug mode off again.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not put a catch-all "Free shipping" in "Rest of the world" to make the message go away. It hides the problem and you may end up shipping abroad for free.</li>
+  <li>Do not delete and rebuild every zone at once. Change one thing, test the failing address, and keep the rest.</li>
+  <li>Do not leave debug mode on. Customers would see the debug notes, and the shipping cache stays off.</li>
+</ul>
+<p class="note">Most of these take ten minutes once you know which one it is. If you would rather someone else finds and fixes it, that is what the box below is for. Related: <a href="woocommerce-checkout-fix.html">WooCommerce checkout not working</a> and <a href="woocommerce-pending-payment-fix.html">orders stuck on Pending payment</a>.</p>
+</div>
+
+<script>
+(function () {
+  var ed = document.getElementById("ed"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="rows"><div class="row" style="border-left-color:#999"><b>Ship to: Austin, TX 78704</b>1 x Ceramic mug set, $42.00</div><div class="row" style="border-left-color:#b3261e"><b>Shipping</b>No shipping options were found for Austin, TX 78704.</div><div class="row" style="border-left-color:#999"><b>Place order</b>(blocked)</div></div>';
+  var fixed = '<div class="rows"><div class="row"><b>Ship to: Austin, TX 78704</b>1 x Ceramic mug set, $42.00</div><div class="row"><b>Shipping</b>Flat rate: $8.50<br>Free shipping over $75</div><div class="row"><b>Place order</b>$50.50</div></div>';
+  var logBefore = 'Shop: pottery, WooCommerce\n\nDebug mode, cart for TX 78704:\n  zone matched: "Austin pickup"\n  (ZIP 787* at the top)\n  methods: Local pickup (off)\n\n' +
+    '<span class="bad">Every Austin customer\nblocked at checkout.</span>';
+  var logAfter = 'Steps taken:\n1. "Austin pickup" zone:\n   Local pickup switched on,\n   Flat rate $8.50 added.\n' +
+    '2. Free shipping kept, min $75.\n3. Debug mode off again.\n\n' +
+    '<span class="good">Austin addresses now see\na price and can order.</span>';
+  function show(isFixed) {
+    ed.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does WooCommerce say No shipping options were found?","acceptedAnswer":{"@type":"Answer","text":"The customer's address matched a shipping zone with no enabled method that applies to the cart, or matched no zone at all. Turn on shipping debug mode to see which zone and methods WooCommerce checked."}},
+{"@type":"Question","name":"Which shipping zone does WooCommerce use?","acceptedAnswer":{"@type":"Answer","text":"The first zone from the top of the Shipping zones list whose regions match the address. If none match, the Rest of the world zone is used. Put specific ZIP-code zones above whole-country ones."}},
+{"@type":"Question","name":"Why does free shipping disappear for small orders?","acceptedAnswer":{"@type":"Answer","text":"Free shipping set to require a minimum order amount offers nothing below that amount. Add a Flat rate method in the same zone so smaller carts still have an option."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v8';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>. Checking other people\'s sites? <a href="https://addons.mozilla.org/en-US/firefox/addon/local-site-audit-pitch/">Free Firefox add-on</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
