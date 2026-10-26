@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WooCommerce "Add to cart" not working: how to fix it</title>
+<meta name="description" content="The WooCommerce Add to cart button does nothing, spins forever, or the cart stays empty? Two checks find the cause: the browser console and a logged-out test. Then fix the cache, the plugin or theme conflict, the product setup or the cart session.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/woocommerce-add-to-cart-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.ed { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; min-height:210px; background:#f1f3f5; padding:12px; }
+.rows { display:flex; flex-direction:column; gap:8px; }
+.row { background:#fff; border:1px solid #cfd6de; border-left:4px solid #65bc7b; border-radius:4px; padding:8px 10px; }
+.row b { display:block; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WooCommerce "Add to cart" not working</h1>
+<p class="lede">A customer clicks <b>Add to cart</b> and nothing happens. Or the button spins forever, or the page reloads and the cart still says it is empty, or the item shows up for you but not for customers. Nobody can buy, and most of them just leave without telling you. The cause is nearly always one of a few things: a cached page, a script error from a plugin or the theme, the product's own setup, or a cart session that is not being kept. Below is a rebuilt example (not a real client), the two checks that find the cause, and the fix for each one.</p>
+
+<div class="switch" role="group" aria-label="Show the product page before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Product page</h2>
+    <div class="ed" id="ed"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Check 1: open the browser console and click the button</h2>
+<p>On a computer, open the product page, press <b>F12</b> (or right-click &gt; <b>Inspect</b>) and pick the <b>Console</b> tab. Click <b>Add to cart</b>. A red line such as <code>Uncaught TypeError</code> or <code>jQuery is not defined</code> means a script broke before the button could work; the file name next to it usually names the plugin or theme. Then open the <b>Network</b> tab and click again: you should see a request to <code>?wc-ajax=add_to_cart</code> (on shop pages) or the page posting back to itself. A <b>403</b> there points at a firewall, a <b>500</b> at a PHP error, and no request at all at a script problem.</p>
+
+<h2>Check 2: test logged out, in a private window</h2>
+<p>Open a private (incognito) window, go to the shop without logging in, and add the same product. If it works for you as an admin but fails logged out, the page customers see is a <b>cached copy</b>, or the cart cookie is not being saved. If it fails in both, the problem is in the product or a plugin. Also try a second product of a different type (a simple product and one with options) to see if it is one product or all of them.</p>
+
+<h2>What each answer means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td>Works when logged in, fails for customers; the cart icon shows an old count or stays at 0</td><td>The shop, cart or checkout page is served from a cache (caching plugin, the host's cache, or Cloudflare "Cache Everything"), so the cart fragments never refresh</td><td>Exclude <code>/cart/</code>, <code>/checkout/</code> and <code>/my-account/</code> from every cache, and do not cache pages for visitors who carry the <code>woocommerce_items_in_cart</code> or <code>wp_woocommerce_session_</code> cookies. Then purge all caches and test logged out again</td></tr>
+  <tr><td>A red error in the console naming a plugin or theme file</td><td>A script error stops WooCommerce's add-to-cart script from running</td><td>Deactivate the plugin it names (or switch to a default theme like Storefront for a minute) and test again. Use the Health Check plugin's troubleshooting mode to do this without customers seeing it. Update or replace the one that breaks it</td></tr>
+  <tr><td>"jQuery is not defined" or nothing in the Network tab after a speed-plugin change</td><td>A speed setting delays or defers JavaScript (Delay JS, Defer jQuery, combine/minify JS, Cloudflare Rocket Loader), so the button loads before the script it needs</td><td>Exclude jQuery and the WooCommerce scripts (<code>add-to-cart</code>, <code>cart-fragments</code>, <code>woocommerce</code>) from delay and combine, or turn that one option off, then clear the cache</td></tr>
+  <tr><td>Product page shows no button at all, or "Read more" instead of "Add to cart"</td><td>The product has no price, is out of stock, is set to "Catalog" visibility, or is a variable product whose options were never chosen</td><td>Give the product a regular price, set stock to In stock (or allow backorders), and for products with options check each variation has a price and is enabled. On variable products the button stays grey until the customer picks every option: that is normal</td></tr>
+  <tr><td>Page reloads, a green "added to your cart" message appears, but the cart is empty</td><td>The cart session is not kept: cookies blocked by a security plugin, the site mixing <code>www</code> and non-<code>www</code> or <code>http</code> and <code>https</code>, or the sessions table not being written</td><td>Make the WordPress Address and Site Address in <b>Settings &gt; General</b> the same exact address (both <code>https</code>, same <code>www</code>), redirect the other versions to it, and check <b>WooCommerce &gt; Status</b> for database errors. See <a href="cookies-blocked-fix.html">cookies are blocked</a></td></tr>
+  <tr><td>Network tab shows 403 on <code>wc-ajax=add_to_cart</code> or on <code>admin-ajax.php</code></td><td>A firewall (Wordfence, the host's ModSecurity, Cloudflare WAF) blocks the request</td><td>Check the firewall's log for the blocked request and allow it, or whitelist the rule that matched. See <a href="forbidden-403-fix.html">403 Forbidden</a></td></tr>
+  <tr><td>Network tab shows 500 or the request returns an error page</td><td>A PHP error in a plugin, a theme function or a custom snippet that hooks into the cart</td><td>Read the error in <b>WooCommerce &gt; Status &gt; Logs</b> (fatal-errors) or the host's error log, and fix or remove the code it names. See <a href="plugin-fatal-error-fix.html">plugin fatal error</a></td></tr>
+  <tr><td>Shop page buttons fail, but the single product page works</td><td>"Enable AJAX add to cart buttons on archives" is on, and the AJAX request fails (cache, firewall or a script error, as above)</td><td>In <b>WooCommerce &gt; Settings &gt; Products</b>, untick that option as a quick stopgap so the button reloads the page instead, then fix the real cause from the rows above</td></tr>
+</table>
+</div>
+
+<h2>Check it worked</h2>
+<p>In a private window, logged out, add one simple product and one product with options from both the shop page and the product page. The cart count should change and the cart page should list both items. Then do the same on a phone, since mobile visitors often get a different cached copy.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not uninstall your caching plugin to make it work. Exclude the cart pages from it instead, or the whole shop gets slow.</li>
+  <li>Do not deactivate every plugin on the live shop at once while customers are on it. Use troubleshooting mode or a staging copy.</li>
+  <li>Do not edit WooCommerce's own files to "fix" the button. An update will undo it, and the real cause stays.</li>
+</ul>
+<p class="note">Most of these take a few minutes once you know which one it is. If you would rather someone else finds and fixes it, that is what the box below is for. Related: <a href="woocommerce-checkout-fix.html">WooCommerce checkout not working</a> and <a href="woocommerce-no-shipping-options-fix.html">No shipping options were found</a>.</p>
+</div>
+
+<script>
+(function () {
+  var ed = document.getElementById("ed"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="rows"><div class="row" style="border-left-color:#999"><b>Linen apron, $34.00</b>In stock</div><div class="row" style="border-left-color:#b3261e"><b>Add to cart</b>(spins, then nothing)</div><div class="row" style="border-left-color:#999"><b>Cart</b>0 items</div></div>';
+  var fixed = '<div class="rows"><div class="row"><b>Linen apron, $34.00</b>In stock</div><div class="row"><b>Add to cart</b>"Linen apron" has been added to your cart.</div><div class="row"><b>Cart</b>1 item, $34.00</div></div>';
+  var logBefore = 'Shop: home goods, WooCommerce\n\nLogged-out test: fails\nAdmin test: works\nConsole: no errors\nNetwork: add_to_cart 200,\n  cart count from a cached page\n  (Cloudflare Cache Everything)\n\n' +
+    '<span class="bad">Visitors never see their cart.</span>';
+  var logAfter = 'Steps taken:\n1. Cache rule: bypass /cart/,\n   /checkout/, /my-account/ and\n   visitors with cart cookies.\n' +
+    '2. Purged Cloudflare + plugin cache.\n3. Retested logged out, phone too.\n\n' +
+    '<span class="good">Items land in the cart and\ncustomers reach checkout.</span>';
+  function show(isFixed) {
+    ed.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why is the WooCommerce Add to cart button not working?","acceptedAnswer":{"@type":"Answer","text":"Usually a cached page, a JavaScript error from a plugin or theme, a speed setting that delays jQuery, or a product with no price or stock. Open the browser console and test logged out in a private window to see which."}},
+{"@type":"Question","name":"Why does the WooCommerce cart stay empty after adding a product?","acceptedAnswer":{"@type":"Answer","text":"The cart session is not kept: the cart page is cached, cookies are blocked, or the site mixes www and non-www or http and https. Exclude cart pages from caching and use one exact site address."}},
+{"@type":"Question","name":"Why does Add to cart work for me but not for customers?","acceptedAnswer":{"@type":"Answer","text":"Logged-in admins usually bypass the cache, customers do not. Exclude the cart, checkout and my-account pages and visitors with WooCommerce cart cookies from every cache, then purge it."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v8';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>. Checking other people\'s sites? <a href="https://addons.mozilla.org/en-US/firefox/addon/local-site-audit-pitch/">Free Firefox add-on</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
