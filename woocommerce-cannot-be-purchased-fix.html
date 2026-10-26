@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WooCommerce "Sorry, this product cannot be purchased": how to fix it</title>
+<meta name="description" content="WooCommerce says Sorry, this product cannot be purchased, or there is no Add to cart button? One check on the product's price, stock and status finds the cause in most cases. Then fix the price, variations, stock, a sale schedule or a plugin rule.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/woocommerce-cannot-be-purchased-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.ed { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; min-height:210px; background:#f1f3f5; padding:12px; }
+.rows { display:flex; flex-direction:column; gap:8px; }
+.row { background:#fff; border:1px solid #cfd6de; border-left:4px solid #65bc7b; border-radius:4px; padding:8px 10px; }
+.row b { display:block; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WooCommerce "Sorry, this product cannot be purchased"</h1>
+<p class="lede">A customer clicks Add to cart and gets <b>"Sorry, this product cannot be purchased"</b>, or the product page shows a price but no Add to cart button at all, or a variable product says <b>"Sorry, this product is unavailable. Please choose a different combination."</b> WooCommerce shows these when it decides the product is not purchasable: it has no price, it is not published, it is out of stock, the chosen variation has no price, or a plugin says no. Below is a rebuilt example (not a real client), the two checks that find the cause, and the fix for each one.</p>
+
+<div class="switch" role="group" aria-label="Show the product page before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Product page</h2>
+    <div class="ed" id="ed"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Check 1: open the product's Product data box</h2>
+<p>Edit the product and look at the <b>Product data</b> box. On the <b>General</b> tab, is there a <b>Regular price</b>? An empty price is the most common cause: WooCommerce treats a product with no price as not for sale. If a <b>Sale price</b> has schedule dates, check the dates are right. On the <b>Inventory</b> tab, check the stock status and, if stock is managed, the quantity. In the <b>Publish</b> box, the status should be Published. For a <b>variable product</b>, open the <b>Variations</b> tab and expand each variation: every one needs its own price, and each one must be ticked as Enabled.</p>
+
+<h2>Check 2: test logged out, then with plugins paused</h2>
+<p>In a private window, logged out, open the product and try to add it to the cart. If it works for you as an admin but not for customers, a plugin limits who may buy (membership, wholesale, B2B, "catalog mode" or "hide price" plugins). If it fails for everyone, use the Health Check plugin's troubleshooting mode, which pauses plugins for you only, and turn them back on one at a time until the message returns.</p>
+
+<h2>What each answer means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td>The Regular price field is empty</td><td>A product with no price cannot be bought. Imports and duplicated products often lose the price</td><td>Enter a Regular price and update. For many products, use <b>Bulk actions &gt; Edit</b> in All Products, or fix the price column in the import file and re-run it with "update existing products" ticked</td></tr>
+  <tr><td>A variable product says "this product is unavailable, please choose a different combination"</td><td>That variation has no price, is not enabled, is out of stock, or the combination was never created</td><td>In the <b>Variations</b> tab, give every variation a price and tick Enabled. Use "Set regular prices" from the bulk menu for all at once, or "Create variations from all attributes" if a combination is missing</td></tr>
+  <tr><td>The product is Draft, Pending or Private</td><td>Customers cannot buy a product that is not published, even with a direct link</td><td>Set the status to Published in the Publish box and update</td></tr>
+  <tr><td>Stock status says Out of stock, or the quantity is 0</td><td>Out-of-stock products cannot be added to the cart unless backorders are allowed</td><td>Set the right quantity on the Inventory tab, or set "Allow backorders" to "Allow, but notify customer"</td></tr>
+  <tr><td>The sale price works for some days and then the product breaks</td><td>A scheduled sale ended or started with no regular price behind it, or WordPress's scheduled tasks did not run</td><td>Make sure the Regular price is filled in, fix the schedule dates, then save the product again. If schedules keep failing, see <a href="scheduled-post-fix.html">missed schedule</a></td></tr>
+  <tr><td>Works for admins, fails for logged-out customers or one customer role</td><td>A membership, wholesale, B2B or catalog-mode plugin blocks buying for some users</td><td>Check that plugin's rules for this product or category and the user roles allowed to buy</td></tr>
+  <tr><td>Fails for everyone and stops when one plugin is paused</td><td>That plugin (or theme code) filters the product to "not purchasable"</td><td>Update that plugin, then check its settings; if it still blocks, ask its support or replace it. Code in the theme's functions.php using <code>woocommerce_is_purchasable</code> does the same and should be checked</td></tr>
+  <tr><td>Everything above looks right but the message is still shown</td><td>An old copy of the product or cart from a cache, or out-of-date lookup tables after an import</td><td>Purge every cache, then run "Regenerate the product lookup tables" and "Clear transients" in <b>WooCommerce &gt; Status &gt; Tools</b>. See <a href="woocommerce-add-to-cart-fix.html">Add to cart not working</a> for button problems</td></tr>
+</table>
+</div>
+
+<h2>Check it worked</h2>
+<p>In a private window, logged out, open the product, choose each option if it is a variable product, add it to the cart and go as far as the checkout page. Do the same for one other product from the same import or category, since the same cause usually affects them all.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not set a price of 0 just to make the button appear. A free product checks out at 0, and orders arrive with nothing paid.</li>
+  <li>Do not delete and recreate the product to "reset" it. You lose its reviews, sales history and its links; fix the price, stock or variation instead.</li>
+  <li>Do not switch plugins off one by one on the live shop while customers browse it. Use troubleshooting mode or a staging copy.</li>
+</ul>
+<p class="note">Most of these take a few minutes once you know which one it is. If you would rather someone else finds and fixes it, that is what the box below is for. Related: <a href="woocommerce-products-not-showing-fix.html">WooCommerce products not showing</a> and <a href="woocommerce-checkout-fix.html">WooCommerce checkout not working</a>.</p>
+</div>
+
+<script>
+(function () {
+  var ed = document.getElementById("ed"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="rows"><div class="row" style="border-left-color:#999"><b>Linen apron, size M</b>Choose a size: M</div><div class="row" style="border-left-color:#b3261e"><b>Sorry, this product is unavailable.</b>Please choose a different combination.</div></div>';
+  var fixed = '<div class="rows"><div class="row"><b>Linen apron, size M</b>$38.00</div><div class="row"><b>Added to your cart</b>View cart - Checkout</div></div>';
+  var logBefore = 'Shop: aprons, WooCommerce\n\nProduct type: variable (S/M/L)\nVariation S: $38, enabled\nVariation M: no price\nVariation L: not enabled\nLogged-out test: fails on M and L\n\n' +
+    '<span class="bad">Customers cannot buy two of\nthree sizes.</span>';
+  var logAfter = 'Steps taken:\n1. Variations: set regular price\n   $38 on all three.\n' +
+    '2. Ticked Enabled on size L.\n3. Purged cache, added each size\n   to the cart logged out.\n\n' +
+    '<span class="good">All three sizes can be bought.</span>';
+  function show(isFixed) {
+    ed.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does WooCommerce say Sorry, this product cannot be purchased?","acceptedAnswer":{"@type":"Answer","text":"WooCommerce shows it when it decides the product is not purchasable: most often the Regular price is empty, but also when the product is not published, is out of stock without backorders, or a plugin blocks buying. Check the Product data box first."}},
+{"@type":"Question","name":"Why does a WooCommerce variable product say this product is unavailable, please choose a different combination?","acceptedAnswer":{"@type":"Answer","text":"The chosen variation has no price, is not enabled, is out of stock, or was never created. Give every variation a price, tick Enabled, and use Create variations from all attributes if a combination is missing."}},
+{"@type":"Question","name":"Why is there no Add to cart button on my WooCommerce product?","acceptedAnswer":{"@type":"Answer","text":"A product with no price, an unpublished product, or one hidden by a catalog-mode or wholesale plugin shows no Add to cart button. Add a Regular price, publish it, and check plugins that limit who can buy."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v8';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>. Checking other people\'s sites? <a href="https://addons.mozilla.org/en-US/firefox/addon/local-site-audit-pitch/">Free Firefox add-on</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
