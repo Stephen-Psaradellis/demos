@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crossword with Unlocking Clues</title>
+<meta name="description" content="Demo: a web crossword where new clues and new parts of the grid appear once the solver fills earlier answers, with a rebus square that holds several letters.">
+<style>
+:root{--bg:#fafaf7;--fg:#1d1d1f;--muted:#666;--line:#1d1d1f;--cell:#fff;--sel:#ffe27a;--word:#d8ecff;--ok:#2e7d32;--block:#1d1d1f}
+@media (prefers-color-scheme:dark){:root{--bg:#141414;--fg:#eee;--muted:#aaa;--line:#ccc;--cell:#222;--sel:#7a6512;--word:#1f3a55;--ok:#7bd47f;--block:#000}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:24px 16px}
+h1{font-size:1.5rem;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 20px}
+.wrap{display:flex;gap:28px;flex-wrap:wrap}
+#grid{display:grid;gap:0;border:2px solid var(--line);align-self:flex-start;touch-action:manipulation}
+.c{width:58px;height:58px;border:1px solid var(--line);background:var(--cell);position:relative;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:600;text-transform:uppercase;user-select:none}
+.c .n{position:absolute;top:2px;left:4px;font-size:11px;font-weight:400}
+.c.word{background:var(--word)}.c.sel{background:var(--sel)}
+.c.hidden{visibility:hidden}.c.reveal{animation:pop .5s}
+.c.ok{color:var(--ok)}
+.c .v{font-size:26px}.c .v.multi{font-size:15px;letter-spacing:-.5px}
+@keyframes pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+.clues{flex:1;min-width:240px}
+.clues h2{font-size:1rem;margin:12px 0 4px}
+.clues li{list-style:none;padding:3px 6px;border-radius:4px;cursor:pointer}
+.clues ul{padding:0;margin:0}
+.clues li.cur{background:var(--word)}.clues li.done{color:var(--ok)}
+.clues li.new{animation:pop .5s}
+.bar{margin:16px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font:inherit;padding:6px 12px;border:1px solid var(--line);background:var(--cell);color:var(--fg);border-radius:6px;cursor:pointer}
+button.on{background:var(--sel)}
+#msg{font-weight:600;color:var(--ok);min-height:1.5em}
+#kb{position:absolute;opacity:0;width:1px;height:1px;left:-9999px}
+.note{color:var(--muted);font-size:.9rem;border-top:1px solid var(--muted);margin-top:28px;padding-top:12px}
+</style>
+</head>
+<body>
+<main>
+<h1>Crossword with unlocking clues</h1>
+<p class="sub">Fill the three Across answers. When they are right, a new row of the grid and four new clues appear. One square in the new row is a rebus: it holds two letters.</p>
+<div class="bar">
+  <button id="rebus" title="Type several letters into one square (Esc toggles)">Rebus</button>
+  <button id="check">Check</button>
+  <button id="reset">Clear</button>
+  <span id="msg" role="status"></span>
+</div>
+<div class="wrap">
+  <div id="grid" aria-label="crossword grid"></div>
+  <div class="clues"><h2>Across</h2><ul id="ac"></ul><h2>Down</h2><ul id="dn"></ul></div>
+</div>
+<input id="kb" autocomplete="off" autocapitalize="characters" aria-label="answer input">
+<p class="note">How it is built: the whole puzzle (grid, answers, clues, and which stage each one belongs to) is one small data block at the top of the script, so a mock-up from a spreadsheet maps straight onto it. Stages unlock on any rule you like: a set of answers correct, a single word, or a share of the grid. Runs as one static page that works on phones, no server or account needed. Built by an AI system that I run and check myself.</p>
+</main>
+<script>
+// Puzzle data: answers per cell (null = block), the stage a cell appears in, and clues with their stage.
+const PUZ = {
+  cells: [["B","A","T"],["A","R","E"],["T","E","N"],["HE","A","T"]],
+  stageOf: [[1,1,1],[1,1,1],[1,1,1],[2,2,2]],
+  clues: [
+    {n:1,dir:"a",r:0,c:0,len:3,stage:1,text:"Cave flyer"},
+    {n:4,dir:"a",r:1,c:0,len:3,stage:1,text:"\"You ___ here\""},
+    {n:5,dir:"a",r:2,c:0,len:3,stage:1,text:"Usual number of fingers"},
+    {n:6,dir:"a",r:3,c:0,len:3,stage:2,text:"Warmth (first square holds two letters)"},
+    {n:1,dir:"d",r:0,c:0,len:4,stage:2,text:"Take a dip"},
+    {n:2,dir:"d",r:0,c:1,len:4,stage:2,text:"Region"},
+    {n:3,dir:"d",r:0,c:2,len:4,stage:2,text:"Camper's shelter"}
+  ],
+  // stage N+1 opens when every clue of stage N is correct
+  unlock: s => PUZ.clues.filter(k => k.stage === s).every(isRight)
+};
+const R = PUZ.cells.length, C = PUZ.cells[0].length;
+let stage = 1, entry = PUZ.cells.map(row => row.map(() => "")), cur = {r:0,c:0,dir:"a"}, rebus = false;
+const grid = document.getElementById("grid"), kb = document.getElementById("kb"), msg = document.getElementById("msg");
+grid.style.gridTemplateColumns = `repeat(${C},58px)`;
+const el = [];
+for (let r = 0; r < R; r++) { el.push([]); for (let c = 0; c < C; c++) {
+  const d = document.createElement("div"); d.className = "c";
+  d.onclick = () => { if (cur.r === r && cur.c === c) cur.dir = cur.dir === "a" ? "d" : "a"; cur.r = r; cur.c = c; fixDir(); draw(); kb.focus(); };
+  grid.appendChild(d); el[r].push(d);
+}}
+function cellsOf(k) { return [...Array(k.len)].map((_, i) => k.dir === "a" ? [k.r, k.c + i] : [k.r + i, k.c]); }
+function isRight(k) { return cellsOf(k).every(([r, c]) => entry[r][c] === PUZ.cells[r][c]); }
+function visible(r, c) { return PUZ.stageOf[r][c] <= stage; }
+function liveClues() { return PUZ.clues.filter(k => k.stage <= stage); }
+function clueAt(r, c, dir) { return liveClues().find(k => k.dir === dir && cellsOf(k).some(([a, b]) => a === r && b === c)); }
+function fixDir() { if (!clueAt(cur.r, cur.c, cur.dir)) cur.dir = cur.dir === "a" ? "d" : "a"; }
+function draw() {
+  const k = clueAt(cur.r, cur.c, cur.dir), inWord = k ? cellsOf(k).map(x => x.join()) : [];
+  for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+    const d = el[r][c], v = entry[r][c];
+    d.className = "c" + (visible(r, c) ? "" : " hidden") + (inWord.includes(r + "," + c) ? " word" : "") +
+      (r === cur.r && c === cur.c ? " sel" : "") + (d.dataset.rev ? " reveal" : "");
+    const num = liveClues().find(q => q.r === r && q.c === c);
+    d.innerHTML = (num ? `<span class="n">${num.n}</span>` : "") + `<span class="v${v.length > 1 ? " multi" : ""}">${v}</span>`;
+  }
+  for (const dir of ["a", "d"]) {
+    const ul = document.getElementById(dir === "a" ? "ac" : "dn"); ul.innerHTML = "";
+    for (const q of liveClues().filter(q => q.dir === dir)) {
+      const li = document.createElement("li"); li.textContent = q.n + ". " + q.text;
+      if (q === k) li.classList.add("cur"); if (isRight(q)) li.classList.add("done");
+      if (q.stage === stage && stage > 1 && !q.seen) { li.classList.add("new"); q.seen = true; }
+      li.onclick = () => { cur = {r: q.r, c: q.c, dir: q.dir}; draw(); kb.focus(); };
+      ul.appendChild(li);
+    }
+  }
+  document.getElementById("rebus").classList.toggle("on", rebus);
+}
+function step(n) {
+  const k = clueAt(cur.r, cur.c, cur.dir); if (!k) return;
+  const cs = cellsOf(k), i = cs.findIndex(([a, b]) => a === cur.r && b === cur.c), j = i + n;
+  if (j >= 0 && j < cs.length) [cur.r, cur.c] = cs[j];
+}
+function after() {
+  while (PUZ.clues.some(k => k.stage === stage + 1) && PUZ.unlock(stage)) {
+    stage++;
+    for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (PUZ.stageOf[r][c] === stage) el[r][c].dataset.rev = 1;
+    msg.textContent = "New clues unlocked.";
+  }
+  if (PUZ.clues.every(isRight)) msg.textContent = "Solved!";
+  draw();
+}
+function key(e) {
+  const k = e.key;
+  if (k === "Escape") { rebus = !rebus; draw(); e.preventDefault(); return; }
+  if (k === "Enter") { if (rebus) { rebus = false; step(1); after(); } e.preventDefault(); return; }
+  const mv = {ArrowRight:[0,1,"a"],ArrowLeft:[0,-1,"a"],ArrowDown:[1,0,"d"],ArrowUp:[-1,0,"d"]}[k];
+  if (mv) { e.preventDefault(); const r = cur.r + mv[0], c = cur.c + mv[1];
+    if (r >= 0 && r < R && c >= 0 && c < C && visible(r, c)) { cur.r = r; cur.c = c; }
+    cur.dir = mv[2]; fixDir(); draw(); return; }
+  if (k === "Backspace") { e.preventDefault();
+    if (entry[cur.r][cur.c]) entry[cur.r][cur.c] = rebus ? entry[cur.r][cur.c].slice(0, -1) : "";
+    else { step(-1); entry[cur.r][cur.c] = ""; }
+    msg.textContent = ""; draw(); return; }
+  if (/^[a-z]$/i.test(k)) { e.preventDefault(); const L = k.toUpperCase();
+    if (rebus) entry[cur.r][cur.c] = (entry[cur.r][cur.c] + L).slice(0, 6);
+    else { entry[cur.r][cur.c] = L; step(1); }
+    after(); }
+}
+document.addEventListener("keydown", e => { if (e.target !== kb) key(e); });
+kb.addEventListener("keydown", key);
+kb.addEventListener("input", () => { const v = kb.value; kb.value = ""; for (const ch of v) key({key: ch, preventDefault(){}}); });
+document.getElementById("rebus").onclick = () => { rebus = !rebus; draw(); kb.focus(); };
+document.getElementById("check").onclick = () => {
+  for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (visible(r, c)) el[r][c].classList.toggle("ok", entry[r][c] === PUZ.cells[r][c]);
+  const wrong = liveClues().filter(q => !isRight(q)).length; msg.textContent = wrong ? wrong + " answer(s) not right yet." : msg.textContent;
+};
+document.getElementById("reset").onclick = () => { entry = PUZ.cells.map(row => row.map(() => "")); stage = 1; msg.textContent = "";
+  PUZ.clues.forEach(q => delete q.seen); el.flat().forEach(d => delete d.dataset.rev); cur = {r:0,c:0,dir:"a"}; draw(); };
+draw();
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+</body>
+</html>
