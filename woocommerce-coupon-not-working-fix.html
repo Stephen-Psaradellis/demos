@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WooCommerce coupon not working: how to fix it</title>
+<meta name="description" content="WooCommerce says 'Coupon is not valid', 'Coupon does not exist' or the discount is $0? Two checks find whether coupons are switched off, the coupon's own rules refuse the cart, or a cache or plugin is in the way. Then fix it.">
+<link rel="canonical" href="https://stephen-psaradellis.github.io/demos/woocommerce-coupon-not-working-fix.html">
+<style>
+:root { --brand:#1f6f8b; --ink:#1b1b1b; --muted:#666; --bg:#f5f6f8; --bad:#b3261e; --good:#1e7a3c; --line:#dfe3e8; --warn:#8a5a00; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: clamp(22px, 4vw, 32px); margin: 8px 0 6px; line-height:1.25; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 720px; }
+.switch { display:inline-flex; border:1px solid var(--line); border-radius:999px; background:#fff; padding:4px; margin-bottom:18px; }
+.switch button { border:0; background:none; padding:9px 18px; border-radius:999px; font:inherit; font-weight:600; cursor:pointer; color:var(--muted); }
+.switch button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap:18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.ed { border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:13px; min-height:210px; background:#f1f3f5; padding:12px; }
+.rows { display:flex; flex-direction:column; gap:8px; }
+.row { background:#fff; border:1px solid #cfd6de; border-left:4px solid #65bc7b; border-radius:4px; padding:8px 10px; }
+.row b { display:block; font-size:14px; }
+pre { background:#111; color:#e6e6e6; padding:12px; border-radius:8px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.bad { color:var(--bad); font-weight:600; }
+.good { color:var(--good); font-weight:600; }
+ol li, ul li { margin-bottom:8px; }
+code { background:#eef0f3; padding:1px 5px; border-radius:4px; font-size:0.92em; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; background:#fff; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:#f0f1f4; }
+.tablewrap { overflow-x:auto; }
+.note { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="note"><a href="index.html">More fixes</a></p>
+<h1>WooCommerce coupon not working</h1>
+<p class="lede">A customer types the code from your email or flyer and the cart says <b>Coupon "SAVE10" is not valid</b>, <b>Coupon "SAVE10" does not exist!</b>, <b>Sorry, this coupon is not applicable to selected products</b>, or it says applied but the discount is $0.00. Or there is no coupon box at checkout at all. Every one of those customers was ready to pay and many leave. Two checks tell you whether WooCommerce is refusing the coupon on purpose or something else is getting in the way.</p>
+
+<div class="switch" role="group" aria-label="Show the cart before or after the fix">
+  <button type="button" id="b-broken" aria-pressed="true">Before</button>
+  <button type="button" id="b-fixed" aria-pressed="false">After</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Cart</h2>
+    <div class="ed" id="ed"></div>
+  </div>
+  <div class="panel">
+    <h2>What the checks found</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<h2>Check 1: are coupons switched on, and is this coupon published</h2>
+<p>Go to <b>WooCommerce &gt; Settings &gt; General</b> and find <b>Enable the use of coupon codes</b>. If it is unticked there is no coupon box on the cart or checkout and every code fails. Then open <b>Marketing &gt; Coupons</b> and find the code. It must be <b>Published</b>, not Draft, Pending or in the Trash, and the code the customer types must match it letter for letter (spaces count; WooCommerce ignores upper and lower case). A coupon you cannot find there is the "does not exist" message.</p>
+
+<h2>Check 2: do the coupon's own rules refuse this cart</h2>
+<p>Open the coupon and read three tabs. <b>General</b>: the discount type and amount, and the <b>Coupon expiry date</b>. <b>Usage restriction</b>: minimum and maximum spend, <b>Individual use only</b>, <b>Exclude sale items</b>, the products and categories it applies to or excludes, and <b>Allowed emails</b>. <b>Usage limits</b>: limit per coupon and per user, and how many times it has already been used. Now compare with the cart that failed: one expired date, one sale item, one product outside the listed categories or one customer email that is not on the allowed list is enough. WooCommerce's message usually names which rule it was, so write the exact message down before you change anything.</p>
+
+<h2>What each answer means</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>What you see</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td>No coupon box on the cart or checkout</td><td>Coupons are switched off, or the theme or a checkout plugin hides the field</td><td>Tick Enable the use of coupon codes; if it is ticked, switch to a default theme for one test to see whether the theme removed it</td></tr>
+  <tr><td>"Coupon does not exist"</td><td>A typo, a space at the end of the code, the coupon is in Draft or Trash, or it was made on a staging copy of the site and never on the live shop</td><td>Publish the coupon on the live site and send customers the exact code; avoid codes with O and 0 or I and 1 that are easy to mistype</td></tr>
+  <tr><td>"This coupon has expired"</td><td>The expiry date has passed; the date runs on the site's time zone, so a coupon can expire hours early or late</td><td>Move the date, and check Settings &gt; General time zone is your own city, not UTC</td></tr>
+  <tr><td>"The minimum spend for this coupon is..."</td><td>Minimum spend counts the cart before tax and shipping</td><td>Lower the minimum or say "over $50 before shipping" in the promotion</td></tr>
+  <tr><td>"Not applicable to selected products" or a $0.00 discount</td><td>Exclude sale items is ticked and the cart is all sale items, the products or categories list leaves these out, or a variation's parent product is listed instead of the variation (or the reverse)</td><td>Untick Exclude sale items if you meant to allow it, add the missing categories, and test with the exact product the customer had</td></tr>
+  <tr><td>"Usage limit has been reached" or "not valid for you"</td><td>Limit per coupon or per user is used up (failed and cancelled orders can count too), or Allowed emails does not include the customer's billing email</td><td>Raise or clear the limit, and clear Allowed emails unless the coupon really is for named people</td></tr>
+  <tr><td>"Sorry, coupon has already been applied and cannot be used in conjunction with other coupons"</td><td>Individual use only is ticked on one of the two coupons</td><td>Remove the other coupon first, or untick Individual use only if stacking is fine</td></tr>
+  <tr><td>Works when you test, fails for customers; or the cart shows the old total</td><td>A page cache or CDN serves a saved copy of the cart or checkout, so the discount never shows</td><td>Exclude cart, checkout and my-account from the cache plugin and the host's cache, then purge it</td></tr>
+  <tr><td>Fails only with one payment method or one plugin on</td><td>A dynamic pricing, subscriptions or checkout plugin changes the cart totals after the coupon applies</td><td>Turn plugins off one at a time on a staging copy to find it, then use that plugin's own coupon setting or update it</td></tr>
+</table>
+</div>
+
+<h2>Check it worked</h2>
+<p>Log out (or use a private window), add the same product the customer had, and apply the code at the cart. The line under the subtotal should read the coupon name and the discount, and the order total should drop by that amount. Then go to checkout and check the discount is still there on the order review before you pay. Repeat once with a product on sale if the promotion should include sale items.</p>
+
+<h2>What not to do</h2>
+<ul>
+  <li>Do not delete and remake the coupon to "reset" it. The usage count and the orders that used it are tied to the old one, and customers with the old code get "does not exist".</li>
+  <li>Do not hand out a manual refund for the discount as the standing workaround. It costs you a payment fee each time and the customer still saw the error at checkout.</li>
+  <li>Do not turn off the page cache for the whole site to fix one cart. Exclude the cart, checkout and account pages and keep the rest fast.</li>
+</ul>
+<p class="note">If you would rather someone else finds why the coupon is refused and fixes it, that is what the box below is for. Related: <a href="woocommerce-checkout-fix.html">WooCommerce checkout not working</a>, <a href="woocommerce-add-to-cart-fix.html">add to cart not working</a>, <a href="changes-not-showing-fix.html">changes not showing (cache)</a>.</p>
+</div>
+
+<script>
+(function () {
+  var ed = document.getElementById("ed"), log = document.getElementById("log");
+  var bB = document.getElementById("b-broken"), bF = document.getElementById("b-fixed");
+  var broken = '<div class="rows"><div class="row" style="border-left-color:#999"><b>Linen apron (sale)</b>$32.00</div><div class="row" style="border-left-color:#b3261e"><b>Coupon: FALL15</b>Sorry, this coupon is not applicable to selected products.</div><div class="row" style="border-left-color:#999"><b>Total</b>$32.00 + shipping</div></div>';
+  var fixed = '<div class="rows"><div class="row"><b>Linen apron (sale)</b>$32.00</div><div class="row"><b>Coupon: FALL15</b>-$4.80</div><div class="row"><b>Total</b>$27.20 + shipping</div></div>';
+  var logBefore = 'Shop: kitchen linens, WooCommerce\n\nCoupons enabled: yes\nFALL15: Published, 15% off\nExpiry: 2026-10-31 (site time UTC)\nExclude sale items: ticked\nCart: 1 sale item only\nCache: checkout page cached\n\n' +
+    '<span class="bad">Coupon refused for every sale\nitem the email promoted.</span>';
+  var logAfter = 'Steps taken:\n1. Exclude sale items unticked.\n2. Time zone set to the shop city.\n' +
+    '3. Cart + checkout excluded from\n   cache, cache purged.\n4. Tested in a private window.\n\n' +
+    '<span class="good">15% off applies on the cart and\nstays on the checkout.</span>';
+  function show(isFixed) {
+    ed.innerHTML = isFixed ? fixed : broken;
+    log.innerHTML = isFixed ? logAfter : logBefore;
+    bB.setAttribute("aria-pressed", String(!isFixed));
+    bF.setAttribute("aria-pressed", String(isFixed));
+  }
+  bB.onclick = function () { show(false); };
+  bF.onclick = function () { show(true); };
+  show(false);
+})();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Why does WooCommerce say my coupon is not valid?","acceptedAnswer":{"@type":"Answer","text":"The coupon's own rules refuse the cart: it has expired, the cart is under the minimum spend, Exclude sale items is ticked, the products or categories are not on its list, its usage limit is used up, or the customer's email is not on its Allowed emails list. Open the coupon in Marketing > Coupons and compare each rule with the cart."}},
+{"@type":"Question","name":"Why is there no coupon field on my WooCommerce checkout?","acceptedAnswer":{"@type":"Answer","text":"Coupons are switched off in WooCommerce > Settings > General (Enable the use of coupon codes), or the theme or a checkout plugin hides the field."}},
+{"@type":"Question","name":"Why does a WooCommerce coupon work for me but not for customers?","acceptedAnswer":{"@type":"Answer","text":"Usually a page cache or CDN is serving a saved copy of the cart or checkout. Exclude the cart, checkout and my-account pages from caching and purge the cache. Per-user limits and Allowed emails can also refuse one customer and not another."}}
+]}
+</script>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+<script>(function(){try{if(navigator.webdriver||/[?&]embed=1/.test(location.search))return;var d=document.createElement('aside');d.id='hire-footer';d.className='hire-v8';d.style.cssText='max-width:720px;margin:32px auto 16px;padding:16px;border:1px solid #ccc;border-radius:8px;font:15px/1.5 system-ui,sans-serif;color:#222;background:#fafafa;box-sizing:border-box';var E='s.n.psaradellis@gmail.com',I='flex:1 1 180px;min-width:0;padding:8px;font:inherit;box-sizing:border-box',B='padding:8px 14px;font:inherit';d.innerHTML='<strong>Does your own site have '+(/-fix\.html$/.test(location.pathname)?'this problem':'one of these problems')+'?</strong> Check it free: 12 checks in a few seconds, each problem linked to its fix.<form action="site-check.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px"><input name="url" type="text" inputmode="url" placeholder="yourbusiness.com" aria-label="Your website address" required style="'+I+'"><button style="'+B+'">Check my site free</button></form><p style="margin:0 0 12px">On WordPress? The same checks run free inside your dashboard: <a href="https://wordpress.org/plugins/mailwick-site-audit/">Mailwick Site Audit plugin</a>. Checking other people\'s sites? <a href="https://addons.mozilla.org/en-US/firefox/addon/local-site-audit-pitch/">Free Firefox add-on</a>.</p><strong>Want it done for you?</strong> From $49 a fix, quoted before I start, no payment until you OK the quote.<form id="hire-ask" style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"><input name="site" type="text" inputmode="url" placeholder="Your site address" aria-label="Your site address" required style="'+I+'"><input name="email" type="email" placeholder="Your email, for the quote" aria-label="Your email" required style="'+I+'"><textarea name="problem" rows="2" maxlength="1500" placeholder="What is wrong (optional)" aria-label="What is wrong" style="flex:1 1 100%;min-width:0;padding:8px;font:inherit;box-sizing:border-box"></textarea><input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button style="'+B+'">Ask for a quote</button></form><div id="hire-msg" role="status"></div>Or email <a href="mailto:'+E+'?subject=Fix%20for%20my%20site">'+E+'</a>.<br><small>The checks, guides and fixes are produced with an AI system I run; I am responsible for what is delivered. Your address is used only to reply.</small>';document.body.appendChild(d);var t=document.createElement('p');t.id='hire-top';t.style.cssText='max-width:720px;margin:8px auto 16px;padding:8px 12px;border-left:4px solid #1a73e8;background:#f1f6fe;font:15px/1.5 system-ui,sans-serif;color:#222;box-sizing:border-box';t.innerHTML='<strong>'+(/-fix\.html$/.test(location.pathname)?'Seeing this on your own site?':'Something wrong with your own site?')+'</strong> <a href="#'+d.id+'">Check it free in seconds, or get it fixed from $49</a>.';var h=document.querySelector('h1');if(h&&h.parentNode)h.parentNode.insertBefore(t,h.nextSibling);else document.body.insertBefore(t,document.body.firstChild);var f=d.querySelector('#hire-ask'),m=d.querySelector('#hire-msg'),F='Could not send - please email '+E+' instead.';f.addEventListener('submit',function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;m.textContent='Sending...';var v={site:f.elements.site.value,email:f.elements.email.value,problem:f.elements.problem.value,website:f.elements.website.value,page:location.pathname};fetch('https://pagehits.s-n-psaradellis.workers.dev/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(v)}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok){f.style.display='none';m.innerHTML='<strong>Got it.</strong> A fixed quote comes by email from '+E+' within a day. Nothing to pay until you OK it.';}else{b.disabled=false;m.textContent=j&&j.error==='email'?'That email address does not look right.':j&&j.error==='site'?'That site address does not look right.':F;}}).catch(function(){b.disabled=false;m.textContent=F;});});}catch(e){}})();</script>
+</body>
+</html>
