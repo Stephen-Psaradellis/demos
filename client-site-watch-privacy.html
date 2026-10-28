@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client Site Watch - privacy and support</title>
+<meta name="description" content="What the Client Site Watch Jira app stores, what it sends where, and how to get help.">
+<style>
+:root{--bg:#fff;--ink:#172b4d;--mute:#5e6c84;--line:#dfe1e6;--accent:#0c66e4}
+@media (prefers-color-scheme:dark){:root{--bg:#1d2125;--ink:#dee4ea;--mute:#9fadbc;--line:#38414a;--accent:#579dff}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:720px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:1.6rem;margin:0 0 4px}h2{font-size:1.15rem;margin:32px 0 8px}
+p,li{margin:6px 0}.mute{color:var(--mute)}a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;font-size:.95rem}td,th{border-top:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>Client Site Watch</h1>
+<p class="mute">Privacy policy and support for the Jira app. Last updated 2026-10-28.</p>
+
+<p>Client Site Watch checks the public websites you list (your clients' sites) once a day and
+files what it finds as Jira issues in your project. This page says exactly what it keeps and
+what it sends, and how to reach the person who runs it.</p>
+
+<h2>What the app stores</h2>
+<ul>
+<li><strong>The watch list</strong>: each site's address and the client name you type next to it.
+It is kept in Atlassian's Forge app storage for your site, not on any server of ours.</li>
+<li><strong>Jira issues</strong> it creates in the project you choose: one per problem found,
+with the evidence and fix steps. They are ordinary issues in your Jira and stay there under your
+control, including after you uninstall the app.</li>
+<li><strong>One Teamwork Graph document per watched site</strong> (the latest check result), so
+Rovo search can find it. It stays inside your Atlassian workspace.</li>
+</ul>
+<p>The app keeps no user accounts, emails, names of Jira users, or Jira content outside your
+Atlassian site. There is no analytics or tracking inside the app.</p>
+
+<h2>What the app sends, and to whom</h2>
+<table>
+<tr><th>Who receives it</th><th>What they receive</th><th>Why</th></tr>
+<tr><td>The watched websites</td><td>Ordinary web requests for their pages, links and images</td><td>To check them</td></tr>
+<tr><td>crt.sh (public certificate logs)</td><td>The site's host name only</td><td>Certificate expiry date</td></tr>
+<tr><td>dns.google (public DNS)</td><td>The site's host name only</td><td>Email records (SPF / DMARC)</td></tr>
+</table>
+<p>Nothing else leaves Atlassian. Client names, Jira issues and user data are never sent to
+these services or to us.</p>
+
+<h2>Removing data</h2>
+<p>Remove a site from the watch list and it is deleted from storage and no longer checked.
+Uninstalling the app ends all checks; its Forge storage is then handled under Atlassian's
+platform rules. Issues it filed stay in your project until you delete them.</p>
+
+<h2>Who runs it, and how it was built</h2>
+<p>Client Site Watch is run by one person, Stephen Psaradellis. It was built with heavy help
+from an AI system (Claude, by Anthropic), which wrote much of the code and this page;
+a person is responsible for it.</p>
+
+<h2>Support</h2>
+<p>Questions, bugs, or a request to delete something: email
+<a href="mailto:s.n.psaradellis@gmail.com?subject=Client%20Site%20Watch">s.n.psaradellis@gmail.com</a>
+with "Client Site Watch" in the subject. Replies within two working days.</p>
+
+<h2>Changes</h2>
+<p>If the app starts sending data anywhere new, this page changes first, and the date above with it.</p>
+<p class="mute">This web page (not the app) counts its own views: page path and referring site per
+day, no IP address, no cookie.</p>
+</main>
+<script>(function(){try{if(navigator.webdriver)return;var r="";if(document.referrer){r=new URL(document.referrer).hostname;if(r===location.hostname)r="internal";}fetch("https://pagehits.s-n-psaradellis.workers.dev/h?p="+encodeURIComponent(location.pathname)+"&r="+encodeURIComponent(r),{mode:"no-cors",keepalive:true});}catch(e){}})();</script>
+</body>
+</html>
